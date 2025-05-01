@@ -1,0 +1,18 @@
+[project]
+name = "saarthi"
+version = "0.1.0"
+description = "SAARTHI - Smart Aide for Actions, Retrieval, Tasks, Handling Information"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.12",
+    "openai-agents>=0.0.13",
+    "passlib>=1.7.4",
+    "python-dotenv>=1.1.0",
+    "python-jose>=3.4.0",
+    "python-multipart>=0.0.20",
+    "pytz>=2025.2",
+    "pyyaml>=6.0.2",
+    "slowapi>=0.1.9",
+    "uvicorn>=0.34.2",
+]
