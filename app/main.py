@@ -17,4 +17,4 @@ async def read_root():
     return {"message": f"Welcome to {CONFIG.base.app_name}"}
 
 
-# uv run uvicorn app.main:app --log-config=log_conf.yml --reload --host 0.0.0.0 --port 8000
+# uv run uvicorn app.main:app --log-config log_conf.yml --reload --host 0.0.0.0 --port 8000

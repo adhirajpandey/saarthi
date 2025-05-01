@@ -45,6 +45,10 @@ def load_configuration(yaml_file_path: str) -> SharedConfig:
     if not google_drive_search_webhook_url:
         info("ERROR: GOOGLE_DRIVE_SEARCH_WEBHOOK_URL environment variable not set.")
 
+    ollama_dell_url = os.getenv("OLLAMA_DELL_WORK_URL", None)
+    if not ollama_dell_url:
+        info("ERROR: OLLAMA_DELL_WORK_URL environment variable not set.")
+
     base_config = BaseConfig(**yaml_config.get("base", {}))
     jwt_config_data = yaml_config.get("jwt", {})
     jwt_config_data["secret_key"] = jwt_secret_key
@@ -55,6 +59,10 @@ def load_configuration(yaml_file_path: str) -> SharedConfig:
     ai_service_config_data["google_drive_search_webhook_url"] = (
         google_drive_search_webhook_url
     )
+    ai_service_config_data["external_client"] = {
+        "base_url": ollama_dell_url,
+        "api_key": "DUMMY_API_KEY_NOT_USED",
+    }
     ai_service_config = AIServiceConfig(**ai_service_config_data)
 
     # model_items = yaml_config.get("ai_service", {}).get("models", [])

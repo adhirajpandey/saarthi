@@ -17,16 +17,9 @@ CHAT_RATE_LIMIT = rate_limiting_config.chat_limit
 ai_service_config = CONFIG.ai_service
 
 
-def get_preffered_model() -> str:
-    sorted_models = sorted(ai_service_config.models, key=lambda x: x.priority)
-    if sorted_models:
-        return sorted_models[0].name
-    else:
-        raise ValueError("No available models found in the configuration.")
-
-
-agents_config = RunConfig(model=get_preffered_model(), tracing_disabled=True)
-agents_service = AgentsService(agents_config)
+# agents_config = RunConfig(model=get_preffered_model(), tracing_disabled=True)
+# agents_service = AgentsService(agents_config)
+agents_service = AgentsService()
 
 
 @router.post("/chat", response_model=AIChatResponse)
@@ -54,7 +47,8 @@ async def post_chat_message(
         ai_response_text = await agents_service.invoke(chat_message.message)
         logger.info(f"AI response successful for user: {current_user}")
         return AIChatResponse(
-            response=ai_response_text, processed_by=get_preffered_model()
+            response=ai_response_text,
+            processed_by=agents_service.get_preffered_model_name(),
         )
     except Exception as e:
         logger.error(
