@@ -3,15 +3,6 @@ from datetime import datetime
 from typing import Optional
 
 
-class LoggingConfig(BaseModel):
-    level: str = Field(default="INFO")
-    format: str = Field(
-        default="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
-    )
-    date_format: str = Field(default="%Y-%m-%d %H:%M:%S")
-    log_file: str = Field(default="logs/app.log")
-
-
 class JWTConfig(BaseModel):
     secret_key: str
     algorithm: str = Field(default="HS256")
@@ -80,7 +71,6 @@ class AIServiceConfig(BaseModel):
 class SharedConfig(BaseModel):
     base: BaseConfig
     jwt: JWTConfig
-    logging: LoggingConfig
     rate_limiting: RateLimitingConfig = RateLimitingConfig()
     users: list[UserConfig] = [UserConfig()]
     ai_service: AIServiceConfig

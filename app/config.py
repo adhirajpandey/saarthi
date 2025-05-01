@@ -6,7 +6,6 @@ from .models import (
     SharedConfig,
     BaseConfig,
     JWTConfig,
-    LoggingConfig,
     AIServiceConfig,
 )
 from logging import info, error
@@ -47,7 +46,6 @@ def load_configuration(yaml_file_path: str) -> SharedConfig:
         info("ERROR: GOOGLE_DRIVE_SEARCH_WEBHOOK_URL environment variable not set.")
 
     base_config = BaseConfig(**yaml_config.get("base", {}))
-    logging_config = LoggingConfig(**yaml_config.get("logging", {}))
     jwt_config_data = yaml_config.get("jwt", {})
     jwt_config_data["secret_key"] = jwt_secret_key
     jwt_config = JWTConfig(**jwt_config_data)
@@ -66,7 +64,6 @@ def load_configuration(yaml_file_path: str) -> SharedConfig:
     return SharedConfig(
         base=base_config,
         jwt=jwt_config,
-        logging=logging_config,
         ai_service=ai_service_config,
     )
 

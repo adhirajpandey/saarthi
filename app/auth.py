@@ -75,9 +75,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> str
     except JWTError as e:
         logger.warning(f"Token validation JWTError: {e}. Token: {token[:10]}...")
         raise credentials_exception from e
-    except (
-        ValidationError
-    ) as e:  # Catch Pydantic errors if payload structure is somehow invalid after decode
+    except ValidationError as e:  # Catch Pydantic errors if payload structure is somehow invalid after decode
         logger.warning(f"Token payload validation error: {e}. Token: {token[:10]}...")
         raise credentials_exception
 

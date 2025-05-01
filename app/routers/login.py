@@ -1,6 +1,5 @@
-import logging
 from datetime import timedelta
-from fastapi import APIRouter, Request, HTTPException, status, Depends
+from fastapi import APIRouter, Request, HTTPException, status
 from ..models import Token, UserLogin
 from ..auth import (
     verify_password,

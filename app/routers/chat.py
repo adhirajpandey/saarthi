@@ -1,4 +1,3 @@
-import logging
 from typing import Annotated
 from fastapi import APIRouter, Request, Depends, HTTPException, status
 
@@ -10,6 +9,7 @@ from ..config import CONFIG
 from agents import RunConfig
 
 router = APIRouter(tags=["Chat"])
+
 
 rate_limiting_config = CONFIG.rate_limiting
 CHAT_RATE_LIMIT = rate_limiting_config.chat_limit
