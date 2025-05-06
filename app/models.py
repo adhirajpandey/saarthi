@@ -38,15 +38,20 @@ class AIChatResponse(BaseModel):
     processed_by: str
 
 
-class ExternalClientConfig(BaseModel):
+class ProviderConfig(BaseModel):
     base_url: str
     api_key: str
+
+
+class ProvidersConfig(BaseModel):
+    ollama: Optional[ProviderConfig] = None
+    gemini: Optional[ProviderConfig] = None
+    openrouter: Optional[ProviderConfig] = None
 
 
 class ModelConfig(BaseModel):
     provider: str
     name: str
-    external_client: Optional[ExternalClientConfig] = None
     priority: int = Field(default=-1, le=10)
 
 
@@ -63,7 +68,7 @@ class RateLimitingConfig(BaseModel):
 
 class AIServiceConfig(BaseModel):
     models: list[ModelConfig]
-    external_client: Optional[ExternalClientConfig] = None
+    providers: ProvidersConfig
     openai_api_key: Optional[str] = None
     google_drive_search_webhook_url: Optional[str] = None
 

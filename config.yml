@@ -14,14 +14,10 @@ ai_service:
   models:
     - provider: ollama
       name: "qwen3:0.6b"
-      priority: 0
-
-    - provider: ollama
-      name: "phi4:latest"
       priority: 1
 
     - provider: ollama
-      name: "phi3:mini"
+      name: "qwen3:4b"
       priority: 2
 
     - provider: openai
@@ -31,3 +27,15 @@ ai_service:
     - provider: openai
       name: "gpt-4o-mini"
       priority: 4
+
+    - provider: gemini
+      name: "gemini-2.0-flash"
+      priority: 6
+
+    - provider: gemini
+      name: "gemini-2.0-flash-lite"
+      priority: 5
+
+    - provider: openrouter
+      name: "mistralai/mistral-7b-instruct:free"
+      priority: 0

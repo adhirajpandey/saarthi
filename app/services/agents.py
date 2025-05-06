@@ -8,7 +8,6 @@ from agents import (
     enable_verbose_stdout_logging,
     #    ModelSettings,
     #    InputGuardrailTripwireTriggered,
-    function_tool,
     set_default_openai_key,
     OpenAIChatCompletionsModel,
 )
@@ -16,11 +15,16 @@ from agents.extensions.handoff_prompt import (
     prompt_with_handoff_instructions,
 )
 from openai import AsyncOpenAI
-import requests
-import json
 from ..config import CONFIG
 from ..core import logger
-
+from .instructions import (
+    TRIAGE_AGENT_INSTRUCTIONS,
+    TASK_PERFORMER_AGENT_INSTRUCTIONS,
+    INFORMATION_RETRIEVAL_AGENT_INSTRUCTIONS,
+)
+from .tools import (
+    get_search_results_from_google_drive,
+)
 
 ai_service_config = CONFIG.ai_service
 set_tracing_disabled(True)
@@ -29,83 +33,8 @@ enable_verbose_stdout_logging()
 if ai_service_config.openai_api_key:
     set_default_openai_key(ai_service_config.openai_api_key)
 else:
-    raise ValueError("OpenAI API key is not set in the configuration.")
+    logger.warning("OpenAI API key is not set in the configuration.")
 
-
-@function_tool
-def plus(number_a: int, number_b: int) -> int:
-    """
-    Provides sum of two numbers.
-    Args:
-        number_a (int): The first number.
-        number_b (int): The second number.
-    Returns:
-        int: The sum of the two numbers.
-
-    """
-    result = number_a + number_b
-    if not result:
-        return -1
-    return result
-
-
-@function_tool
-def minus(number_a: int, number_b: int) -> int:
-    """
-    Provides difference of two numbers.
-    Args:
-         number_a (int): The first number.
-         number_b (int): The second number.
-    Returns:
-         int: The difference of the two numbers.
-
-    """
-    result = number_a - number_b
-    if not result:
-        return -1
-    return result
-
-
-@function_tool
-def get_search_results_from_google_drive(query: str) -> str:
-    """
-    Provides search results from Google Drive based on the query.
-    Args:
-        query (str): The search query.
-    Returns:
-        str: Google Drive API response with all the relevant details.
-
-    """
-    n8n_webhook_url = (
-        f"{ai_service_config.google_drive_search_webhook_url}?query={query}"
-    )
-
-    response = requests.get(n8n_webhook_url)
-    response.raise_for_status()  # Raise an error for bad responses
-    data = response.json()
-    if not data:
-        return json.dumps({"error": "Unable to find any results."})
-    return data
-
-
-TRIAGE_AGENT_INSTRUCTIONS = """You are a triage agent. Your job is to determine the best course of action for the user query. 
-You can either pass it to the information retrieval agent or task performer agent.
-If any query regarding Google Drive, pass it to information retrieval agent.
-If any query regarding task performance, pass it to task performer agent.
-Dont answer to user until the whole task is completed.
-"""
-
-TASK_PERFORMER_AGENT_INSTRUCTIONS = """You are a task performer agent. Your job is to perform the task based on the user query.
-You have access to tools and can use them to perform the task.
-"""
-
-INFORMATION_RETRIEVAL_AGENT_INSTRUCTIONS = """You are an information retrieval agent. Your job is to retrieve the information based on the user query.
-You have access to tools and can use them to retrieve the information.
-Dont answer to user until the whole task is completed.
-Use google drive search tool to find drive files related information.
-
-Always use tools to get information.
-"""
 
 information_extraction_from_user_query_agent = Agent(
     name="Information Extraction Agent",
@@ -116,7 +45,6 @@ task_performer_agent = Agent(
     name="Task Performer Agent",
     instructions=TASK_PERFORMER_AGENT_INSTRUCTIONS,
     model_settings=ModelSettings(tool_choice="required"),
-    tools=[plus, minus],
 )
 
 information_retrieval_agent = Agent(
@@ -124,10 +52,6 @@ information_retrieval_agent = Agent(
     instructions=INFORMATION_RETRIEVAL_AGENT_INSTRUCTIONS,
     model_settings=ModelSettings(tool_choice="required", temperature=0.2),
     tools=[
-        #    information_extraction_from_user_query_agent.as_tool(
-        #        tool_name="InformationExtraction",
-        #        tool_description="Generates a list of information from the user query.",
-        #    ),
         get_search_results_from_google_drive,
     ],
 )
@@ -159,12 +83,30 @@ class AgentsService:
                 self.preferred_model = top_model.name
             elif top_model.provider == "ollama":
                 client = AsyncOpenAI(
-                    base_url=ai_service_config.external_client.base_url,
-                    api_key=ai_service_config.external_client.api_key,
+                    base_url=ai_service_config.providers.ollama.base_url,
+                    api_key=ai_service_config.providers.ollama.api_key,
                 )
                 self.preferred_model = OpenAIChatCompletionsModel(
                     model=top_model.name, openai_client=client
                 )
+            elif top_model.provider == "gemini":
+                client = AsyncOpenAI(
+                    base_url=ai_service_config.providers.gemini.base_url,
+                    api_key=ai_service_config.providers.gemini.api_key,
+                )
+                self.preferred_model = OpenAIChatCompletionsModel(
+                    model=top_model.name, openai_client=client
+                )
+            elif top_model.provider == "openrouter":
+                client = AsyncOpenAI(
+                    base_url=ai_service_config.providers.openrouter.base_url,
+                    api_key=ai_service_config.providers.openrouter.api_key,
+                )
+                self.preferred_model = OpenAIChatCompletionsModel(
+                    model=top_model.name, openai_client=client
+                )
+            else:
+                raise ValueError(f"Unsupported provider: {top_model.provider}")
         else:
             raise ValueError("No available models found in the configuration.")
 

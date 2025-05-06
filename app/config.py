@@ -6,6 +6,7 @@ from .models import (
     SharedConfig,
     BaseConfig,
     JWTConfig,
+    ProvidersConfig,
     AIServiceConfig,
 )
 from logging import info, error
@@ -34,20 +35,56 @@ def load_configuration(yaml_file_path: str) -> SharedConfig:
     # Validate required environment variables
     jwt_secret_key = os.getenv("JWT_SECRET_KEY", None)
     if not jwt_secret_key:
-        error("ERROR: JWT_SECRET_KEY environment variable not set.")
+        error("JWT_SECRET_KEY environment variable not set.")
         raise SystemExit("JWT_SECRET_KEY environment variable not set.")
 
     openai_api_key = os.getenv("OPENAI_API_KEY", None)
     if not openai_api_key:
-        info("ERROR: OPENAI_API_KEY environment variable not set.")
+        info("OPENAI_API_KEY environment variable not set.")
 
     google_drive_search_webhook_url = os.getenv("GOOGLE_DRIVE_SEARCH_WEBHOOK_URL", None)
     if not google_drive_search_webhook_url:
-        info("ERROR: GOOGLE_DRIVE_SEARCH_WEBHOOK_URL environment variable not set.")
+        info("GOOGLE_DRIVE_SEARCH_WEBHOOK_URL environment variable not set.")
 
-    ollama_dell_url = os.getenv("OLLAMA_DELL_WORK_URL", None)
-    if not ollama_dell_url:
-        info("ERROR: OLLAMA_DELL_WORK_URL environment variable not set.")
+    ollama_dell_work_endpoint = os.getenv("OLLAMA_DELL_WORK_ENDPOINT", None)
+    if not ollama_dell_work_endpoint:
+        info("OLLAMA_DELL_WORK_ENDPOINT environment variable not set.")
+    ollama_dell_work_api_key = os.getenv("OLLAMA_DELL_WORK_API_KEY", None)
+    if not ollama_dell_work_api_key:
+        info("OLLAMA_DELL_WORK_API_KEY environment variable not set.")
+
+    gemini_endpoint = os.getenv("GEMINI_ENDPOINT", None)
+    if not gemini_endpoint:
+        info("GEMINI_ENDPOINT environment variable not set.")
+    gemini_api_key = os.getenv("GEMINI_API_KEY", None)
+    if not gemini_api_key:
+        info("GEMINI_API_KEY environment variable not set.")
+
+    openrouter_endpoint = os.getenv("OPENROUTER_ENDPOINT", None)
+    if not openrouter_endpoint:
+        info("OPENROUTER_ENDPOINT environment variable not set.")
+    openrouter_api_key = os.getenv("OPENROUTER_API_KEY", None)
+    if not openrouter_api_key:
+        info("OPENROUTER_API_KEY environment variable not set.")
+
+    ollama_provider = {
+        "base_url": ollama_dell_work_endpoint,
+        "api_key": ollama_dell_work_api_key,
+    }
+
+    gemini_provider = {
+        "base_url": gemini_endpoint,
+        "api_key": gemini_api_key,
+    }
+
+    openrouter_provider = {
+        "base_url": openrouter_endpoint,
+        "api_key": openrouter_api_key,
+    }
+
+    providers_config = ProvidersConfig(
+        ollama=ollama_provider, gemini=gemini_provider, openrouter=openrouter_provider
+    )
 
     base_config = BaseConfig(**yaml_config.get("base", {}))
     jwt_config_data = yaml_config.get("jwt", {})
@@ -59,16 +96,10 @@ def load_configuration(yaml_file_path: str) -> SharedConfig:
     ai_service_config_data["google_drive_search_webhook_url"] = (
         google_drive_search_webhook_url
     )
-    ai_service_config_data["external_client"] = {
-        "base_url": ollama_dell_url,
-        "api_key": "DUMMY_API_KEY_NOT_USED",
-    }
+
+    ai_service_config_data["providers"] = providers_config
     ai_service_config = AIServiceConfig(**ai_service_config_data)
 
-    # model_items = yaml_config.get("ai_service", {}).get("models", [])
-    # models_config = [ModelConfig(**model) for model in model_items]
-
-    # Build and return the complete SharedConfig
     return SharedConfig(
         base=base_config,
         jwt=jwt_config,
@@ -80,5 +111,3 @@ config_path = "config.yml"
 CONFIG = load_configuration(config_path)
 
 info("Configuration loaded successfully.")
-
-# TODO: handle config path properlly
