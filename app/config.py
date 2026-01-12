@@ -67,6 +67,10 @@ def load_configuration(yaml_file_path: str) -> SharedConfig:
     if not openrouter_api_key:
         info("OPENROUTER_API_KEY environment variable not set.")
 
+    static_api_token = os.getenv("STATIC_API_TOKEN", None)
+    if not static_api_token:
+        info("STATIC_API_TOKEN environment variable not set.")
+
     ollama_provider = {
         "base_url": ollama_dell_work_endpoint,
         "api_key": ollama_dell_work_api_key,
@@ -104,6 +108,7 @@ def load_configuration(yaml_file_path: str) -> SharedConfig:
         base=base_config,
         jwt=jwt_config,
         ai_service=ai_service_config,
+        static_api_token=static_api_token,
     )
 
 
