@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from .config import CONFIG
 from .routers import health, login, chat
-from .core import logger
+from .utils.logging import logger
 
 app = FastAPI(title=CONFIG.base.app_name)
 

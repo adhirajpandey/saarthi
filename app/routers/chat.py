@@ -4,7 +4,8 @@ from fastapi import APIRouter, Request, Depends, HTTPException, status
 from ..models import ChatMessage, AIChatResponse
 from ..auth import get_current_user
 from ..services.agents import AgentsService
-from ..core import limiter, logger
+from ..utils.limiter import limiter
+from ..utils.logging import logger
 from ..config import CONFIG
 from agents import RunConfig
 

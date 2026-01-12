@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Request
 from ..models import HealthCheckResponse
 from ..utils.timezone import get_now_ist
-from ..core import limiter, logger
+from ..utils.limiter import limiter
+from ..utils.logging import logger
 from ..config import CONFIG
 
 router = APIRouter(tags=["Health"])
