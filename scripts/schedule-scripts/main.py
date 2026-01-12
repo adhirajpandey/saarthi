@@ -1,5 +1,29 @@
 #!/usr/bin/env python3
-"""Generate systemd service and timer files from config."""
+"""
+Generate systemd service and timer files from config.
+
+Usage:
+    sudo python3 main.py
+
+Useful Commands:
+    # List all timers
+    systemctl list-timers --all | grep saarthi
+
+    # Check service status
+    systemctl status saarthi-backup-dbs.service
+
+    # Manually trigger a service
+    sudo systemctl start saarthi-backup-dbs.service
+
+    # View logs
+    journalctl -u saarthi-backup-dbs.service -n 50
+
+    # Follow logs in real-time
+    journalctl -u saarthi-backup-dbs.service -f
+
+    # Disable a timer
+    sudo systemctl disable --now saarthi-backup-dbs.timer
+"""
 
 import json
 import subprocess
