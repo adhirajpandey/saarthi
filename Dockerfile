@@ -19,4 +19,4 @@ COPY . .
 EXPOSE 8000
 
 # Command to run the app
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-config", "log_conf.yml"]
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-config", "log-conf.yml"]

@@ -37,7 +37,7 @@ mkdir logs
 You can now start the Saarthi API using `uvicorn`:
 
 ```bash
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-config log_conf.yml
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-config log-conf.yml
 ```
 
 The API will be accessible at `http://localhost:8000`.
