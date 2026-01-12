@@ -53,9 +53,12 @@ The project is organized as follows:
 │   ├── utils/          # Utility functions
 │   ├── auth.py         # Authentication logic
 │   ├── config.py       # Application configuration
-│   ├── core.py         # Core application logic
 │   ├── main.py         # FastAPI application entry point
 │   └── models.py       # Pydantic models
+├── scripts/            # Utility scripts
+│   ├── backup-dbs/     # Database backup scripts
+│   ├── backup-gdrive/  # Google Drive backup scripts
+│   └── schedule-scripts/ # Systemd timer generation
 ├── logs/               # Log files
 ├── .env                # Environment variables
 ├── .env.example        # Example environment variables
