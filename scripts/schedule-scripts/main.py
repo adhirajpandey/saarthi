@@ -12,6 +12,8 @@ Description={description}
 Type=oneshot
 ExecStart={python_venv} {script_path}
 WorkingDirectory={working_dir}
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="HOME=/home/adhiraj"
 """
 
 TIMER_TEMPLATE = """[Unit]
