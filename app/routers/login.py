@@ -7,7 +7,8 @@ from ..auth import (
     create_access_token,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
-from ..core import limiter, logger
+from ..utils.limiter import limiter
+from ..utils.logging import logger
 from ..config import CONFIG
 
 

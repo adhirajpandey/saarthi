@@ -9,7 +9,7 @@ from pydantic import ValidationError  # Import Pydantic's validation error
 
 from .config import CONFIG
 import os
-from .core import logger
+from .utils.logging import logger
 
 jwt_config = CONFIG.jwt
 
