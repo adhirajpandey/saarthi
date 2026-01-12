@@ -59,11 +59,19 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> str:
-    """Dependency to get the current user from a JWT token."""
+    """Dependency to get the current user from a JWT token or static API token."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
     )
+    
+    # Check if it's the static API token first
+    static_token = CONFIG.static_api_token
+    if static_token and token == static_token:
+        logger.debug("Authenticated via static API token")
+        return "adhiraj-lt-token"
+    
+    # Fall back to JWT validation
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: Optional[str] = payload.get("sub")

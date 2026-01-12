@@ -79,3 +79,4 @@ class SharedConfig(BaseModel):
     rate_limiting: RateLimitingConfig = RateLimitingConfig()
     users: list[UserConfig] = [UserConfig()]
     ai_service: AIServiceConfig
+    static_api_token: Optional[str] = None
