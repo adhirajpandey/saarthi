@@ -71,17 +71,34 @@ def upload_to_s3(local_file: Path, bucket: str, prefix: str):
     s3.upload_file(str(local_file), bucket, key)
 
 
-def main():
-    for db_name, db_conf in DB_MAP.items():
-        print(f"\n=== Processing DB: {db_name} ===")
-        dump_path = Path(f"{db_conf['filename']}.sql")
+def teardown(files_to_cleanup: list[Path]):
+    """Remove any dump files created during execution."""
+    for file_path in files_to_cleanup:
         try:
-            run_pg_dump(dump_path, db_conf["url"])
-            sanity_check(dump_path)
-            upload_to_s3(dump_path, db_conf["s3_bucket"], db_conf["s3_prefix"])
-            print(f"Backup complete for {db_name} ✔︎")
+            if file_path.exists():
+                file_path.unlink()
+                print(f"Cleaned up: {file_path}")
         except Exception as exc:
-            print(f"Backup failed for {db_name}: {exc}", file=sys.stderr)
+            print(f"Warning: Failed to clean up {file_path}: {exc}", file=sys.stderr)
+
+
+def main():
+    created_files: list[Path] = []
+    try:
+        for db_name, db_conf in DB_MAP.items():
+            print(f"\n=== Processing DB: {db_name} ===")
+            dump_path = Path(f"{db_conf['filename']}.sql")
+            created_files.append(dump_path)
+            try:
+                run_pg_dump(dump_path, db_conf["url"])
+                sanity_check(dump_path)
+                upload_to_s3(dump_path, db_conf["s3_bucket"], db_conf["s3_prefix"])
+                print(f"Backup complete for {db_name} ✔︎")
+            except Exception as exc:
+                print(f"Backup failed for {db_name}: {exc}", file=sys.stderr)
+    finally:
+        print("\n=== Teardown ===")
+        teardown(created_files)
 
 
 if __name__ == "__main__":
