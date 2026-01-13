@@ -25,6 +25,7 @@ from config import (
     RATE_LIMIT_CHAT,
     AI_MODELS,
     GEOFENCE_EMAIL_TEMPLATE,
+    GEOFENCE_SUBJECT_TEMPLATE,
 )
 
 
@@ -97,6 +98,7 @@ def load_configuration() -> SharedConfig:
         static_api_token=static_api_token,
         geofence=GeofenceConfig(
             email_template=GEOFENCE_EMAIL_TEMPLATE,
+            subject_template=GEOFENCE_SUBJECT_TEMPLATE,
             recipient=geofence_recipient,
             sender_name=geofence_sender_name,
         ),

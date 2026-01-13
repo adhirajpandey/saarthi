@@ -72,7 +72,7 @@ def send_geofence_notification(area: str, trigger: str) -> bool:
         return False
     
     body = geofence_config.email_template.format(area=area, trigger=trigger)
-    subject = f"Location Update: {trigger}"
+    subject = geofence_config.subject_template.format(area=area)
     
     return send_email(
         recipient=geofence_config.recipient,

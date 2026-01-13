@@ -35,6 +35,7 @@ LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FILE = "logs/app.log"
 
 # Geofence configuration
+GEOFENCE_SUBJECT_TEMPLATE = "Adhiraj Location Update: {area}"
 GEOFENCE_EMAIL_TEMPLATE = """Hello Pandey Parivaar,
 
 Adhiraj ki location ka update:

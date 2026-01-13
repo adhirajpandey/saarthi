@@ -75,6 +75,7 @@ class AIServiceConfig(BaseModel):
 
 class GeofenceConfig(BaseModel):
     email_template: str
+    subject_template: str
     recipient: str
     sender_name: str
 
