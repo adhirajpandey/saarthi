@@ -14,6 +14,7 @@ from ..models import (
     RateLimitingConfig,
     ProvidersConfig,
     AIServiceConfig,
+    GeofenceConfig,
 )
 from config import (
     APP_NAME,
@@ -23,6 +24,7 @@ from config import (
     RATE_LIMIT_LOGIN,
     RATE_LIMIT_CHAT,
     AI_MODELS,
+    GEOFENCE_EMAIL_TEMPLATE,
 )
 
 
@@ -55,6 +57,8 @@ def load_configuration() -> SharedConfig:
     openai_api_key = _get_env("OPENAI_API_KEY")
     google_drive_search_webhook_url = _get_env("GOOGLE_DRIVE_SEARCH_WEBHOOK_URL")
     static_api_token = _get_env("STATIC_API_TOKEN")
+    geofence_recipient = _get_env("GEOFENCE_UPDATES_RECIPIENT")
+    geofence_sender_name = _get_env("GEOFENCE_SENDER_NAME")
 
     # Provider credentials
     providers_config = ProvidersConfig(
@@ -91,6 +95,11 @@ def load_configuration() -> SharedConfig:
             google_drive_search_webhook_url=google_drive_search_webhook_url,
         ),
         static_api_token=static_api_token,
+        geofence=GeofenceConfig(
+            email_template=GEOFENCE_EMAIL_TEMPLATE,
+            recipient=geofence_recipient,
+            sender_name=geofence_sender_name,
+        ),
     )
 
 

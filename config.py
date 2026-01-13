@@ -33,3 +33,15 @@ LOG_LEVEL = "INFO"
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FILE = "logs/app.log"
+
+# Geofence configuration
+GEOFENCE_EMAIL_TEMPLATE = """Hello Pandey Parivaar,
+
+Adhiraj ki location ka update:
+
+Area - {area}
+Update - {trigger}
+
+Regards
+Pandey Bot
+"""

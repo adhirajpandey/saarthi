@@ -73,6 +73,12 @@ class AIServiceConfig(BaseModel):
     google_drive_search_webhook_url: Optional[str] = None
 
 
+class GeofenceConfig(BaseModel):
+    email_template: str
+    recipient: str
+    sender_name: str
+
+
 class SharedConfig(BaseModel):
     base: BaseConfig
     jwt: JWTConfig
@@ -80,3 +86,4 @@ class SharedConfig(BaseModel):
     users: list[UserConfig] = [UserConfig()]
     ai_service: AIServiceConfig
     static_api_token: Optional[str] = None
+    geofence: GeofenceConfig

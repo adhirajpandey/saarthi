@@ -89,3 +89,29 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> str
 
     logger.debug(f"Token validated successfully for user: {username}")
     return username  # Return username (or user object in a real app)
+
+
+async def require_static_token(token: Annotated[str, Depends(oauth2_scheme)]) -> str:
+    """Dependency that only accepts static API token (not JWT).
+    
+    Use this for endpoints that should only be accessible via long-term
+    static token, like the geofence endpoint called from MacroDroid.
+    """
+    static_token = CONFIG.static_api_token
+    
+    if not static_token:
+        logger.error("Static token auth requested but STATIC_API_TOKEN not configured")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Static token auth not configured",
+        )
+    
+    if token != static_token:
+        logger.warning("Invalid static token provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid static token",
+        )
+    
+    logger.debug("Authenticated via static API token")
+    return "static-token-user"
