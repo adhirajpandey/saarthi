@@ -96,7 +96,8 @@ Saarthi includes a suite of standalone Python scripts designed for background au
   - Runs `pg_dump` for multiple databases (`vidwiz`, `trackcrow`).
   - Uploads timestamped SQL artifacts to AWS S3.
   - Performs sanity checks and cleans up local files.
-- **Config**: Requires `AWS_ACCESS_KEY`, `AWS_SECRET_ACCESS_KEY`, and DB URLs in `.env`.
+  - Sends ntfy push notification on completion (success/failure).
+- **Config**: Requires `AWS_ACCESS_KEY`, `AWS_SECRET_ACCESS_KEY`, DB URLs, and `NTFY_*` vars in `.env`.
 - **Usage**: `python scripts/backup-dbs/backup.py`
 
 #### B. Google Drive Backup (`scripts/backup-gdrive/`)
@@ -105,7 +106,8 @@ Saarthi includes a suite of standalone Python scripts designed for background au
   - Syncs "PERSONAL" and "PROFESSIONAL" folders to S3.
   - Performs incremental updates using `rclone` wrapper.
   - Lightweight and optimized for background execution.
-- **Config**: Requires pre-configured rclone remotes (`personal-drive` and `dwaar-s3`).
+  - Sends ntfy push notification on completion (success/failure).
+- **Config**: Requires pre-configured rclone remotes (`personal-drive` and `dwaar-s3`) and `NTFY_*` vars in `.env`.
 - **Usage**: `python scripts/backup-gdrive/backup.py`
 
 #### C. Schedule Scripts (`scripts/schedule-scripts/`)

@@ -8,6 +8,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Add project root to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from app.utils.ntfy import send_ntfy_message
+
 # ----------------------------  Configuration  ---------------------------- #
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")  # IAM user key
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")  # IAM user secret
@@ -84,26 +89,64 @@ def teardown(files_to_cleanup: list[Path]):
 
 def main():
     created_files: list[Path] = []
+    output_lines = []
+    success = True
+    
     try:
         for db_name, db_conf in DB_MAP.items():
-            print(f"\n=== Processing DB: {db_name} ===")
+            msg = f"\n=== Processing DB: {db_name} ==="
+            print(msg)
+            output_lines.append(msg)
+            
             dump_path = Path(f"{db_conf['filename']}.sql")
             created_files.append(dump_path)
             try:
                 run_pg_dump(dump_path, db_conf["url"])
+                output_lines.append("Running pg_dump command...")
+                
                 sanity_check(dump_path)
+                output_lines.append("Sanity check passed")
+                
                 upload_to_s3(dump_path, db_conf["s3_bucket"], db_conf["s3_prefix"])
-                print(f"Backup complete for {db_name} ✔︎")
+                output_lines.append(f"Uploading to s3://{db_conf['s3_bucket']}/{db_conf['s3_prefix']}/...")
+                
+                msg = f"Backup complete for {db_name} ✔︎"
+                print(msg)
+                output_lines.append(msg)
             except Exception as exc:
-                print(f"Backup failed for {db_name}: {exc}", file=sys.stderr)
+                success = False
+                msg = f"❌ Backup failed for {db_name}: {exc}"
+                print(msg, file=sys.stderr)
+                output_lines.append(msg)
     finally:
         print("\n=== Teardown ===")
+        output_lines.append("\n=== Teardown ===")
         teardown(created_files)
+    
+    if success:
+        output_lines.append("✅ All backups completed successfully")
+        title = "DB Backup Success"
+    else:
+        title = "DB Backup Failed"
+    
+    console_output = "\n".join(output_lines)
+    
+    send_ntfy_message(
+        topic="notifs",
+        message=console_output,
+        title=title,
+    )
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print("Backup failed:", exc, file=sys.stderr)
+        error_msg = f"❌ Backup failed: {exc}"
+        print(error_msg, file=sys.stderr)
+        send_ntfy_message(
+            topic="notifs",
+            message=error_msg,
+            title="DB Backup Failed",
+        )
         sys.exit(1)
