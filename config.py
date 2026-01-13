@@ -1,0 +1,29 @@
+"""
+Application configuration.
+
+This file contains all static configuration values for the application.
+Sensitive values (API keys, secrets) are loaded from environment variables.
+"""
+
+# Base configuration
+APP_NAME = "SAARTHI"
+
+# JWT configuration
+JWT_ALGORITHM = "HS256"
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Rate limiting configuration
+RATE_LIMIT_DEFAULT = "50/minute"
+RATE_LIMIT_LOGIN = "5/minute"
+RATE_LIMIT_CHAT = "10/minute"
+
+# AI Service models (ordered by priority)
+AI_MODELS = [
+    {"provider": "openrouter", "name": "mistralai/mistral-7b-instruct:free", "priority": 0},
+    {"provider": "ollama", "name": "qwen3:0.6b", "priority": 1},
+    {"provider": "ollama", "name": "qwen3:4b", "priority": 2},
+    {"provider": "openai", "name": "gpt-4.1-nano", "priority": 3},
+    {"provider": "openai", "name": "gpt-4o-mini", "priority": 4},
+    {"provider": "gemini", "name": "gemini-2.0-flash-lite", "priority": 5},
+    {"provider": "gemini", "name": "gemini-2.0-flash", "priority": 6},
+]

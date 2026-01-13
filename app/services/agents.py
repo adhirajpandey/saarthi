@@ -15,7 +15,7 @@ from agents.extensions.handoff_prompt import (
     prompt_with_handoff_instructions,
 )
 from openai import AsyncOpenAI
-from ..config import CONFIG
+from app import CONFIG
 from ..utils.logging import logger
 from .instructions import (
     TRIAGE_AGENT_INSTRUCTIONS,

@@ -7,7 +7,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import ValidationError  # Import Pydantic's validation error
 
-from .config import CONFIG
+from app import CONFIG
 import os
 from .utils.logging import logger
 

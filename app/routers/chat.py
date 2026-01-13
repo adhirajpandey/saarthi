@@ -6,7 +6,7 @@ from ..auth import get_current_user
 from ..services.agents import AgentsService
 from ..utils.limiter import limiter
 from ..utils.logging import logger
-from ..config import CONFIG
+from app import CONFIG
 from agents import RunConfig
 
 router = APIRouter(tags=["Chat"])

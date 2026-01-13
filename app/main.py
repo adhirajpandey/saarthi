@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from .config import CONFIG
+from app import CONFIG
 from .routers import health, login, chat
 from .utils.logging import logger
 

@@ -9,7 +9,7 @@ from ..auth import (
 )
 from ..utils.limiter import limiter
 from ..utils.logging import logger
-from ..config import CONFIG
+from app import CONFIG
 
 
 router = APIRouter(tags=["Authentication"])

@@ -1,7 +1,7 @@
 from agents import function_tool
 import requests
 import json
-from ..config import CONFIG
+from app import CONFIG
 
 ai_service_config = CONFIG.ai_service
 
