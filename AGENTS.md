@@ -24,7 +24,7 @@ Strictly use these commands. **Do not guess flags.**
   `uv sync`
 
 - **Run Web App (Dev):**  
-  `uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-config log-conf.yml`
+  `uv run uvicorn app.main:app --host 0.0.0.0 --port 8000`
 
 - **Run Scripts:**  
   Navigate to specific script directories (e.g., `cd scripts/backup-dbs`) and run via `python <script_name>.py`.
@@ -67,7 +67,7 @@ Strictly use these commands. **Do not guess flags.**
   - `agents.py`: AI Agent orchestration.
   - `tools.py`: Agent capabilities/tools.
   - `instructions.py`: System prompts.
-- `app/utils/` — Shared utilities (Logging, etc).
+- `app/utils/` — Shared utilities (Logging, Configuration).
 - `app/models.py` — Pydantic data models.
 
 ### Utility Scripts (`scripts/`)

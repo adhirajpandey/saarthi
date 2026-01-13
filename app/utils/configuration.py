@@ -92,3 +92,7 @@ def load_configuration() -> SharedConfig:
         ),
         static_api_token=static_api_token,
     )
+
+
+# Initialize configuration at module import
+CONFIG = load_configuration()

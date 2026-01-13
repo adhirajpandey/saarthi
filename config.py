@@ -27,3 +27,9 @@ AI_MODELS = [
     {"provider": "gemini", "name": "gemini-2.0-flash-lite", "priority": 5},
     {"provider": "gemini", "name": "gemini-2.0-flash", "priority": 6},
 ]
+
+# Logging configuration
+LOG_LEVEL = "INFO"
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
+LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+LOG_FILE = "logs/app.log"

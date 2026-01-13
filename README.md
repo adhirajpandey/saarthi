@@ -9,14 +9,14 @@ Saarthi is a personal, ever-evolving project that unites different tools, script
 ├── app/                  # Main Web Application
 │   ├── routers/          # API endpoints (Health, Auth, Chat)
 │   ├── services/         # Business logic (Agents, Tools)
-│   ├── utils/            # Utilities (Logging, Config)
+│   ├── utils/            # Utilities (Logging, Configuration)
 │   └── main.py           # App Entrypoint
 ├── scripts/              # Utility Scripts
 │   ├── backup-dbs/       # Database Backups
 │   ├── backup-gdrive/    # Google Drive Sync
 │   └── schedule-scripts/ # Systemd Timer Generator
+├── config.py             # Application configuration
 ├── .env.example          # Environment variables template
-├── log-conf.yml          # Logging configuration
 └── pyproject.toml        # Dependencies (uv)
 ```
 
@@ -53,7 +53,7 @@ uv sync
 **Step 3: Run the Application**
 Start the server using `uvicorn`:
 ```bash
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-config log-conf.yml
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 The API will be available at `http://localhost:8000`.
 
