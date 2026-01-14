@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from app.auth import require_static_token
+from app.auth import require_admin_token
 from app.services.email import send_geofence_notification
 from app.utils.logging import logger
 
@@ -21,7 +21,7 @@ class GeofenceResponse(BaseModel):
     message: str
 
 
-@router.post("", response_model=GeofenceResponse, dependencies=[Depends(require_static_token)])
+@router.post("", response_model=GeofenceResponse, dependencies=[Depends(require_admin_token)])
 async def geofence_update(request: Request, payload: GeofenceRequest) -> GeofenceResponse:
     """
     Receive geofence update and send email notification.

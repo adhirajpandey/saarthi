@@ -59,17 +59,17 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> str:
-    """Dependency to get the current user from a JWT token or static API token."""
+    """Dependency to get the current user from a JWT token or admin token."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
     )
     
-    # Check if it's the static API token first
-    static_token = CONFIG.static_api_token
-    if static_token and token == static_token:
-        logger.debug("Authenticated via static API token")
-        return "adhiraj-lt-token"
+    # Check if it's the admin token first
+    admin_token = CONFIG.admin_token
+    if admin_token and token == admin_token:
+        logger.debug("Authenticated via admin token")
+        return "admin-token"
     
     # Fall back to JWT validation
     try:
@@ -91,27 +91,27 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> str
     return username  # Return username (or user object in a real app)
 
 
-async def require_static_token(token: Annotated[str, Depends(oauth2_scheme)]) -> str:
-    """Dependency that only accepts static API token (not JWT).
+async def require_admin_token(token: Annotated[str, Depends(oauth2_scheme)]) -> str:
+    """Dependency that only accepts admin token (not JWT).
     
     Use this for endpoints that should only be accessible via long-term
-    static token, like the geofence endpoint called from MacroDroid.
+    admin token, like the geofence endpoint called from MacroDroid.
     """
-    static_token = CONFIG.static_api_token
+    admin_token = CONFIG.admin_token
     
-    if not static_token:
-        logger.error("Static token auth requested but STATIC_API_TOKEN not configured")
+    if not admin_token:
+        logger.error("Admin token auth requested but ADMIN_TOKEN not configured")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Static token auth not configured",
+            detail="Admin token auth not configured",
         )
     
-    if token != static_token:
-        logger.warning("Invalid static token provided")
+    if token != admin_token:
+        logger.warning("Invalid admin token provided")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid static token",
+            detail="Invalid admin token",
         )
     
-    logger.debug("Authenticated via static API token")
-    return "static-token-user"
+    logger.debug("Authenticated via admin token")
+    return "admin-token"

@@ -30,7 +30,7 @@ Strictly use these commands. **Do not guess flags.**
   Navigate to specific script directories (e.g., `cd scripts/backup-dbs`) and run via `python <script_name>.py`.
 
 - **Test:**  
-  TODO
+  Run tests using pytest `uv run pytest -v`
 
 ---
 
@@ -51,6 +51,8 @@ Strictly use these commands. **Do not guess flags.**
 - Ensure there is no edge case of bug specially in the scripts.
 - Use `.env` for secrets (AWS keys, DB URLs) - never hardcode them.
 - Update `.env.example` file whenever a new environment variable is added.
+- Always check if any updates are required in `README.md` and `AGENTS.md` files.
+- Always run tests cases to do sanity check after some major change.
 
 ### Never Do
 - Never introduce **new dependencies** without asking.

@@ -8,6 +8,7 @@ def setup_test_env(monkeypatch):
     """Set test environment variables. Cleanup is automatic via monkeypatch."""
     env_vars = {
         "JWT_SECRET_KEY": "test-secret-key",
+        "ADMIN_TOKEN": "test-admin-token",
         "OLLAMA_DELL_WORK_ENDPOINT": "http://localhost:11434",
         "OLLAMA_DELL_WORK_API_KEY": "test-key",
         "GEMINI_ENDPOINT": "http://localhost:8080",

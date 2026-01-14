@@ -57,7 +57,7 @@ def load_configuration() -> SharedConfig:
     # Optional secrets
     openai_api_key = _get_env("OPENAI_API_KEY")
     google_drive_search_webhook_url = _get_env("GOOGLE_DRIVE_SEARCH_WEBHOOK_URL")
-    static_api_token = _get_env("STATIC_API_TOKEN")
+    admin_token = _get_env("ADMIN_TOKEN")
     geofence_recipient = _get_env("GEOFENCE_UPDATES_RECIPIENT")
     geofence_sender_name = _get_env("GEOFENCE_SENDER_NAME")
 
@@ -95,7 +95,7 @@ def load_configuration() -> SharedConfig:
             openai_api_key=openai_api_key,
             google_drive_search_webhook_url=google_drive_search_webhook_url,
         ),
-        static_api_token=static_api_token,
+        admin_token=admin_token,
         geofence=GeofenceConfig(
             email_template=GEOFENCE_EMAIL_TEMPLATE,
             subject_template=GEOFENCE_SUBJECT_TEMPLATE,

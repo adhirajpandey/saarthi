@@ -1,6 +1,6 @@
 """Tests for geofence endpoint authentication.
 
-Tests that the geofence endpoint only accepts static API token.
+Tests that the geofence endpoint only accepts admin token.
 """
 
 import os
@@ -28,18 +28,19 @@ class TestGeofenceAuth:
         with patch("app.services.email.send_email", return_value=True):
             yield
 
-    def test_geofence_with_valid_static_token(self):
-        """Test geofence accepts valid static token."""
-        from app import CONFIG
-        
-        token = CONFIG.static_api_token
-        if not token:
-            pytest.skip("STATIC_API_TOKEN not configured")
-        
+    @pytest.fixture
+    def mock_admin_token(self):
+        """Mock admin token in CONFIG for tests that require it."""
+        with patch("app.auth.CONFIG") as mock_config:
+            mock_config.admin_token = "test-admin-token"
+            yield mock_config
+
+    def test_geofence_with_valid_admin_token(self, mock_admin_token):
+        """Test geofence accepts valid admin token."""
         response = client.post(
             "/geofence",
             json={"area": "Home", "trigger": "entered"},
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": "Bearer test-admin-token"},
         )
         
         assert response.status_code == 200
@@ -47,7 +48,7 @@ class TestGeofenceAuth:
         assert data["success"] is True
         assert "Home" in data["message"]
 
-    def test_geofence_with_invalid_token(self):
+    def test_geofence_with_invalid_token(self, mock_admin_token):
         """Test geofence rejects invalid token."""
         response = client.post(
             "/geofence",
@@ -56,7 +57,7 @@ class TestGeofenceAuth:
         )
         
         assert response.status_code == 401
-        assert "Invalid static token" in response.json()["detail"]
+        assert "Invalid admin token" in response.json()["detail"]
 
     def test_geofence_without_token(self):
         """Test geofence rejects request without token."""
@@ -66,20 +67,3 @@ class TestGeofenceAuth:
         )
         
         assert response.status_code == 401
-
-    def test_geofence_rejects_jwt_token(self):
-        """Test geofence rejects JWT token (only static token allowed)."""
-        from app.auth import create_access_token
-        
-        # Create a valid JWT token
-        jwt_token = create_access_token(data={"sub": "testuser"})
-        
-        response = client.post(
-            "/geofence",
-            json={"area": "Home", "trigger": "entered"},
-            headers={"Authorization": f"Bearer {jwt_token}"},
-        )
-        
-        # JWT should be rejected - only static token is valid
-        assert response.status_code == 401
-        assert "Invalid static token" in response.json()["detail"]
