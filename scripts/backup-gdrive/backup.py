@@ -23,7 +23,7 @@ def main():
     for folder in FOLDERS:
         src = f"{SRC}:{folder}"
         dst = f"{DST}/{folder}"
-        cmd = ["rclone", "copy", src, dst, "--update", "--progress", "--drive-shared-with-me"]
+        cmd = ["rclone", "copy", src, dst, "--update", "-v", "--drive-shared-with-me"]
         cmd_str = " ".join(cmd)
         print(">>>", cmd_str)
         output_lines.append(f">>> {cmd_str}")
