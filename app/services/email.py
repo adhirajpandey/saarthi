@@ -1,14 +1,12 @@
 """Application-level email notification service."""
 
-from app import CONFIG
+from app.models import GeofenceConfig
 from shared.logging import logger
 from shared.notifications.email import send_email
 
 
-def send_geofence_notification(area: str, trigger: str) -> bool:
+def send_geofence_notification(geofence_config: GeofenceConfig, area: str, trigger: str) -> bool:
     """Send a geofence location update notification email."""
-    geofence_config = CONFIG.geofence
-
     if not geofence_config.recipient:
         logger.error("GEOFENCE_UPDATES_RECIPIENT not configured")
         return False

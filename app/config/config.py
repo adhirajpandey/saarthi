@@ -1,14 +1,9 @@
-"""
-Application configuration.
-
-This file contains all static configuration values for the application.
-Sensitive values (API keys, secrets) are loaded from environment variables.
-"""
+"""Default configuration values for Saarthi."""
 
 # Base configuration
 APP_NAME = "SAARTHI"
 
-# Rate limiting configuration
+# Rate limiting
 RATE_LIMIT_DEFAULT = "50/minute"
 
 # Logging configuration
@@ -17,7 +12,7 @@ LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d -
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_FILE = "logs/app.log"
 
-# Geofence configuration
+# Geofence templates
 GEOFENCE_SUBJECT_TEMPLATE = "Adhiraj Location Update: {area}"
 GEOFENCE_EMAIL_TEMPLATE = """Hello Pandey Parivaar,
 

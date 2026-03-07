@@ -5,16 +5,20 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-from app import CONFIG
+from app.dependencies.config import get_config
+from app.models import SharedConfig
 from shared.logging import logger
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-async def require_admin_token(token: Annotated[str, Depends(oauth2_scheme)]) -> str:
+async def require_admin_token(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    config: Annotated[SharedConfig, Depends(get_config)],
+) -> str:
     """Dependency that validates the admin token."""
-    admin_token = CONFIG.admin_token
+    admin_token = config.admin_token
 
     if not admin_token:
         logger.error("Admin token auth requested but ADMIN_TOKEN not configured")
@@ -31,4 +35,3 @@ async def require_admin_token(token: Annotated[str, Depends(oauth2_scheme)]) -> 
         )
 
     return "admin"
-

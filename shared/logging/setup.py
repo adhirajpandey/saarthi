@@ -4,7 +4,7 @@ import logging
 import logging.config
 import os
 
-from config import LOG_DATE_FORMAT, LOG_FILE, LOG_FORMAT, LOG_LEVEL
+from app.config.config import LOG_DATE_FORMAT, LOG_FILE, LOG_FORMAT, LOG_LEVEL
 
 
 def setup_logging() -> None:
@@ -58,6 +58,4 @@ def setup_logging() -> None:
     logging.config.dictConfig(config)
 
 
-setup_logging()
 logger = logging.getLogger(__name__)
-

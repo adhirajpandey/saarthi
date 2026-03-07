@@ -26,6 +26,6 @@ class GeofenceConfig(BaseModel):
 
 class SharedConfig(BaseModel):
     base: BaseConfig
-    rate_limiting: RateLimitingConfig = RateLimitingConfig()
+    rate_limiting: RateLimitingConfig = Field(default_factory=RateLimitingConfig)
     admin_token: str
     geofence: GeofenceConfig

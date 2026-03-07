@@ -1,4 +1,4 @@
-"""Environment variable loading and access helpers."""
+"""Environment loading and access helpers."""
 
 import os
 
@@ -23,3 +23,10 @@ def get_env(name: str, required: bool = False) -> str | None:
         raise ValueError(f"{name} environment variable not set.")
     return value
 
+
+def get_required_env(name: str) -> str:
+    """Read a required environment variable."""
+    value = get_env(name, required=True)
+    if value is None:  # Defensive check for static type narrowing.
+        raise ValueError(f"{name} environment variable not set.")
+    return value
