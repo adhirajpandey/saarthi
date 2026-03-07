@@ -1,3 +1,3 @@
 """Saarthi application package."""
 
-from .utils.configuration import CONFIG
+from .config.settings import CONFIG

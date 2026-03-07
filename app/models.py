@@ -20,8 +20,8 @@ class RateLimitingConfig(BaseModel):
 class GeofenceConfig(BaseModel):
     email_template: str
     subject_template: str
-    recipient: str
-    sender_name: str
+    recipient: Optional[str] = None
+    sender_name: Optional[str] = None
 
 
 class SharedConfig(BaseModel):

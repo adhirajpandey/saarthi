@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 
 from app import CONFIG
-from .routers import health, geofence
-from .utils.logging import logger
+from app.api.routers import geofence, health
+from shared.logging import logger
 
 app = FastAPI(title=CONFIG.base.app_name)
 

@@ -3,12 +3,6 @@
 These tests verify that the CONFIG object loads correctly with expected values.
 """
 
-import os
-import sys
-
-# Add project root to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 
 class TestConfig:
     """Test configuration values match expected settings."""
