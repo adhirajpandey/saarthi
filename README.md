@@ -1,124 +1,78 @@
 # Saarthi - Smart Aide for Actions, Retrieval, Tasks, Handling Information
 
-Saarthi is a personal, ever-evolving project that unites different tools, scripts, APIs, and experiments in one place. Currently it has a web application and a set of utility scripts. It will grow over time as I build things to solve problems, automate stuff, and try out new ideas.
+Saarthi is a personal project that combines a FastAPI web application with utility automation scripts.
 
 ---
 ## Project Structure
 
-```
-├── app/                  # Main Web Application
-│   ├── routers/          # API endpoints (Health, Geofence)
-│   ├── services/         # Business logic (Email)
-│   ├── utils/            # Utilities (Logging, Configuration)
-│   └── main.py           # App Entrypoint
-├── scripts/              # Utility Scripts
-│   ├── backup_dbs/       # Database Backups
-│   ├── backup_gdrive/    # Google Drive Sync
-│   └── schedule_scripts/ # Systemd Timer Generator
-├── config.py             # Application configuration
-├── .env.example          # Environment variables template
-└── pyproject.toml        # Dependencies (uv)
+```text
+app/
+  api/routers/         # API endpoints (Health, Geofence)
+  config/              # Defaults + settings builder
+  dependencies/        # FastAPI dependencies (auth, config)
+  services/            # App business logic (Email)
+  main.py              # FastAPI entrypoint
+shared/
+  config/              # Env loading helpers
+  logging/             # Central logging setup
+  notifications/       # Email + ntfy providers
+scripts/
+  backup_dbs/          # Database backups
+  backup_gdrive/       # Google Drive sync
+  schedule_scripts/    # Systemd timer generator
 ```
 
-### Current Architecture (Refactored)
+### Current Architecture
 - `app/api/routers/`: FastAPI route handlers.
 - `app/dependencies/`: FastAPI dependencies such as admin token auth.
-- `app/config/`: App configuration assembly from static config and env vars.
-- `app/models.py`: App/domain Pydantic models (types stay in app only).
-- `shared/`: Shared infra for config loading, logging, and notifications.
-- `scripts/*`: Script entrypoints and script-specific orchestration.
+- `app/config/config.py`: static defaults.
+- `app/config/settings.py`: config assembly from defaults + env vars.
+- `app/models.py`: App/domain Pydantic models.
+- `shared/`: shared infra for env loading, logging, and notifications.
+- `scripts/*`: script entrypoints and script-specific orchestration.
+
+### Configuration Flow
+- `.env` is loaded via `shared.config.env.load_environment()`.
+- Defaults are defined in `app/config/config.py`.
+- Runtime app configuration is built in `app/config/settings.py`.
+- FastAPI initializes logging and config at startup lifecycle.
 
 ---
 
 ## Part 1: Web Application
 
 ### 1. Description
-The core of Saarthi is a **FastAPI** web application that acts as the intelligent interface. It provides health monitoring, handles geofence updates, and manages authentication. It is designed to be extensible, allowing new capabilities to be plugged in via services.
+The FastAPI app provides health monitoring, geofence updates, and admin-token authentication.
 
-### 2. Contents & Services
-The web application allows interaction through the following main interfaces:
-- **Health Monitoring**: Endpoints to ensure the system is operational.
-- **Authentication**: Admin token-based access control for all protected endpoints.
-- **Geofence**: Endpoint to receive location updates from MacroDroid.
-
-### 3. Setup Steps
-
-Follow these steps to get the API running locally.
+### 2. Setup Steps
 
 **Step 1: Configure Environment Variables**
-Create a `.env` file in the root directory:
 ```bash
 cp .env.example .env
 ```
-Update the `.env` file with your specific configurations (API keys, Database URLs, etc.).
 
 **Step 2: Install Dependencies**
-This project uses `uv` for fast package management.
 ```bash
 uv sync
 ```
 
 **Step 3: Run the Application**
-Start the server using `uvicorn`:
 ```bash
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
-The API will be available at `http://localhost:8000`.
-
-### 4. Service Details
-
-The application is structured into modular services located in `app/`:
-
-- **Routers** (`app/api/routers/`):
-  - Handles the HTTP request/response cycle.
-  - Defines endpoints for `/health` and `/geofence`.
-  
-- **Email Service** (`app/services/email.py`):
-  - Sends email notifications for geofence updates.
 
 ---
 
 ## Part 2: Utility Scripts
 
-### 1. Description
-Saarthi includes a suite of standalone Python scripts designed for background automation, system maintenance, and data preservation. These scripts often run independently of the web server (e.g., via cron or systemd).
+### 1. Database Backup (`scripts/backup_dbs/`)
+- Usage: `uv run backup-dbs`
+- Requires: `AWS_ACCESS_KEY`, `AWS_SECRET_ACCESS_KEY`, `VIDWIZ_DB_URL`, `TRACKCROW_DB_URL`, `NTFY_*`
 
-### 2. Contents & Services
-- **Database Backups**: Automated dumping and S3 uploading for Postgres databases.
-- **Drive Sync**: Syncing Google Drive folders to S3 for redundant storage.
-- **Task Scheduler**: A manager to generate and control systemd timers for the above scripts.
+### 2. Google Drive Backup (`scripts/backup_gdrive/`)
+- Usage: `uv run backup-gdrive`
+- Requires configured `rclone` remotes + `NTFY_*`
 
-### 3. Service Details
-
-#### A. Database Backup (`scripts/backup_dbs/`)
-- **Purpose**: Dumps and uploads Postgres databases to S3 for backup.
-- **Features**:
-  - Runs `pg_dump` for multiple databases (`vidwiz`, `trackcrow`).
-  - Uploads timestamped SQL artifacts to AWS S3.
-  - Performs sanity checks and cleans up local files.
-  - Sends ntfy push notification on completion (success/failure).
-- **Config**: Requires `AWS_ACCESS_KEY`, `AWS_SECRET_ACCESS_KEY`, DB URLs, and `NTFY_*` vars in `.env`.
-- **Usage**: `uv run backup-dbs`
-
-#### B. Google Drive Backup (`scripts/backup_gdrive/`)
-- **Purpose**: Creates cloud redundancy for personal files using rclone.
-- **Features**:
-  - Syncs "PERSONAL" and "PROFESSIONAL" folders to S3.
-  - Performs incremental updates using `rclone` wrapper.
-  - Lightweight and optimized for background execution.
-  - Sends ntfy push notification on completion (success/failure).
-- **Config**: Requires pre-configured rclone remotes (`personal-drive` and `dwaar-s3`) and `NTFY_*` vars in `.env`.
-- **Usage**: `uv run backup-gdrive`
-
-#### C. Schedule Scripts (`scripts/schedule_scripts/`)
-- **Purpose**: Automates script execution via systemd timers "Set it and forget it".
-- **Features**:
-  - Generates `.service` and `.timer` files from JSON config.
-  - Automatically handles systemd daemon reload and enablement.
-  - Centralized management of run frequencies.
-- **Config**: Define tasks and schedules in `scripts/schedule_scripts/config.json` (uses `uv run <command>` via `uv_bin`).
-- **Usage**: `sudo "$(command -v uv)" run schedule-scripts`
-- **Note**: If `sudo` cannot find `uv`, use `sudo env "PATH=$PATH" uv run schedule-scripts`.
-
-
-
+### 3. Schedule Scripts (`scripts/schedule_scripts/`)
+- Usage: `sudo "$(command -v uv)" run schedule-scripts`
+- Config file: `scripts/schedule_scripts/config.json`

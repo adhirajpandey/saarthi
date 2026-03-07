@@ -9,12 +9,13 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
-
-client = TestClient(app)
-
-
 class TestGeofenceAuth:
     """Test geofence endpoint authentication."""
+
+    @pytest.fixture
+    def client(self):
+        with TestClient(app) as test_client:
+            yield test_client
 
     @pytest.fixture(autouse=True)
     def mock_email(self):
@@ -22,7 +23,7 @@ class TestGeofenceAuth:
         with patch("app.services.email.send_email", return_value=True):
             yield
 
-    def test_geofence_with_valid_admin_token(self):
+    def test_geofence_with_valid_admin_token(self, client: TestClient):
         """Test geofence accepts valid admin token."""
         response = client.post(
             "/geofence",
@@ -35,7 +36,7 @@ class TestGeofenceAuth:
         assert data["success"] is True
         assert "Home" in data["message"]
 
-    def test_geofence_with_invalid_token(self):
+    def test_geofence_with_invalid_token(self, client: TestClient):
         """Test geofence rejects invalid token."""
         response = client.post(
             "/geofence",
@@ -46,7 +47,7 @@ class TestGeofenceAuth:
         assert response.status_code == 401
         assert "Invalid admin token" in response.json()["detail"]
 
-    def test_geofence_without_token(self):
+    def test_geofence_without_token(self, client: TestClient):
         """Test geofence rejects request without token."""
         response = client.post(
             "/geofence",

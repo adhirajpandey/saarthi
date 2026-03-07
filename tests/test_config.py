@@ -9,19 +9,22 @@ class TestConfig:
 
     def test_base_config(self):
         """Test base configuration values."""
-        from app import CONFIG
+        from app.config.settings import load_configuration
 
-        assert CONFIG.base.app_name == "SAARTHI"
+        config = load_configuration()
+        assert config.base.app_name == "SAARTHI"
 
     def test_admin_token_is_set(self):
         """Test admin token is loaded from environment."""
-        from app import CONFIG
+        from app.config.settings import load_configuration
 
-        assert CONFIG.admin_token is not None
-        assert len(CONFIG.admin_token) > 0
+        config = load_configuration()
+        assert config.admin_token is not None
+        assert len(config.admin_token) > 0
 
     def test_rate_limiting_config(self):
         """Test rate limiting configuration defaults."""
-        from app import CONFIG
+        from app.config.settings import load_configuration
 
-        assert CONFIG.rate_limiting.default_limit == "50/minute"
+        config = load_configuration()
+        assert config.rate_limiting.default_limit == "50/minute"
