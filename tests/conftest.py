@@ -1,21 +1,13 @@
 """Pytest configuration and fixtures."""
 
-import pytest
+import os
 
-
-@pytest.fixture(scope="function", autouse=True)
-def setup_test_env(monkeypatch):
-    """Set test environment variables. Cleanup is automatic via monkeypatch."""
-    env_vars = {
-        "JWT_SECRET_KEY": "test-secret-key",
-        "ADMIN_TOKEN": "test-admin-token",
-        "OLLAMA_DELL_WORK_ENDPOINT": "http://localhost:11434",
-        "OLLAMA_DELL_WORK_API_KEY": "test-key",
-        "GEMINI_ENDPOINT": "http://localhost:8080",
-        "GEMINI_API_KEY": "test-key",
-        "OPENROUTER_ENDPOINT": "http://localhost:8081",
-        "OPENROUTER_API_KEY": "test-key",
-    }
-    
-    for key, value in env_vars.items():
-        monkeypatch.setenv(key, value)
+# Set test environment variables BEFORE any app imports.
+# This is necessary because configuration loads at module import time.
+env_vars = {
+    "ADMIN_TOKEN": "test-admin-token",
+    "GEOFENCE_UPDATES_RECIPIENT": "test@example.com",
+    "GEOFENCE_SENDER_NAME": "Test Sender",
+}
+for key, value in env_vars.items():
+    os.environ.setdefault(key, value)

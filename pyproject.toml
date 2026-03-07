@@ -5,19 +5,35 @@ description = "SAARTHI - Smart Aide for Actions, Retrieval, Tasks, Handling Info
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "boto3>=1.40.0",
     "fastapi>=0.115.12",
-    "openai-agents>=0.0.13",
-    "passlib>=1.7.4",
     "python-dotenv>=1.1.0",
-    "python-jose>=3.4.0",
     "python-multipart>=0.0.20",
     "pytz>=2025.2",
     "pyyaml>=6.0.2",
+    "requests>=2.32.0",
     "slowapi>=0.1.9",
     "uvicorn>=0.34.2",
 ]
 
+[project.scripts]
+backup-dbs = "scripts.backup_dbs.main:main"
+backup-gdrive = "scripts.backup_gdrive.main:main"
+schedule-scripts = "scripts.schedule_scripts.main:main"
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*", "shared*", "scripts*"]
+exclude = ["logs*", "tests*"]
+
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pytest>=9.0.2",
 ]

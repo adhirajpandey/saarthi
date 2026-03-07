@@ -9,7 +9,7 @@ You are a **Senior Software Engineer**. You prioritize **correctness** and **mai
 - **Project Name:** Saarthi
 - **Project Description:** Saarthi is a personal project containing a **FastAPI Web Application** and a collection of **Utility Scripts** for automation.
 - **Components:**
-  - **Web App:** FastAPI, Health/Monitoring, Authentication, AI Agents.
+  - **Web App:** FastAPI, Health/Monitoring, Admin Token Auth, Geofence.
   - **Scripts:** Database backups, Google Drive sync, Systemd scheduling.
 - **Frameworks:** FastAPI, Pydantic, Boto3 (AWS)
 - **Language:** Python (Requires-python >= 3.12)
@@ -20,22 +20,25 @@ You are a **Senior Software Engineer**. You prioritize **correctness** and **mai
 ## 2. Executable Commands
 Strictly use these commands. **Do not guess flags.**
 
-- **Install:**  
+- **Install:**
   `uv sync`
 
-- **Run Web App (Dev):**  
+- **Run Web App (Dev):**
   `uv run uvicorn app.main:app --host 0.0.0.0 --port 8000`
 
-- **Run Scripts:**  
-  Navigate to specific script directories (e.g., `cd scripts/backup-dbs`) and run via `python <script_name>.py`.
+- **Run Scripts:**
+  Run from project root:
+  - `uv run backup-dbs`
+  - `uv run backup-gdrive`
+  - `uv run schedule-scripts` (use `sudo` for systemd writes)
 
-- **Test:**  
+- **Test:**
   Run tests using pytest `uv run pytest -v`
 
 ---
 
 ## 3. Interaction Rules
-- **Stop & Read:** If you do not see a function definition or file content, ask to read it.  
+- **Stop & Read:** If you do not see a function definition or file content, ask to read it.
   Do **not** guess imports or arguments.
 - **Chain of Thought:** Before writing code for complex logic, explain your plan in **3 bullet points**.
 - **No Breaking Changes:** Do not remove existing features or change public APIs without explicit permission.
@@ -64,15 +67,20 @@ Strictly use these commands. **Do not guess flags.**
 
 ## 5. Directory Map
 ### Web Application (`app/`)
-- `app/routers/` — API endpoints (Health, Auth, Chat).
-- `app/services/` — Business logic:
-  - `agents.py`: AI Agent orchestration.
-  - `tools.py`: Agent capabilities/tools.
-  - `instructions.py`: System prompts.
-- `app/utils/` — Shared utilities (Logging, Configuration).
-- `app/models.py` — Pydantic data models.
+- `app/api/routers/` - API endpoints (Health, Geofence).
+- `app/dependencies/` - FastAPI dependencies (Admin token auth).
+- `app/config/` - Application configuration assembly.
+- `app/services/` - Business logic:
+  - `email.py`: Email notifications.
+- `app/utils/` - App-only utility helpers (Limiter, Timezone, compatibility wrappers).
+- `app/models.py` - Pydantic data models.
+
+### Shared Infrastructure (`shared/`)
+- `shared/config/` - Env loading and env var helpers.
+- `shared/logging/` - Centralized logging setup.
+- `shared/notifications/` - Notification providers (Email, Ntfy).
 
 ### Utility Scripts (`scripts/`)
-- `scripts/backup-dbs/` — Postgres backup to S3 (`backup.py`).
-- `scripts/backup-gdrive/` — Google Drive sync to S3 (`backup.py`, requires `rclone`).
-- `scripts/schedule-scripts/` — Systemd timer generator (`main.py`, `config.json`).
+- `scripts/backup_dbs/` - Postgres backup to S3 (`main.py`).
+- `scripts/backup_gdrive/` - Google Drive sync to S3 (`main.py`, requires `rclone`).
+- `scripts/schedule_scripts/` - Systemd timer generator (`main.py`, `config.json`).

@@ -1,18 +1,14 @@
-"""Logging configuration for the application.
-
-Configures logging using Python's dictConfig based on values from config.py.
-"""
+"""Logging configuration used by app and scripts."""
 
 import logging
 import logging.config
 import os
 
-from config import LOG_LEVEL, LOG_FORMAT, LOG_DATE_FORMAT, LOG_FILE
+from app.config.config import LOG_DATE_FORMAT, LOG_FILE, LOG_FORMAT, LOG_LEVEL
 
 
 def setup_logging() -> None:
     """Configure logging for the application."""
-    # Ensure logs directory exists
     log_dir = os.path.dirname(LOG_FILE)
     if log_dir:
         os.makedirs(log_dir, exist_ok=True)
@@ -62,9 +58,4 @@ def setup_logging() -> None:
     logging.config.dictConfig(config)
 
 
-# Initialize logging on module import
-setup_logging()
-
-# Create logger for use by other modules
 logger = logging.getLogger(__name__)
-logger.info("Logger initialized properly.")
