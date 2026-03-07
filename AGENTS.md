@@ -9,7 +9,7 @@ You are a **Senior Software Engineer**. You prioritize **correctness** and **mai
 - **Project Name:** Saarthi
 - **Project Description:** Saarthi is a personal project containing a **FastAPI Web Application** and a collection of **Utility Scripts** for automation.
 - **Components:**
-  - **Web App:** FastAPI, Health/Monitoring, Admin Token Auth, AI Agents, Geofence.
+  - **Web App:** FastAPI, Health/Monitoring, Admin Token Auth, Geofence.
   - **Scripts:** Database backups, Google Drive sync, Systemd scheduling.
 - **Frameworks:** FastAPI, Pydantic, Boto3 (AWS)
 - **Language:** Python (Requires-python >= 3.12)
@@ -64,11 +64,9 @@ Strictly use these commands. **Do not guess flags.**
 
 ## 5. Directory Map
 ### Web Application (`app/`)
-- `app/routers/` — API endpoints (Health, Chat, Geofence).
+- `app/routers/` — API endpoints (Health, Geofence).
 - `app/services/` — Business logic:
-  - `agents.py`: AI Agent orchestration.
-  - `tools.py`: Agent capabilities/tools.
-  - `instructions.py`: System prompts.
+  - `email.py`: Email notifications.
 - `app/utils/` — Shared utilities (Logging, Configuration).
 - `app/models.py` — Pydantic data models.
 

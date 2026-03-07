@@ -7,8 +7,8 @@ Saarthi is a personal, ever-evolving project that unites different tools, script
 
 ```
 ├── app/                  # Main Web Application
-│   ├── routers/          # API endpoints (Health, Chat, Geofence)
-│   ├── services/         # Business logic (Agents, Tools)
+│   ├── routers/          # API endpoints (Health, Geofence)
+│   ├── services/         # Business logic (Email)
 │   ├── utils/            # Utilities (Logging, Configuration)
 │   └── main.py           # App Entrypoint
 ├── scripts/              # Utility Scripts
@@ -25,13 +25,13 @@ Saarthi is a personal, ever-evolving project that unites different tools, script
 ## Part 1: Web Application
 
 ### 1. Description
-The core of Saarthi is a **FastAPI** web application that acts as the intelligent interface. It provides health monitoring, handles user interactions, manages authentication, and orchestrates AI agents to perform tasks. It is designed to be extensible, allowing new capabilities to be plugged in via services and tools.
+The core of Saarthi is a **FastAPI** web application that acts as the intelligent interface. It provides health monitoring, handles geofence updates, and manages authentication. It is designed to be extensible, allowing new capabilities to be plugged in via services.
 
 ### 2. Contents & Services
 The web application allows interaction through the following main interfaces:
 - **Health Monitoring**: Endpoints to ensure the system is operational.
 - **Authentication**: Admin token-based access control for all protected endpoints.
-- **Chat Interface**: A conversational endpoint to interact with Saarthi's agents.
+- **Geofence**: Endpoint to receive location updates from MacroDroid.
 
 ### 3. Setup Steps
 
@@ -63,18 +63,10 @@ The application is structured into modular services located in `app/`:
 
 - **Routers** (`app/routers/`):
   - Handles the HTTP request/response cycle.
-  - Defines endpoints for `/health`, `/chat`, and `/geofence`.
+  - Defines endpoints for `/health` and `/geofence`.
   
-- **Agent Service** (`app/services/agents.py`):
-  - Contains the core logic for AI agent instantiation and orchestration.
-  - Manages the lifecycle of agent interactions.
-
-- **Tools Service** (`app/services/tools.py`):
-  - Defines the capabilities available to the agents (e.g., searching, calculation, specific data retrieval).
-  - Acts as the bridge between the AI and external systems.
-
-- **Instructions Service** (`app/services/instructions.py`):
-  - Manages system prompts and behavioral instructions for different agent personas.
+- **Email Service** (`app/services/email.py`):
+  - Sends email notifications for geofence updates.
 
 ---
 
