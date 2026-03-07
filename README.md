@@ -14,7 +14,7 @@ Saarthi is a personal, ever-evolving project that unites different tools, script
 ├── scripts/              # Utility Scripts
 │   ├── backup_dbs/       # Database Backups
 │   ├── backup_gdrive/    # Google Drive Sync
-│   └── schedule-scripts/ # Systemd Timer Generator
+│   └── schedule_scripts/ # Systemd Timer Generator
 ├── config.py             # Application configuration
 ├── .env.example          # Environment variables template
 └── pyproject.toml        # Dependencies (uv)
@@ -110,13 +110,15 @@ Saarthi includes a suite of standalone Python scripts designed for background au
 - **Config**: Requires pre-configured rclone remotes (`personal-drive` and `dwaar-s3`) and `NTFY_*` vars in `.env`.
 - **Usage**: `uv run backup-gdrive`
 
-#### C. Schedule Scripts (`scripts/schedule-scripts/`)
+#### C. Schedule Scripts (`scripts/schedule_scripts/`)
 - **Purpose**: Automates script execution via systemd timers "Set it and forget it".
 - **Features**:
   - Generates `.service` and `.timer` files from JSON config.
   - Automatically handles systemd daemon reload and enablement.
   - Centralized management of run frequencies.
-- **Config**: Define tasks and schedules in `scripts/schedule-scripts/config.json` (uses `uv run <command>` via `uv_bin`).
-- **Usage**: `sudo uv run schedule-scripts`
+- **Config**: Define tasks and schedules in `scripts/schedule_scripts/config.json` (uses `uv run <command>` via `uv_bin`).
+- **Usage**: `sudo "$(command -v uv)" run schedule-scripts`
+- **Note**: If `sudo` cannot find `uv`, use `sudo env "PATH=$PATH" uv run schedule-scripts`.
+
 
 

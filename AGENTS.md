@@ -83,4 +83,4 @@ Strictly use these commands. **Do not guess flags.**
 ### Utility Scripts (`scripts/`)
 - `scripts/backup_dbs/` - Postgres backup to S3 (`main.py`).
 - `scripts/backup_gdrive/` - Google Drive sync to S3 (`main.py`, requires `rclone`).
-- `scripts/schedule-scripts/` - Systemd timer generator (`main.py`, `config.json`).
+- `scripts/schedule_scripts/` - Systemd timer generator (`main.py`, `config.json`).

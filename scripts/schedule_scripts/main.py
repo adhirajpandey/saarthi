@@ -29,7 +29,7 @@ WantedBy=timers.target
 
 def load_config() -> dict:
     repo_root = Path(__file__).resolve().parents[2]
-    config_path = repo_root / "scripts" / "schedule-scripts" / "config.json"
+    config_path = repo_root / "scripts" / "schedule_scripts" / "config.json"
     with open(config_path, encoding="utf-8") as file:
         return json.load(file)
 
@@ -86,4 +86,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
