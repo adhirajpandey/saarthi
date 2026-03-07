@@ -3,6 +3,7 @@
 import subprocess
 
 from shared.config.env import load_environment
+from shared.logging.setup import setup_logging
 from shared.notifications.ntfy import send_ntfy_message
 
 load_environment()
@@ -17,6 +18,7 @@ FOLDERS = [
 
 
 def main() -> None:
+    setup_logging()
     output_lines = []
     success = True
 
@@ -63,4 +65,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

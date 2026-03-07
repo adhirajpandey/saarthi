@@ -8,6 +8,7 @@ from pathlib import Path
 import boto3
 
 from shared.config.env import get_env, load_environment
+from shared.logging.setup import setup_logging
 from shared.notifications.ntfy import send_ntfy_message
 
 load_environment()
@@ -84,6 +85,7 @@ def teardown(files_to_cleanup: list[Path]) -> None:
 
 
 def main() -> None:
+    setup_logging()
     created_files: list[Path] = []
     output_lines = []
     success = True
@@ -148,4 +150,3 @@ if __name__ == "__main__":
             title="DB Backup Failed",
         )
         sys.exit(1)
-
