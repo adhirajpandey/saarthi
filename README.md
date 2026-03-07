@@ -7,7 +7,7 @@ Saarthi is a personal, ever-evolving project that unites different tools, script
 
 ```
 ├── app/                  # Main Web Application
-│   ├── routers/          # API endpoints (Health, Auth, Chat)
+│   ├── routers/          # API endpoints (Health, Chat, Geofence)
 │   ├── services/         # Business logic (Agents, Tools)
 │   ├── utils/            # Utilities (Logging, Configuration)
 │   └── main.py           # App Entrypoint
@@ -30,7 +30,7 @@ The core of Saarthi is a **FastAPI** web application that acts as the intelligen
 ### 2. Contents & Services
 The web application allows interaction through the following main interfaces:
 - **Health Monitoring**: Endpoints to ensure the system is operational.
-- **Authentication**: Secure entry points for user verification.
+- **Authentication**: Admin token-based access control for all protected endpoints.
 - **Chat Interface**: A conversational endpoint to interact with Saarthi's agents.
 
 ### 3. Setup Steps
@@ -63,7 +63,7 @@ The application is structured into modular services located in `app/`:
 
 - **Routers** (`app/routers/`):
   - Handles the HTTP request/response cycle.
-  - Defines endpoints for `/health`, `/login`, and `/chat`.
+  - Defines endpoints for `/health`, `/chat`, and `/geofence`.
   
 - **Agent Service** (`app/services/agents.py`):
   - Contains the core logic for AI agent instantiation and orchestration.

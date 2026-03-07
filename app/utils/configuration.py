@@ -10,7 +10,6 @@ from logging import info, error
 from ..models import (
     SharedConfig,
     BaseConfig,
-    JWTConfig,
     RateLimitingConfig,
     ProvidersConfig,
     AIServiceConfig,
@@ -18,10 +17,7 @@ from ..models import (
 )
 from config import (
     APP_NAME,
-    JWT_ALGORITHM,
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
     RATE_LIMIT_DEFAULT,
-    RATE_LIMIT_LOGIN,
     RATE_LIMIT_CHAT,
     AI_MODELS,
     GEOFENCE_EMAIL_TEMPLATE,
@@ -52,12 +48,11 @@ def load_configuration() -> SharedConfig:
     load_dotenv()
 
     # Required secrets
-    jwt_secret_key = _get_env("JWT_SECRET_KEY", required=True)
+    admin_token = _get_env("ADMIN_TOKEN", required=True)
 
     # Optional secrets
     openai_api_key = _get_env("OPENAI_API_KEY")
     google_drive_search_webhook_url = _get_env("GOOGLE_DRIVE_SEARCH_WEBHOOK_URL")
-    admin_token = _get_env("ADMIN_TOKEN")
     geofence_recipient = _get_env("GEOFENCE_UPDATES_RECIPIENT")
     geofence_sender_name = _get_env("GEOFENCE_SENDER_NAME")
 
@@ -79,14 +74,8 @@ def load_configuration() -> SharedConfig:
 
     return SharedConfig(
         base=BaseConfig(app_name=APP_NAME),
-        jwt=JWTConfig(
-            secret_key=jwt_secret_key,
-            algorithm=JWT_ALGORITHM,
-            access_token_expire_minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
-        ),
         rate_limiting=RateLimitingConfig(
             default_limit=RATE_LIMIT_DEFAULT,
-            login_limit=RATE_LIMIT_LOGIN,
             chat_limit=RATE_LIMIT_CHAT,
         ),
         ai_service=AIServiceConfig(

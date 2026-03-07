@@ -19,19 +19,18 @@ class TestConfig:
 
         assert CONFIG.base.app_name == "SAARTHI"
 
-    def test_jwt_config(self):
-        """Test JWT configuration values."""
+    def test_admin_token_is_set(self):
+        """Test admin token is loaded from environment."""
         from app import CONFIG
 
-        assert CONFIG.jwt.algorithm == "HS256"
-        assert CONFIG.jwt.access_token_expire_minutes == 30
+        assert CONFIG.admin_token is not None
+        assert len(CONFIG.admin_token) > 0
 
     def test_rate_limiting_config(self):
         """Test rate limiting configuration defaults."""
         from app import CONFIG
 
         assert CONFIG.rate_limiting.default_limit == "50/minute"
-        assert CONFIG.rate_limiting.login_limit == "5/minute"
         assert CONFIG.rate_limiting.chat_limit == "10/minute"
 
     def test_ai_service_models(self):

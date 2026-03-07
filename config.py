@@ -8,13 +8,8 @@ Sensitive values (API keys, secrets) are loaded from environment variables.
 # Base configuration
 APP_NAME = "SAARTHI"
 
-# JWT configuration
-JWT_ALGORITHM = "HS256"
-JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
 # Rate limiting configuration
 RATE_LIMIT_DEFAULT = "50/minute"
-RATE_LIMIT_LOGIN = "5/minute"
 RATE_LIMIT_CHAT = "10/minute"
 
 # AI Service models (ordered by priority)

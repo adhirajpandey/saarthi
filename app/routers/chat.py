@@ -2,7 +2,7 @@ from typing import Annotated
 from fastapi import APIRouter, Request, Depends, HTTPException, status
 
 from ..models import ChatMessage, AIChatResponse
-from ..auth import get_current_user
+from ..auth import require_admin_token
 from ..services.agents import AgentsService
 from ..utils.limiter import limiter
 from ..utils.logging import logger
@@ -28,7 +28,7 @@ agents_service = AgentsService()
 async def post_chat_message(
     request: Request,
     chat_message: ChatMessage,
-    current_user: Annotated[str, Depends(get_current_user)],
+    current_user: Annotated[str, Depends(require_admin_token)],
 ):
     """
     Receives a chat message, validates it, sends it to the AI service,
