@@ -1,16 +1,17 @@
 {
   "systemd_path": "/etc/systemd/system",
-  "python_venv": "/home/adhiraj/projects/saarthi/.venv/bin/python",
+  "uv_bin": "/home/adhiraj/.local/bin/uv",
+  "working_dir": "/home/adhiraj/projects/saarthi",
   "scripts": [
     {
       "name": "saarthi-backup-dbs",
-      "path": "/home/adhiraj/projects/saarthi/scripts/backup-dbs/backup.py",
+      "command": "backup-dbs",
       "time": "04:00",
       "description": "Backup databases to cloud storage"
     },
     {
       "name": "saarthi-backup-gdrive",
-      "path": "/home/adhiraj/projects/saarthi/scripts/backup-gdrive/backup.py",
+      "command": "backup-gdrive",
       "time": "04:00",
       "description": "Backup files to Google Drive"
     }

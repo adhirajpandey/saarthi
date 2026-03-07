@@ -1,24 +1,21 @@
+"""Database backup CLI."""
+
+import datetime
 import subprocess
 import sys
-import datetime
-import boto3
 from pathlib import Path
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
+import boto3
 
-# Add project root to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from shared.config.env import get_env, load_environment
+from shared.notifications.ntfy import send_ntfy_message
 
-from app.utils.ntfy import send_ntfy_message
+load_environment()
 
-# ----------------------------  Configuration  ---------------------------- #
-AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")  # IAM user key
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")  # IAM user secret
-
-VIDWIZ_DB_URL = os.getenv("VIDWIZ_DB_URL")
-TRACKCROW_DB_URL = os.getenv("TRACKCROW_DB_URL")
+AWS_ACCESS_KEY = get_env("AWS_ACCESS_KEY")
+AWS_SECRET_ACCESS_KEY = get_env("AWS_SECRET_ACCESS_KEY")
+VIDWIZ_DB_URL = get_env("VIDWIZ_DB_URL")
+TRACKCROW_DB_URL = get_env("TRACKCROW_DB_URL")
 
 if not AWS_ACCESS_KEY or not AWS_SECRET_ACCESS_KEY:
     raise ValueError("AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY must be set")
@@ -40,10 +37,9 @@ DB_MAP = {
         "s3_prefix": "backups/db/trackcrow",
     },
 }
-# ------------------------------------------------------------------------ #
 
 
-def run_pg_dump(out_file: Path, db_url: str):
+def run_pg_dump(out_file: Path, db_url: str) -> None:
     cmd = [
         "pg_dump",
         f"--dbname={db_url}",
@@ -56,14 +52,14 @@ def run_pg_dump(out_file: Path, db_url: str):
     subprocess.run(cmd, check=True)
 
 
-def sanity_check(dump_file: Path):
+def sanity_check(dump_file: Path) -> None:
     if not dump_file.exists() or dump_file.stat().st_size == 0:
         raise RuntimeError(f"Dump failed: {dump_file} missing or empty")
 
     print("Sanity check passed")
 
 
-def upload_to_s3(local_file: Path, bucket: str, prefix: str):
+def upload_to_s3(local_file: Path, bucket: str, prefix: str) -> None:
     session = boto3.Session(
         aws_access_key_id=AWS_ACCESS_KEY,
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
@@ -76,7 +72,7 @@ def upload_to_s3(local_file: Path, bucket: str, prefix: str):
     s3.upload_file(str(local_file), bucket, key)
 
 
-def teardown(files_to_cleanup: list[Path]):
+def teardown(files_to_cleanup: list[Path]) -> None:
     """Remove any dump files created during execution."""
     for file_path in files_to_cleanup:
         try:
@@ -87,50 +83,52 @@ def teardown(files_to_cleanup: list[Path]):
             print(f"Warning: Failed to clean up {file_path}: {exc}", file=sys.stderr)
 
 
-def main():
+def main() -> None:
     created_files: list[Path] = []
     output_lines = []
     success = True
-    
+
     try:
         for db_name, db_conf in DB_MAP.items():
             msg = f"\n=== Processing DB: {db_name} ==="
             print(msg)
             output_lines.append(msg)
-            
+
             dump_path = Path(f"{db_conf['filename']}.sql")
             created_files.append(dump_path)
             try:
                 run_pg_dump(dump_path, db_conf["url"])
                 output_lines.append("Running pg_dump command...")
-                
+
                 sanity_check(dump_path)
                 output_lines.append("Sanity check passed")
-                
+
                 upload_to_s3(dump_path, db_conf["s3_bucket"], db_conf["s3_prefix"])
-                output_lines.append(f"Uploading to s3://{db_conf['s3_bucket']}/{db_conf['s3_prefix']}/...")
-                
-                msg = f"Backup complete for {db_name} ✔︎"
+                output_lines.append(
+                    f"Uploading to s3://{db_conf['s3_bucket']}/{db_conf['s3_prefix']}/..."
+                )
+
+                msg = f"Backup complete for {db_name}"
                 print(msg)
                 output_lines.append(msg)
             except Exception as exc:
                 success = False
-                msg = f"❌ Backup failed for {db_name}: {exc}"
+                msg = f"Backup failed for {db_name}: {exc}"
                 print(msg, file=sys.stderr)
                 output_lines.append(msg)
     finally:
         print("\n=== Teardown ===")
         output_lines.append("\n=== Teardown ===")
         teardown(created_files)
-    
+
     if success:
-        output_lines.append("✅ All backups completed successfully")
+        output_lines.append("All backups completed successfully")
         title = "DB Backup Success"
     else:
         title = "DB Backup Failed"
-    
+
     console_output = "\n".join(output_lines)
-    
+
     send_ntfy_message(
         topic="notifs",
         message=console_output,
@@ -142,7 +140,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        error_msg = f"❌ Backup failed: {exc}"
+        error_msg = f"Backup failed: {exc}"
         print(error_msg, file=sys.stderr)
         send_ntfy_message(
             topic="notifs",
@@ -150,3 +148,4 @@ if __name__ == "__main__":
             title="DB Backup Failed",
         )
         sys.exit(1)
+
