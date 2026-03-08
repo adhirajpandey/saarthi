@@ -5,9 +5,17 @@ import subprocess
 
 from shared.logging import setup_logging
 from shared.notifications.ntfy import send_ntfy_message
+from shared.notifications.whatsapp import send_whatsapp_message
 from shared.settings import get_backup_gdrive_settings
 
 logger = logging.getLogger(__name__)
+
+
+def _build_whatsapp_summary(title: str, output_lines: list[str], success: bool) -> str:
+    failures = [line for line in output_lines if line.startswith("Failed:")]
+    status = "SUCCESS" if success else "FAILED"
+    key_lines = failures if failures else output_lines[-5:]
+    return "\n".join([f"{title} ({status})", *key_lines[:8]])
 
 
 def main() -> None:
@@ -50,11 +58,24 @@ def main() -> None:
 
     console_output = "\n".join(output_lines)
 
-    send_ntfy_message(
-        message=console_output,
-        ntfy_settings=settings.ntfy_settings(),
-        title=title,
-    )
+    if settings.ntfy_enabled:
+        try:
+            send_ntfy_message(
+                message=console_output,
+                ntfy_settings=settings.ntfy_settings(),
+                title=title,
+            )
+        except Exception as exc:
+            logger.error("Failed to dispatch ntfy backup notification: %s", exc)
+
+    if settings.whatsapp_enabled:
+        try:
+            send_whatsapp_message(
+                message=_build_whatsapp_summary(title, output_lines, success),
+                whatsapp_settings=settings.whatsapp_settings_for_scripts(),
+            )
+        except Exception as exc:
+            logger.error("Failed to dispatch WhatsApp backup notification: %s", exc)
 
 
 if __name__ == "__main__":

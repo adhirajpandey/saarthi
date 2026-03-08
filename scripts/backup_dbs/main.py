@@ -11,6 +11,7 @@ import boto3
 
 from shared.logging import setup_logging
 from shared.notifications.ntfy import send_ntfy_message
+from shared.notifications.whatsapp import send_whatsapp_message
 from shared.settings import BackupDbSettings, get_backup_db_settings
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,45 @@ def teardown(files_to_cleanup: list[Path]) -> None:
             logger.warning("Failed to clean up %s: %s", file_path, exc)
 
 
+def _build_whatsapp_summary(title: str, output_lines: list[str], success: bool) -> str:
+    relevant_lines = [
+        line for line in output_lines if "Backup failed" in line or "Backup complete" in line
+    ]
+    if not relevant_lines:
+        relevant_lines = output_lines[-5:]
+    status = "SUCCESS" if success else "FAILED"
+    return "\n".join([f"{title} ({status})", *relevant_lines[:8]])
+
+
+def _dispatch_notifications(
+    settings: BackupDbSettings,
+    title: str,
+    output_lines: list[str],
+    success: bool,
+) -> None:
+    console_output = "\n".join(output_lines)
+
+    if settings.ntfy_enabled:
+        try:
+            send_ntfy_message(
+                message=console_output,
+                ntfy_settings=settings.ntfy_settings(),
+                title=title,
+            )
+        except Exception as exc:
+            logger.error("Failed to dispatch ntfy backup notification: %s", exc)
+
+    if settings.whatsapp_enabled:
+        try:
+            summary = _build_whatsapp_summary(title, output_lines, success)
+            send_whatsapp_message(
+                message=summary,
+                whatsapp_settings=settings.whatsapp_settings_for_scripts(),
+            )
+        except Exception as exc:
+            logger.error("Failed to dispatch WhatsApp backup notification: %s", exc)
+
+
 def main() -> None:
     settings = get_backup_db_settings()
     setup_logging(settings.logging_settings())
@@ -142,24 +182,20 @@ def main() -> None:
     else:
         title = "DB Backup Failed"
 
-    console_output = "\n".join(output_lines)
-
-    send_ntfy_message(
-        message=console_output,
-        ntfy_settings=settings.ntfy_settings(),
-        title=title,
-    )
+    _dispatch_notifications(settings=settings, title=title, output_lines=output_lines, success=success)
 
 
 if __name__ == "__main__":
+    settings = get_backup_db_settings()
     try:
         main()
     except Exception as exc:
         error_msg = f"Backup failed: {exc}"
         logger.exception(error_msg)
-        send_ntfy_message(
-            message=error_msg,
-            ntfy_settings=get_backup_db_settings().ntfy_settings(),
+        _dispatch_notifications(
+            settings=settings,
             title="DB Backup Failed",
+            output_lines=[error_msg],
+            success=False,
         )
         sys.exit(1)
