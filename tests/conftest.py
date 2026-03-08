@@ -3,8 +3,6 @@
 import os
 import pytest
 
-from shared.settings import clear_settings_cache
-
 
 @pytest.fixture(autouse=True)
 def test_settings_environment():
@@ -19,7 +17,6 @@ def test_settings_environment():
     original_values = {key: os.environ.get(key) for key in env_vars}
     for key, value in env_vars.items():
         os.environ[key] = value
-    clear_settings_cache()
     try:
         yield
     finally:
@@ -28,4 +25,3 @@ def test_settings_environment():
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = original
-        clear_settings_cache()

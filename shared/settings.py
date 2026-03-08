@@ -1,31 +1,40 @@
 """Typed runtime settings for API and scripts."""
 
-from functools import lru_cache
-from typing import Literal
+from typing import cast
 
 from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_LOG_FORMAT = (
-    "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
+from shared.constants import (
+    DEFAULT_APP_NAME,
+    DEFAULT_BACKUP_BUCKET,
+    DEFAULT_EMAIL_ENABLED,
+    DEFAULT_GDRIVE_DESTINATION,
+    DEFAULT_GDRIVE_FOLDERS,
+    DEFAULT_GDRIVE_SOURCE,
+    DEFAULT_GEOFENCE_EMAIL_TEMPLATE,
+    DEFAULT_GEOFENCE_SUBJECT_TEMPLATE,
+    DEFAULT_GEOFENCE_WHATSAPP_TEMPLATE,
+    DEFAULT_LOG_DATE_FORMAT,
+    DEFAULT_LOG_FILE,
+    DEFAULT_LOG_FORMAT,
+    DEFAULT_LOG_LEVEL,
+    DEFAULT_NTFY_ENABLED,
+    DEFAULT_NTFY_TOPIC,
+    DEFAULT_SMTP_HOST,
+    DEFAULT_SMTP_PORT,
+    DEFAULT_TRACKCROW_DUMP_FILENAME,
+    DEFAULT_TRACKCROW_S3_PREFIX,
+    DEFAULT_VIDWIZ_DUMP_FILENAME,
+    DEFAULT_VIDWIZ_S3_PREFIX,
+    DEFAULT_WHATSAPP_ENABLED,
+    DEFAULT_WHATSAPP_TIMEOUT_SECONDS,
 )
-DEFAULT_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-
-DEFAULT_GEOFENCE_SUBJECT_TEMPLATE = "Adhiraj Location Update: {area}"
-DEFAULT_GEOFENCE_EMAIL_TEMPLATE = """Hello Pandey Parivaar,
-
-Adhiraj ki location ka update:
-
-Area - {area}
-Update - {event}
-
-Regards
-Pandey Bot
-"""
 
 _SETTINGS_CONFIG = SettingsConfigDict(
     env_file=".env",
     env_file_encoding="utf-8",
+    env_ignore_empty=True,
     extra="ignore",
 )
 
@@ -33,10 +42,10 @@ _SETTINGS_CONFIG = SettingsConfigDict(
 class LoggingSettings(BaseModel):
     """Logging configuration shared by app and scripts."""
 
-    level: str = "INFO"
+    level: str = DEFAULT_LOG_LEVEL
     format: str = DEFAULT_LOG_FORMAT
     date_format: str = DEFAULT_LOG_DATE_FORMAT
-    file: str = "logs/app.log"
+    file: str = DEFAULT_LOG_FILE
 
 
 class SmtpSettings(BaseModel):
@@ -44,8 +53,8 @@ class SmtpSettings(BaseModel):
 
     email: str
     app_password: str
-    host: str = "smtp.gmail.com"
-    port: int = 465
+    host: str = DEFAULT_SMTP_HOST
+    port: int = DEFAULT_SMTP_PORT
 
 
 class NtfySettings(BaseModel):
@@ -53,7 +62,16 @@ class NtfySettings(BaseModel):
 
     base_url: str
     token: str
-    topic: str = "notifs"
+    topic: str = DEFAULT_NTFY_TOPIC
+
+
+class WhatsAppSettings(BaseModel):
+    """WhatsApp sender configuration."""
+
+    ssh_host: str
+    remote_script_path: str
+    target: str
+    timeout_seconds: int = DEFAULT_WHATSAPP_TIMEOUT_SECONDS
 
 
 class RuntimeSettings(BaseSettings):
@@ -61,10 +79,18 @@ class RuntimeSettings(BaseSettings):
 
     model_config = _SETTINGS_CONFIG
 
-    log_level: str = "INFO"
+    log_level: str = DEFAULT_LOG_LEVEL
     log_format: str = DEFAULT_LOG_FORMAT
     log_date_format: str = DEFAULT_LOG_DATE_FORMAT
-    log_file: str = "logs/app.log"
+    log_file: str = DEFAULT_LOG_FILE
+    email_enabled: bool = DEFAULT_EMAIL_ENABLED
+    ntfy_enabled: bool = DEFAULT_NTFY_ENABLED
+    whatsapp_enabled: bool = DEFAULT_WHATSAPP_ENABLED
+    whatsapp_ssh_host: str | None = None
+    whatsapp_remote_script_path: str | None = None
+    whatsapp_target_family: str | None = None
+    whatsapp_target_personal: str | None = None
+    whatsapp_timeout_seconds: int = DEFAULT_WHATSAPP_TIMEOUT_SECONDS
 
     def logging_settings(self) -> LoggingSettings:
         return LoggingSettings(
@@ -74,18 +100,60 @@ class RuntimeSettings(BaseSettings):
             file=self.log_file,
         )
 
+    def _validate_whatsapp_transport(self) -> None:
+        if self.whatsapp_enabled:
+            if not self.whatsapp_ssh_host:
+                raise ValueError("WHATSAPP_SSH_HOST is required when WHATSAPP_ENABLED is true")
+            if not self.whatsapp_remote_script_path:
+                raise ValueError(
+                    "WHATSAPP_REMOTE_SCRIPT_PATH is required when WHATSAPP_ENABLED is true"
+                )
+
+    def _build_whatsapp_settings(self, target: str | None) -> WhatsAppSettings:
+        if not self.whatsapp_ssh_host or not self.whatsapp_remote_script_path or not target:
+            raise ValueError("WhatsApp settings are not configured")
+        return WhatsAppSettings(
+            ssh_host=self.whatsapp_ssh_host,
+            remote_script_path=self.whatsapp_remote_script_path,
+            target=target,
+            timeout_seconds=self.whatsapp_timeout_seconds,
+        )
+
+    def whatsapp_settings_for_geofence(self) -> WhatsAppSettings:
+        return self._build_whatsapp_settings(self.whatsapp_target_family)
+
+    def whatsapp_settings_for_scripts(self) -> WhatsAppSettings:
+        return self._build_whatsapp_settings(self.whatsapp_target_personal)
+
 
 class NtfyRuntimeSettings(RuntimeSettings):
     """Runtime settings that include ntfy integration."""
 
-    ntfy_base_url: str
-    ntfy_token: str
-    ntfy_topic: str = "notifs"
+    ntfy_base_url: str | None = None
+    ntfy_token: str | None = None
+    ntfy_topic: str = DEFAULT_NTFY_TOPIC
+
+    @model_validator(mode="after")
+    def _validate_ntfy_config(self) -> "NtfyRuntimeSettings":
+        if not (self.ntfy_enabled or self.whatsapp_enabled):
+            raise ValueError(
+                "At least one script notification channel must be enabled: "
+                "NTFY_ENABLED or WHATSAPP_ENABLED"
+            )
+        if self.ntfy_enabled:
+            if not self.ntfy_base_url:
+                raise ValueError("NTFY_BASE_URL is required when NTFY_ENABLED is true")
+            if not self.ntfy_token:
+                raise ValueError("NTFY_TOKEN is required when NTFY_ENABLED is true")
+        self._validate_whatsapp_transport()
+        if self.whatsapp_enabled and not self.whatsapp_target_personal:
+            raise ValueError("WHATSAPP_TARGET_PERSONAL is required when WHATSAPP_ENABLED is true")
+        return self
 
     def ntfy_settings(self) -> NtfySettings:
         return NtfySettings(
-            base_url=self.ntfy_base_url,
-            token=self.ntfy_token,
+            base_url=cast(str, self.ntfy_base_url),
+            token=cast(str, self.ntfy_token),
             topic=self.ntfy_topic,
         )
 
@@ -93,18 +161,38 @@ class NtfyRuntimeSettings(RuntimeSettings):
 class ApiSettings(RuntimeSettings):
     """Settings required by the FastAPI runtime."""
 
-    app_name: str = "SAARTHI"
+    app_name: str = DEFAULT_APP_NAME
     admin_token: str
     geofence_subject_template: str = DEFAULT_GEOFENCE_SUBJECT_TEMPLATE
     geofence_email_template: str = DEFAULT_GEOFENCE_EMAIL_TEMPLATE
+    geofence_whatsapp_template: str = DEFAULT_GEOFENCE_WHATSAPP_TEMPLATE
     geofence_updates_recipient: str
     geofence_sender_name: str | None = None
-    smtp_email: str
-    smtp_app_password: str
-    smtp_host: str = "smtp.gmail.com"
-    smtp_port: int = 465
+    smtp_email: str | None = None
+    smtp_app_password: str | None = None
+    smtp_host: str = DEFAULT_SMTP_HOST
+    smtp_port: int = DEFAULT_SMTP_PORT
+
+    @model_validator(mode="after")
+    def _validate_api_notification_channels(self) -> "ApiSettings":
+        if not (self.email_enabled or self.whatsapp_enabled):
+            raise ValueError(
+                "At least one geofence notification channel must be enabled: "
+                "EMAIL_ENABLED or WHATSAPP_ENABLED"
+            )
+        if self.email_enabled:
+            if not self.smtp_email:
+                raise ValueError("SMTP_EMAIL is required when EMAIL_ENABLED is true")
+            if not self.smtp_app_password:
+                raise ValueError("SMTP_APP_PASSWORD is required when EMAIL_ENABLED is true")
+        self._validate_whatsapp_transport()
+        if self.whatsapp_enabled and not self.whatsapp_target_family:
+            raise ValueError("WHATSAPP_TARGET_FAMILY is required when WHATSAPP_ENABLED is true")
+        return self
 
     def smtp_settings(self) -> SmtpSettings:
+        if not self.smtp_email or not self.smtp_app_password:
+            raise ValueError("SMTP settings are not configured")
         return SmtpSettings(
             email=self.smtp_email,
             app_password=self.smtp_app_password,
@@ -120,19 +208,19 @@ class BackupDbSettings(NtfyRuntimeSettings):
     aws_secret_access_key: str
     vidwiz_db_url: str
     trackcrow_db_url: str
-    backup_bucket: str = "dwaar"
-    vidwiz_s3_prefix: str = "backups/db/vidwiz"
-    trackcrow_s3_prefix: str = "backups/db/trackcrow"
-    vidwiz_dump_filename: str = "vidwiz-dump"
-    trackcrow_dump_filename: str = "trackcrow-dump"
+    backup_bucket: str = DEFAULT_BACKUP_BUCKET
+    vidwiz_s3_prefix: str = DEFAULT_VIDWIZ_S3_PREFIX
+    trackcrow_s3_prefix: str = DEFAULT_TRACKCROW_S3_PREFIX
+    vidwiz_dump_filename: str = DEFAULT_VIDWIZ_DUMP_FILENAME
+    trackcrow_dump_filename: str = DEFAULT_TRACKCROW_DUMP_FILENAME
 
 
 class BackupGdriveSettings(NtfyRuntimeSettings):
     """Settings required by the Google Drive backup script."""
 
-    gdrive_source: str = "personal-drive"
-    gdrive_destination: str = "dwaar-s3:dwaar/backups/gdrive"
-    gdrive_folders: list[str] = Field(default_factory=lambda: ["[01] PERSONAL", "[02] PROFESSIONAL"])
+    gdrive_source: str = DEFAULT_GDRIVE_SOURCE
+    gdrive_destination: str = DEFAULT_GDRIVE_DESTINATION
+    gdrive_folders: list[str] = Field(default_factory=DEFAULT_GDRIVE_FOLDERS.copy)
 
     @model_validator(mode="before")
     @classmethod
@@ -143,6 +231,7 @@ class BackupGdriveSettings(NtfyRuntimeSettings):
         if isinstance(folders, str):
             value["gdrive_folders"] = [item.strip() for item in folders.split(",") if item.strip()]
         return value
+
 
 class SchedulerScriptSettings(BaseModel):
     """Systemd scheduling settings loaded from JSON."""
@@ -176,34 +265,16 @@ class SchedulerSettings(BaseModel):
         return self
 
 
-@lru_cache
 def get_api_settings() -> ApiSettings:
-    """Return cached API settings."""
+    """Return API settings."""
     return ApiSettings()
 
 
-@lru_cache
 def get_backup_db_settings() -> BackupDbSettings:
-    """Return cached DB backup settings."""
+    """Return DB backup settings."""
     return BackupDbSettings()
 
 
-@lru_cache
 def get_backup_gdrive_settings() -> BackupGdriveSettings:
-    """Return cached GDrive backup settings."""
+    """Return GDrive backup settings."""
     return BackupGdriveSettings()
-
-
-def clear_settings_cache(
-    targets: tuple[
-        Literal["api", "backup_db", "backup_gdrive"],
-        ...,
-    ] = ("api", "backup_db", "backup_gdrive"),
-) -> None:
-    """Clear settings caches for tests."""
-    if "api" in targets:
-        get_api_settings.cache_clear()
-    if "backup_db" in targets:
-        get_backup_db_settings.cache_clear()
-    if "backup_gdrive" in targets:
-        get_backup_gdrive_settings.cache_clear()

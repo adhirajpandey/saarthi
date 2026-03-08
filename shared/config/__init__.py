@@ -1,1 +1,0 @@
-"""Legacy shared config namespace."""
