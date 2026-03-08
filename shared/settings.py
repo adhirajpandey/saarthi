@@ -2,31 +2,17 @@
 
 from typing import cast
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from shared.constants import (
     DEFAULT_APP_NAME,
-    DEFAULT_BACKUP_BUCKET,
     DEFAULT_EMAIL_ENABLED,
-    DEFAULT_GDRIVE_DESTINATION,
-    DEFAULT_GDRIVE_FOLDERS,
-    DEFAULT_GDRIVE_SOURCE,
-    DEFAULT_GEOFENCE_EMAIL_TEMPLATE,
-    DEFAULT_GEOFENCE_SUBJECT_TEMPLATE,
-    DEFAULT_GEOFENCE_WHATSAPP_TEMPLATE,
     DEFAULT_LOG_DATE_FORMAT,
     DEFAULT_LOG_FILE,
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_LEVEL,
     DEFAULT_NTFY_ENABLED,
-    DEFAULT_NTFY_TOPIC,
-    DEFAULT_SMTP_HOST,
-    DEFAULT_SMTP_PORT,
-    DEFAULT_TRACKCROW_DUMP_FILENAME,
-    DEFAULT_TRACKCROW_S3_PREFIX,
-    DEFAULT_VIDWIZ_DUMP_FILENAME,
-    DEFAULT_VIDWIZ_S3_PREFIX,
     DEFAULT_WHATSAPP_ENABLED,
     DEFAULT_WHATSAPP_TIMEOUT_SECONDS,
 )
@@ -53,8 +39,8 @@ class SmtpSettings(BaseModel):
 
     email: str
     app_password: str
-    host: str = DEFAULT_SMTP_HOST
-    port: int = DEFAULT_SMTP_PORT
+    host: str
+    port: int
 
 
 class NtfySettings(BaseModel):
@@ -62,7 +48,7 @@ class NtfySettings(BaseModel):
 
     base_url: str
     token: str
-    topic: str = DEFAULT_NTFY_TOPIC
+    topic: str
 
 
 class WhatsAppSettings(BaseModel):
@@ -131,7 +117,7 @@ class NtfyRuntimeSettings(RuntimeSettings):
 
     ntfy_base_url: str | None = None
     ntfy_token: str | None = None
-    ntfy_topic: str = DEFAULT_NTFY_TOPIC
+    ntfy_topic: str
 
     @model_validator(mode="after")
     def _validate_ntfy_config(self) -> "NtfyRuntimeSettings":
@@ -163,15 +149,15 @@ class ApiSettings(RuntimeSettings):
 
     app_name: str = DEFAULT_APP_NAME
     admin_token: str
-    geofence_subject_template: str = DEFAULT_GEOFENCE_SUBJECT_TEMPLATE
-    geofence_email_template: str = DEFAULT_GEOFENCE_EMAIL_TEMPLATE
-    geofence_whatsapp_template: str = DEFAULT_GEOFENCE_WHATSAPP_TEMPLATE
+    geofence_subject_template: str
+    geofence_email_template: str
+    geofence_whatsapp_template: str
     geofence_updates_recipient: str
     geofence_sender_name: str | None = None
     smtp_email: str | None = None
     smtp_app_password: str | None = None
-    smtp_host: str = DEFAULT_SMTP_HOST
-    smtp_port: int = DEFAULT_SMTP_PORT
+    smtp_host: str
+    smtp_port: int
 
     @model_validator(mode="after")
     def _validate_api_notification_channels(self) -> "ApiSettings":
@@ -208,19 +194,19 @@ class BackupDbSettings(NtfyRuntimeSettings):
     aws_secret_access_key: str
     vidwiz_db_url: str
     trackcrow_db_url: str
-    backup_bucket: str = DEFAULT_BACKUP_BUCKET
-    vidwiz_s3_prefix: str = DEFAULT_VIDWIZ_S3_PREFIX
-    trackcrow_s3_prefix: str = DEFAULT_TRACKCROW_S3_PREFIX
-    vidwiz_dump_filename: str = DEFAULT_VIDWIZ_DUMP_FILENAME
-    trackcrow_dump_filename: str = DEFAULT_TRACKCROW_DUMP_FILENAME
+    backup_bucket: str
+    vidwiz_s3_prefix: str
+    trackcrow_s3_prefix: str
+    vidwiz_dump_filename: str
+    trackcrow_dump_filename: str
 
 
 class BackupGdriveSettings(NtfyRuntimeSettings):
     """Settings required by the Google Drive backup script."""
 
-    gdrive_source: str = DEFAULT_GDRIVE_SOURCE
-    gdrive_destination: str = DEFAULT_GDRIVE_DESTINATION
-    gdrive_folders: list[str] = Field(default_factory=DEFAULT_GDRIVE_FOLDERS.copy)
+    gdrive_source: str
+    gdrive_destination: str
+    gdrive_folders: list[str]
 
     @model_validator(mode="before")
     @classmethod
