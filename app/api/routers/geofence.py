@@ -1,5 +1,7 @@
 """Geofence endpoints."""
 
+import logging
+
 from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import require_admin_token
@@ -8,9 +10,9 @@ from app.api.schemas import GeofenceEventRequest, GeofenceEventResponse
 from app.errors import AppError
 from app.services.geofence import send_geofence_notification
 from shared.settings import ApiSettings
-from shared.logging import logger
 
 router = APIRouter(prefix="/geofence", tags=["Geofence"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(

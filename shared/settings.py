@@ -56,25 +56,15 @@ class NtfySettings(BaseModel):
     topic: str = "notifs"
 
 
-class ApiSettings(BaseSettings):
-    """Settings required by the FastAPI runtime."""
+class RuntimeSettings(BaseSettings):
+    """Base settings with shared logging configuration."""
 
     model_config = _SETTINGS_CONFIG
 
-    app_name: str = "SAARTHI"
-    admin_token: str
-    geofence_subject_template: str = DEFAULT_GEOFENCE_SUBJECT_TEMPLATE
-    geofence_email_template: str = DEFAULT_GEOFENCE_EMAIL_TEMPLATE
-    geofence_updates_recipient: str
-    geofence_sender_name: str | None = None
     log_level: str = "INFO"
     log_format: str = DEFAULT_LOG_FORMAT
     log_date_format: str = DEFAULT_LOG_DATE_FORMAT
     log_file: str = "logs/app.log"
-    smtp_email: str
-    smtp_app_password: str
-    smtp_host: str = "smtp.gmail.com"
-    smtp_port: int = 465
 
     def logging_settings(self) -> LoggingSettings:
         return LoggingSettings(
@@ -83,6 +73,36 @@ class ApiSettings(BaseSettings):
             date_format=self.log_date_format,
             file=self.log_file,
         )
+
+
+class NtfyRuntimeSettings(RuntimeSettings):
+    """Runtime settings that include ntfy integration."""
+
+    ntfy_base_url: str
+    ntfy_token: str
+    ntfy_topic: str = "notifs"
+
+    def ntfy_settings(self) -> NtfySettings:
+        return NtfySettings(
+            base_url=self.ntfy_base_url,
+            token=self.ntfy_token,
+            topic=self.ntfy_topic,
+        )
+
+
+class ApiSettings(RuntimeSettings):
+    """Settings required by the FastAPI runtime."""
+
+    app_name: str = "SAARTHI"
+    admin_token: str
+    geofence_subject_template: str = DEFAULT_GEOFENCE_SUBJECT_TEMPLATE
+    geofence_email_template: str = DEFAULT_GEOFENCE_EMAIL_TEMPLATE
+    geofence_updates_recipient: str
+    geofence_sender_name: str | None = None
+    smtp_email: str
+    smtp_app_password: str
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 465
 
     def smtp_settings(self) -> SmtpSettings:
         return SmtpSettings(
@@ -93,54 +113,26 @@ class ApiSettings(BaseSettings):
         )
 
 
-class BackupDbSettings(BaseSettings):
+class BackupDbSettings(NtfyRuntimeSettings):
     """Settings required by the database backup script."""
-
-    model_config = _SETTINGS_CONFIG
 
     aws_access_key: str
     aws_secret_access_key: str
     vidwiz_db_url: str
     trackcrow_db_url: str
-    ntfy_base_url: str
-    ntfy_token: str
-    ntfy_topic: str = "notifs"
-    log_level: str = "INFO"
-    log_format: str = DEFAULT_LOG_FORMAT
-    log_date_format: str = DEFAULT_LOG_DATE_FORMAT
-    log_file: str = "logs/app.log"
-
-    def logging_settings(self) -> LoggingSettings:
-        return LoggingSettings(
-            level=self.log_level,
-            format=self.log_format,
-            date_format=self.log_date_format,
-            file=self.log_file,
-        )
-
-    def ntfy_settings(self) -> NtfySettings:
-        return NtfySettings(
-            base_url=self.ntfy_base_url,
-            token=self.ntfy_token,
-            topic=self.ntfy_topic,
-        )
+    backup_bucket: str = "dwaar"
+    vidwiz_s3_prefix: str = "backups/db/vidwiz"
+    trackcrow_s3_prefix: str = "backups/db/trackcrow"
+    vidwiz_dump_filename: str = "vidwiz-dump"
+    trackcrow_dump_filename: str = "trackcrow-dump"
 
 
-class BackupGdriveSettings(BaseSettings):
+class BackupGdriveSettings(NtfyRuntimeSettings):
     """Settings required by the Google Drive backup script."""
-
-    model_config = _SETTINGS_CONFIG
 
     gdrive_source: str = "personal-drive"
     gdrive_destination: str = "dwaar-s3:dwaar/backups/gdrive"
     gdrive_folders: list[str] = Field(default_factory=lambda: ["[01] PERSONAL", "[02] PROFESSIONAL"])
-    ntfy_base_url: str
-    ntfy_token: str
-    ntfy_topic: str = "notifs"
-    log_level: str = "INFO"
-    log_format: str = DEFAULT_LOG_FORMAT
-    log_date_format: str = DEFAULT_LOG_DATE_FORMAT
-    log_file: str = "logs/app.log"
 
     @model_validator(mode="before")
     @classmethod
@@ -151,22 +143,6 @@ class BackupGdriveSettings(BaseSettings):
         if isinstance(folders, str):
             value["gdrive_folders"] = [item.strip() for item in folders.split(",") if item.strip()]
         return value
-
-    def logging_settings(self) -> LoggingSettings:
-        return LoggingSettings(
-            level=self.log_level,
-            format=self.log_format,
-            date_format=self.log_date_format,
-            file=self.log_file,
-        )
-
-    def ntfy_settings(self) -> NtfySettings:
-        return NtfySettings(
-            base_url=self.ntfy_base_url,
-            token=self.ntfy_token,
-            topic=self.ntfy_topic,
-        )
-
 
 class SchedulerScriptSettings(BaseModel):
     """Systemd scheduling settings loaded from JSON."""
@@ -183,6 +159,7 @@ class SchedulerSettings(BaseModel):
     systemd_path: str
     uv_bin: str
     working_dir: str
+    home_dir: str
     scripts: list[SchedulerScriptSettings]
 
     @model_validator(mode="after")

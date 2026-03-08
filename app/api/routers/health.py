@@ -1,12 +1,14 @@
 """Health endpoints."""
 
+import logging
+
 from fastapi import APIRouter
 
 from app.api.schemas import HealthCheckResponse
 from app.utils.timezone import get_now_ist
-from shared.logging import logger
 
 router = APIRouter(tags=["Health"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/health", response_model=HealthCheckResponse)

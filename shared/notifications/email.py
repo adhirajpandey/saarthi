@@ -1,11 +1,13 @@
 """SMTP email sender."""
 
+import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-from shared.logging import logger
 from shared.settings import SmtpSettings
+
+logger = logging.getLogger(__name__)
 
 
 def send_email(
@@ -32,6 +34,6 @@ def send_email(
 
         logger.info(f"Email sent successfully to {recipient}")
         return True
-    except smtplib.SMTPException as exc:
+    except (smtplib.SMTPException, OSError, TimeoutError) as exc:
         logger.error(f"Failed to send email: {exc}")
         return False

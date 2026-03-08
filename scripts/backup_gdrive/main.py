@@ -1,16 +1,19 @@
 """Google Drive backup CLI."""
 
+import logging
 import subprocess
 
-from shared.logging.setup import setup_logging
+from shared.logging import setup_logging
 from shared.notifications.ntfy import send_ntfy_message
 from shared.settings import get_backup_gdrive_settings
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
     settings = get_backup_gdrive_settings()
     setup_logging(settings.logging_settings())
-    output_lines = []
+    output_lines: list[str] = []
     success = True
 
     for folder in settings.gdrive_folders:
@@ -18,21 +21,21 @@ def main() -> None:
         dst = f"{settings.gdrive_destination}/{folder}"
         cmd = ["rclone", "copy", src, dst, "--update", "-v", "--drive-shared-with-me"]
         cmd_str = " ".join(cmd)
-        print(">>>", cmd_str)
+        logger.info("Running command: %s", cmd_str)
         output_lines.append(f">>> {cmd_str}")
 
         try:
             result = subprocess.run(cmd, check=True, capture_output=True, text=True)
             if result.stdout:
-                print(result.stdout)
+                logger.info(result.stdout)
                 output_lines.append(result.stdout)
             if result.stderr:
-                print(result.stderr)
+                logger.warning(result.stderr)
                 output_lines.append(result.stderr)
         except subprocess.CalledProcessError as exc:
             success = False
             error_msg = f"Failed: {exc}"
-            print(error_msg)
+            logger.error(error_msg)
             output_lines.append(error_msg)
             if exc.stdout:
                 output_lines.append(exc.stdout)

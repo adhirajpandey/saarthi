@@ -57,6 +57,3 @@ def setup_logging(settings: LoggingSettings | None = None) -> None:
     }
 
     logging.config.dictConfig(config)
-
-
-logger = logging.getLogger(__name__)

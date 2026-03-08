@@ -1,9 +1,12 @@
 """Ntfy push notification sender."""
 
+import logging
+
 import requests
 
-from shared.logging import logger
 from shared.settings import NtfySettings
+
+logger = logging.getLogger(__name__)
 
 
 def send_ntfy_message(

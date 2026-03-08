@@ -1,5 +1,6 @@
 """Authentication dependencies."""
 
+import logging
 import secrets
 from typing import Annotated
 
@@ -9,10 +10,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.dependencies.config import get_settings
 from app.errors import AppError
 from shared.settings import ApiSettings
-from shared.logging import logger
 
 
 http_bearer = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 
 async def require_admin_token(

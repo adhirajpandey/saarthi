@@ -1,13 +1,15 @@
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from app.api.routers import geofence, health
 from app.errors import AppError
+from shared.logging import setup_logging
 from shared.settings import get_api_settings
-from shared.logging import logger
-from shared.logging.setup import setup_logging
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

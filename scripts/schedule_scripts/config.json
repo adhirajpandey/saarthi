@@ -2,6 +2,7 @@
   "systemd_path": "/etc/systemd/system",
   "uv_bin": "/home/adhiraj/.local/bin/uv",
   "working_dir": "/home/adhiraj/projects/saarthi",
+  "home_dir": "/home/adhiraj",
   "scripts": [
     {
       "name": "saarthi-backup-dbs",

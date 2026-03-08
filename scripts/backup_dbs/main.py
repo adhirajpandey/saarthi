@@ -1,15 +1,43 @@
 """Database backup CLI."""
 
 import datetime
+import logging
 import subprocess
 import sys
 from pathlib import Path
+from typing import TypedDict
 
 import boto3
 
-from shared.logging.setup import setup_logging
+from shared.logging import setup_logging
 from shared.notifications.ntfy import send_ntfy_message
 from shared.settings import BackupDbSettings, get_backup_db_settings
+
+logger = logging.getLogger(__name__)
+
+
+class DbBackupTarget(TypedDict):
+    url: str
+    filename: str
+    s3_bucket: str
+    s3_prefix: str
+
+
+def build_db_map(settings: BackupDbSettings) -> dict[str, DbBackupTarget]:
+    return {
+        "vidwiz": {
+            "url": settings.vidwiz_db_url,
+            "filename": settings.vidwiz_dump_filename,
+            "s3_bucket": settings.backup_bucket,
+            "s3_prefix": settings.vidwiz_s3_prefix,
+        },
+        "trackcrow": {
+            "url": settings.trackcrow_db_url,
+            "filename": settings.trackcrow_dump_filename,
+            "s3_bucket": settings.backup_bucket,
+            "s3_prefix": settings.trackcrow_s3_prefix,
+        },
+    }
 
 
 def run_pg_dump(out_file: Path, db_url: str) -> None:
@@ -21,7 +49,7 @@ def run_pg_dump(out_file: Path, db_url: str) -> None:
         "--no-privileges",
         f"--file={out_file}",
     ]
-    print("Running pg_dump command...")
+    logger.info("Running pg_dump for %s", out_file)
     subprocess.run(cmd, check=True)
 
 
@@ -29,7 +57,7 @@ def sanity_check(dump_file: Path) -> None:
     if not dump_file.exists() or dump_file.stat().st_size == 0:
         raise RuntimeError(f"Dump failed: {dump_file} missing or empty")
 
-    print("Sanity check passed")
+    logger.info("Sanity check passed for %s", dump_file)
 
 
 def upload_to_s3(
@@ -46,7 +74,7 @@ def upload_to_s3(
 
     ts = int(datetime.datetime.now().timestamp())
     key = f"{prefix}/{local_file.stem}-{ts}.sql"
-    print(f"Uploading to s3://{bucket}/{key}")
+    logger.info("Uploading %s to s3://%s/%s", local_file, bucket, key)
     s3.upload_file(str(local_file), bucket, key)
 
 
@@ -56,38 +84,24 @@ def teardown(files_to_cleanup: list[Path]) -> None:
         try:
             if file_path.exists():
                 file_path.unlink()
-                print(f"Cleaned up: {file_path}")
+                logger.info("Cleaned up temporary file %s", file_path)
         except Exception as exc:
-            print(f"Warning: Failed to clean up {file_path}: {exc}", file=sys.stderr)
+            logger.warning("Failed to clean up %s: %s", file_path, exc)
 
 
 def main() -> None:
     settings = get_backup_db_settings()
     setup_logging(settings.logging_settings())
-
-    db_map = {
-        "vidwiz": {
-            "url": settings.vidwiz_db_url,
-            "filename": "vidwiz-dump",
-            "s3_bucket": "dwaar",
-            "s3_prefix": "backups/db/vidwiz",
-        },
-        "trackcrow": {
-            "url": settings.trackcrow_db_url,
-            "filename": "trackcrow-dump",
-            "s3_bucket": "dwaar",
-            "s3_prefix": "backups/db/trackcrow",
-        },
-    }
+    db_map = build_db_map(settings)
 
     created_files: list[Path] = []
-    output_lines = []
+    output_lines: list[str] = []
     success = True
 
     try:
         for db_name, db_conf in db_map.items():
             msg = f"\n=== Processing DB: {db_name} ==="
-            print(msg)
+            logger.info(msg.strip())
             output_lines.append(msg)
 
             dump_path = Path(f"{db_conf['filename']}.sql")
@@ -110,15 +124,15 @@ def main() -> None:
                 )
 
                 msg = f"Backup complete for {db_name}"
-                print(msg)
+                logger.info(msg)
                 output_lines.append(msg)
             except Exception as exc:
                 success = False
                 msg = f"Backup failed for {db_name}: {exc}"
-                print(msg, file=sys.stderr)
+                logger.error(msg)
                 output_lines.append(msg)
     finally:
-        print("\n=== Teardown ===")
+        logger.info("=== Teardown ===")
         output_lines.append("\n=== Teardown ===")
         teardown(created_files)
 
@@ -142,7 +156,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         error_msg = f"Backup failed: {exc}"
-        print(error_msg, file=sys.stderr)
+        logger.exception(error_msg)
         send_ntfy_message(
             message=error_msg,
             ntfy_settings=get_backup_db_settings().ntfy_settings(),
