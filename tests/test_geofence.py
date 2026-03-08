@@ -56,3 +56,43 @@ class TestGeofenceAuth:
         
         assert response.status_code == 401
         assert response.json()["error"]["message"] == "Missing bearer token"
+
+    def test_geofence_any_success_when_email_fails(self, client: TestClient):
+        settings = client.app.state.settings
+        settings.whatsapp_enabled = True
+        settings.whatsapp_ssh_host = "pookie"
+        settings.whatsapp_remote_script_path = "/home/pookie/.openclaw/workspace/scripts/send_whatsapp_message.py"
+        settings.whatsapp_target_family = "120363369409471870@g.us"
+
+        with (
+            patch("app.services.geofence.send_email", return_value=False),
+            patch("app.services.geofence.send_whatsapp_message", return_value=True),
+        ):
+            response = client.post(
+                "/geofence/events",
+                json={"area": "Home", "event": "entered"},
+                headers={"Authorization": "Bearer test-admin-token"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
+    def test_geofence_fails_when_all_channels_fail(self, client: TestClient):
+        settings = client.app.state.settings
+        settings.whatsapp_enabled = True
+        settings.whatsapp_ssh_host = "pookie"
+        settings.whatsapp_remote_script_path = "/home/pookie/.openclaw/workspace/scripts/send_whatsapp_message.py"
+        settings.whatsapp_target_family = "120363369409471870@g.us"
+
+        with (
+            patch("app.services.geofence.send_email", return_value=False),
+            patch("app.services.geofence.send_whatsapp_message", return_value=False),
+        ):
+            response = client.post(
+                "/geofence/events",
+                json={"area": "Home", "event": "entered"},
+                headers={"Authorization": "Bearer test-admin-token"},
+            )
+
+        assert response.status_code == 500
+        assert response.json()["error"]["code"] == "notification_failed"

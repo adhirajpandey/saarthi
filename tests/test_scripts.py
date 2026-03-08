@@ -2,7 +2,8 @@
 
 from pathlib import Path
 
-from scripts.backup_dbs.main import build_db_map
+from scripts.backup_dbs.main import _dispatch_notifications, build_db_map
+from scripts.backup_gdrive.main import _build_whatsapp_summary
 from scripts.schedule_scripts.main import generate_files
 from shared.settings import BackupDbSettings, SchedulerSettings
 
@@ -58,3 +59,46 @@ def test_generate_files_uses_home_dir_from_config(tmp_path: Path) -> None:
     assert 'Environment="HOME=/home/test"' in service_content
     assert "ExecStart=/home/test/.local/bin/uv run backup-dbs" in service_content
     assert "OnCalendar=*-*-* 04:00:00" in timer_content
+
+
+def test_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
+    settings = BackupDbSettings(
+        aws_access_key="ak",
+        aws_secret_access_key="sk",
+        vidwiz_db_url="postgres://vidwiz",
+        trackcrow_db_url="postgres://trackcrow",
+        ntfy_enabled=False,
+        whatsapp_enabled=True,
+        whatsapp_ssh_host="pookie",
+        whatsapp_remote_script_path="/remote/send.py",
+        whatsapp_target_personal="1203@s.whatsapp.net",
+    )
+
+    calls = {"ntfy": 0, "wa": 0}
+
+    monkeypatch.setattr("scripts.backup_dbs.main.send_ntfy_message", lambda **_: calls.__setitem__("ntfy", calls["ntfy"] + 1))
+    monkeypatch.setattr("scripts.backup_dbs.main.send_whatsapp_message", lambda **_: calls.__setitem__("wa", calls["wa"] + 1))
+
+    _dispatch_notifications(
+        settings=settings,
+        title="DB Backup Success",
+        output_lines=["Backup complete for vidwiz"],
+        success=True,
+    )
+
+    assert calls["ntfy"] == 0
+    assert calls["wa"] == 1
+
+
+def test_build_whatsapp_summary_is_concise() -> None:
+    output_lines = [
+        ">>> rclone copy a b",
+        "noise line 1",
+        "noise line 2",
+        "Backup completed successfully",
+    ]
+
+    summary = _build_whatsapp_summary("GDrive Backup Success", output_lines, success=True)
+
+    assert "GDrive Backup Success (SUCCESS)" in summary
+    assert len(summary.splitlines()) <= 6
