@@ -20,14 +20,14 @@ class TestGeofenceAuth:
     @pytest.fixture(autouse=True)
     def mock_email(self):
         """Mock email sending to avoid actual emails during tests."""
-        with patch("app.services.email.send_email", return_value=True):
+        with patch("app.services.geofence.send_email", return_value=True):
             yield
 
     def test_geofence_with_valid_admin_token(self, client: TestClient):
         """Test geofence accepts valid admin token."""
         response = client.post(
-            "/geofence",
-            json={"area": "Home", "trigger": "entered"},
+            "/geofence/events",
+            json={"area": "Home", "event": "entered"},
             headers={"Authorization": "Bearer test-admin-token"},
         )
         
@@ -39,19 +39,20 @@ class TestGeofenceAuth:
     def test_geofence_with_invalid_token(self, client: TestClient):
         """Test geofence rejects invalid token."""
         response = client.post(
-            "/geofence",
-            json={"area": "Home", "trigger": "entered"},
+            "/geofence/events",
+            json={"area": "Home", "event": "entered"},
             headers={"Authorization": "Bearer invalid-token-12345"},
         )
         
         assert response.status_code == 401
-        assert "Invalid admin token" in response.json()["detail"]
+        assert response.json()["error"]["message"] == "Invalid admin token"
 
     def test_geofence_without_token(self, client: TestClient):
         """Test geofence rejects request without token."""
         response = client.post(
-            "/geofence",
-            json={"area": "Home", "trigger": "entered"},
+            "/geofence/events",
+            json={"area": "Home", "event": "entered"},
         )
         
         assert response.status_code == 401
+        assert response.json()["error"]["message"] == "Missing bearer token"

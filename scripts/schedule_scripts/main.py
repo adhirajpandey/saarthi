@@ -4,6 +4,8 @@ import json
 import subprocess
 from pathlib import Path
 
+from shared.settings import SchedulerSettings
+
 SERVICE_TEMPLATE = """[Unit]
 Description={description}
 
@@ -27,31 +29,32 @@ WantedBy=timers.target
 """
 
 
-def load_config() -> dict:
+def load_config() -> SchedulerSettings:
     repo_root = Path(__file__).resolve().parents[2]
     config_path = repo_root / "scripts" / "schedule_scripts" / "config.json"
     with open(config_path, encoding="utf-8") as file:
-        return json.load(file)
+        payload = json.load(file)
+    return SchedulerSettings.model_validate(payload)
 
 
-def generate_files(config: dict) -> list[str]:
-    systemd_path = Path(config["systemd_path"])
-    uv_bin = config["uv_bin"]
-    working_dir = config["working_dir"]
+def generate_files(config: SchedulerSettings) -> list[str]:
+    systemd_path = Path(config.systemd_path)
+    uv_bin = config.uv_bin
+    working_dir = config.working_dir
     timer_names: list[str] = []
 
-    for script in config["scripts"]:
-        name = script["name"]
-        command = script["command"]
+    for script in config.scripts:
+        name = script.name
+        command = script.command
         exec_start = f"{uv_bin} run {command}"
         timer_names.append(name)
 
         service_content = SERVICE_TEMPLATE.format(
-            description=script.get("description", name),
+            description=script.description,
             exec_start=exec_start,
             working_dir=working_dir,
         )
-        timer_content = TIMER_TEMPLATE.format(name=name, time=script["time"])
+        timer_content = TIMER_TEMPLATE.format(name=name, time=script.time)
 
         service_file = systemd_path / f"{name}.service"
         timer_file = systemd_path / f"{name}.timer"

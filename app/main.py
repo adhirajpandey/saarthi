@@ -1,36 +1,49 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
-from app.config.config import APP_NAME
-from app.config.settings import load_configuration
 from app.api.routers import geofence, health
-from shared.config.env import load_environment
+from app.errors import AppError
+from shared.settings import get_api_settings
 from shared.logging import logger
 from shared.logging.setup import setup_logging
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize environment, logging and application config."""
-    load_environment()
-    setup_logging()
-    config = load_configuration()
-    app.state.config = config
-    app.title = config.base.app_name
+    """Initialize logging and typed runtime settings."""
+    settings = get_api_settings()
+    setup_logging(settings.logging_settings())
+    app.state.settings = settings
+    app.title = settings.app_name
     logger.info("Application startup complete.")
     yield
 
 
-app = FastAPI(title=APP_NAME, lifespan=lifespan)
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI app."""
+    app = FastAPI(title="SAARTHI", lifespan=lifespan)
 
-app.include_router(health.router)
-app.include_router(geofence.router)
+    @app.exception_handler(AppError)
+    async def app_error_handler(_, exc: AppError) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"error": {"code": exc.code, "message": exc.message}},
+        )
+
+    app.include_router(health.router)
+    app.include_router(geofence.router)
+
+    @app.get("/", tags=["Root"])
+    async def read_root():
+        logger.info("Root endpoint '/' called.")
+        settings = app.state.settings
+        return {"message": f"Welcome to {settings.app_name}"}
+
+    return app
 
 
-@app.get("/", tags=["Root"])
-async def read_root():
-    logger.info("Root endpoint '/' called.")
-    config = app.state.config
-    return {"message": f"Welcome to {config.base.app_name}"}
+app = create_app()
+
 

@@ -2,9 +2,9 @@
 
 from fastapi import Request
 
-from app.models import SharedConfig
+from shared.settings import ApiSettings
 
 
-def get_config(request: Request) -> SharedConfig:
-    """Return application configuration from app state."""
-    return request.app.state.config
+def get_settings(request: Request) -> ApiSettings:
+    """Return API settings from app state."""
+    return request.app.state.settings

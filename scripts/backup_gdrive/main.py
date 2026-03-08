@@ -2,29 +2,20 @@
 
 import subprocess
 
-from shared.config.env import load_environment
 from shared.logging.setup import setup_logging
 from shared.notifications.ntfy import send_ntfy_message
-
-load_environment()
-
-SRC = "personal-drive"
-DST = "dwaar-s3:dwaar/backups/gdrive"
-
-FOLDERS = [
-    "[01] PERSONAL",
-    "[02] PROFESSIONAL",
-]
+from shared.settings import get_backup_gdrive_settings
 
 
 def main() -> None:
-    setup_logging()
+    settings = get_backup_gdrive_settings()
+    setup_logging(settings.logging_settings())
     output_lines = []
     success = True
 
-    for folder in FOLDERS:
-        src = f"{SRC}:{folder}"
-        dst = f"{DST}/{folder}"
+    for folder in settings.gdrive_folders:
+        src = f"{settings.gdrive_source}:{folder}"
+        dst = f"{settings.gdrive_destination}/{folder}"
         cmd = ["rclone", "copy", src, dst, "--update", "-v", "--drive-shared-with-me"]
         cmd_str = " ".join(cmd)
         print(">>>", cmd_str)
@@ -57,8 +48,8 @@ def main() -> None:
     console_output = "\n".join(output_lines)
 
     send_ntfy_message(
-        topic="notifs",
         message=console_output,
+        ntfy_settings=settings.ntfy_settings(),
         title=title,
     )
 

@@ -1,53 +1,44 @@
 """Geofence endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends
 
 from app.dependencies.auth import require_admin_token
-from app.dependencies.config import get_config
-from app.models import SharedConfig
-from app.services.email import send_geofence_notification
+from app.dependencies.config import get_settings
+from app.api.schemas import GeofenceEventRequest, GeofenceEventResponse
+from app.errors import AppError
+from app.services.geofence import send_geofence_notification
+from shared.settings import ApiSettings
 from shared.logging import logger
 
 router = APIRouter(prefix="/geofence", tags=["Geofence"])
 
 
-class GeofenceRequest(BaseModel):
-    """Request model for geofence updates."""
-
-    area: str
-    trigger: str
-
-
-class GeofenceResponse(BaseModel):
-    """Response model for geofence updates."""
-
-    success: bool
-    message: str
-
-
-@router.post("", response_model=GeofenceResponse, dependencies=[Depends(require_admin_token)])
-async def geofence_update(
-    request: Request,
-    payload: GeofenceRequest,
-    config: SharedConfig = Depends(get_config),
-) -> GeofenceResponse:
+@router.post(
+    "/events",
+    response_model=GeofenceEventResponse,
+    dependencies=[Depends(require_admin_token)],
+)
+async def create_geofence_event(
+    payload: GeofenceEventRequest,
+    settings: ApiSettings = Depends(get_settings),
+) -> GeofenceEventResponse:
     """Receive geofence update and send email notification."""
-    logger.info(f"Geofence update received - Area: {payload.area}, Trigger: {payload.trigger}")
+    logger.info(f"Geofence event received - Area: {payload.area}, Event: {payload.event}")
 
-    success = send_geofence_notification(
-        geofence_config=config.geofence,
+    result = await send_geofence_notification(
+        settings=settings,
         area=payload.area,
-        trigger=payload.trigger,
+        event=payload.event,
     )
 
-    if success:
-        return GeofenceResponse(
+    if result.success:
+        return GeofenceEventResponse(
             success=True,
-            message=f"Geofence notification sent for {payload.area}",
+            message=result.message,
         )
 
-    raise HTTPException(
+    raise AppError(
         status_code=500,
-        detail="Failed to send geofence notification email",
+        code="notification_failed",
+        message=result.message,
     )

@@ -7,37 +7,9 @@ from pathlib import Path
 
 import boto3
 
-from shared.config.env import get_env, load_environment
 from shared.logging.setup import setup_logging
 from shared.notifications.ntfy import send_ntfy_message
-
-load_environment()
-
-AWS_ACCESS_KEY = get_env("AWS_ACCESS_KEY")
-AWS_SECRET_ACCESS_KEY = get_env("AWS_SECRET_ACCESS_KEY")
-VIDWIZ_DB_URL = get_env("VIDWIZ_DB_URL")
-TRACKCROW_DB_URL = get_env("TRACKCROW_DB_URL")
-
-if not AWS_ACCESS_KEY or not AWS_SECRET_ACCESS_KEY:
-    raise ValueError("AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY must be set")
-
-if not VIDWIZ_DB_URL or not TRACKCROW_DB_URL:
-    raise ValueError("VIDWIZ_DB_URL and TRACKCROW_DB_URL must be set")
-
-DB_MAP = {
-    "vidwiz": {
-        "url": VIDWIZ_DB_URL,
-        "filename": "vidwiz-dump",
-        "s3_bucket": "dwaar",
-        "s3_prefix": "backups/db/vidwiz",
-    },
-    "trackcrow": {
-        "url": TRACKCROW_DB_URL,
-        "filename": "trackcrow-dump",
-        "s3_bucket": "dwaar",
-        "s3_prefix": "backups/db/trackcrow",
-    },
-}
+from shared.settings import BackupDbSettings, get_backup_db_settings
 
 
 def run_pg_dump(out_file: Path, db_url: str) -> None:
@@ -60,10 +32,15 @@ def sanity_check(dump_file: Path) -> None:
     print("Sanity check passed")
 
 
-def upload_to_s3(local_file: Path, bucket: str, prefix: str) -> None:
+def upload_to_s3(
+    local_file: Path,
+    bucket: str,
+    prefix: str,
+    settings: BackupDbSettings,
+) -> None:
     session = boto3.Session(
-        aws_access_key_id=AWS_ACCESS_KEY,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        aws_access_key_id=settings.aws_access_key,
+        aws_secret_access_key=settings.aws_secret_access_key,
     )
     s3 = session.client("s3")
 
@@ -85,13 +62,30 @@ def teardown(files_to_cleanup: list[Path]) -> None:
 
 
 def main() -> None:
-    setup_logging()
+    settings = get_backup_db_settings()
+    setup_logging(settings.logging_settings())
+
+    db_map = {
+        "vidwiz": {
+            "url": settings.vidwiz_db_url,
+            "filename": "vidwiz-dump",
+            "s3_bucket": "dwaar",
+            "s3_prefix": "backups/db/vidwiz",
+        },
+        "trackcrow": {
+            "url": settings.trackcrow_db_url,
+            "filename": "trackcrow-dump",
+            "s3_bucket": "dwaar",
+            "s3_prefix": "backups/db/trackcrow",
+        },
+    }
+
     created_files: list[Path] = []
     output_lines = []
     success = True
 
     try:
-        for db_name, db_conf in DB_MAP.items():
+        for db_name, db_conf in db_map.items():
             msg = f"\n=== Processing DB: {db_name} ==="
             print(msg)
             output_lines.append(msg)
@@ -105,7 +99,12 @@ def main() -> None:
                 sanity_check(dump_path)
                 output_lines.append("Sanity check passed")
 
-                upload_to_s3(dump_path, db_conf["s3_bucket"], db_conf["s3_prefix"])
+                upload_to_s3(
+                    local_file=dump_path,
+                    bucket=db_conf["s3_bucket"],
+                    prefix=db_conf["s3_prefix"],
+                    settings=settings,
+                )
                 output_lines.append(
                     f"Uploading to s3://{db_conf['s3_bucket']}/{db_conf['s3_prefix']}/..."
                 )
@@ -132,8 +131,8 @@ def main() -> None:
     console_output = "\n".join(output_lines)
 
     send_ntfy_message(
-        topic="notifs",
         message=console_output,
+        ntfy_settings=settings.ntfy_settings(),
         title=title,
     )
 
@@ -145,8 +144,8 @@ if __name__ == "__main__":
         error_msg = f"Backup failed: {exc}"
         print(error_msg, file=sys.stderr)
         send_ntfy_message(
-            topic="notifs",
             message=error_msg,
+            ntfy_settings=get_backup_db_settings().ntfy_settings(),
             title="DB Backup Failed",
         )
         sys.exit(1)

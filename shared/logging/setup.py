@@ -4,12 +4,13 @@ import logging
 import logging.config
 import os
 
-from app.config.config import LOG_DATE_FORMAT, LOG_FILE, LOG_FORMAT, LOG_LEVEL
+from shared.settings import LoggingSettings
 
 
-def setup_logging() -> None:
+def setup_logging(settings: LoggingSettings | None = None) -> None:
     """Configure logging for the application."""
-    log_dir = os.path.dirname(LOG_FILE)
+    resolved_settings = settings or LoggingSettings()
+    log_dir = os.path.dirname(resolved_settings.file)
     if log_dir:
         os.makedirs(log_dir, exist_ok=True)
 
@@ -18,37 +19,37 @@ def setup_logging() -> None:
         "disable_existing_loggers": False,
         "formatters": {
             "default": {
-                "format": LOG_FORMAT,
-                "datefmt": LOG_DATE_FORMAT,
+                "format": resolved_settings.format,
+                "datefmt": resolved_settings.date_format,
             },
         },
         "handlers": {
             "console": {
                 "class": "logging.StreamHandler",
-                "level": LOG_LEVEL,
+                "level": resolved_settings.level,
                 "formatter": "default",
                 "stream": "ext://sys.stdout",
             },
             "file": {
                 "class": "logging.FileHandler",
-                "level": LOG_LEVEL,
+                "level": resolved_settings.level,
                 "formatter": "default",
-                "filename": LOG_FILE,
+                "filename": resolved_settings.file,
                 "encoding": "utf8",
             },
         },
         "root": {
-            "level": LOG_LEVEL,
+            "level": resolved_settings.level,
             "handlers": ["console", "file"],
         },
         "loggers": {
             "uvicorn.error": {
-                "level": LOG_LEVEL,
+                "level": resolved_settings.level,
                 "handlers": ["console", "file"],
                 "propagate": False,
             },
             "uvicorn.access": {
-                "level": LOG_LEVEL,
+                "level": resolved_settings.level,
                 "handlers": ["console", "file"],
                 "propagate": False,
             },

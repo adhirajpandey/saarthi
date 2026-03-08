@@ -10,7 +10,7 @@ Saarthi is a practical workspace for building and operating useful software, not
 
 - A FastAPI web application for service health and monitoring workflows, protected admin access, and geofence-driven notifications.
 - Utility scripts for operational automation, including database backups, Google Drive sync, and scheduler support.
-- Shared infrastructure for configuration loading, logging, and notification delivery so both app and scripts stay consistent.
+- Shared infrastructure for typed settings, logging, and notification delivery so both app and scripts stay consistent.
 
 ## How It's Evolving
 
@@ -21,6 +21,12 @@ As new use cases come up, Saarthi expands with new components and experiments wh
 At the moment, Saarthi helps with:
 
 - Observability through simple health and monitoring endpoints.
-- Event-triggered communication through geofence notification flows.
+- Event-triggered communication through geofence notification flows via `POST /geofence/events`.
 - Operational continuity through repeatable backup and sync automation.
 - Maintainable growth by keeping APIs, shared infrastructure, and scripts organized by responsibility.
+
+## API Notes
+
+- `GET /health`: basic health response with IST timestamp.
+- `POST /geofence/events`: admin protected endpoint to send geofence notifications.
+- Protected routes use `Authorization: Bearer <ADMIN_TOKEN>`.

@@ -1,37 +1,30 @@
 """Authentication dependencies."""
 
+import secrets
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.dependencies.config import get_config
-from app.models import SharedConfig
+from app.dependencies.config import get_settings
+from app.errors import AppError
+from shared.settings import ApiSettings
 from shared.logging import logger
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+http_bearer = HTTPBearer(auto_error=False)
 
 
 async def require_admin_token(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    config: Annotated[SharedConfig, Depends(get_config)],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(http_bearer)],
+    settings: Annotated[ApiSettings, Depends(get_settings)],
 ) -> str:
     """Dependency that validates the admin token."""
-    admin_token = config.admin_token
+    if credentials is None:
+        raise AppError(status_code=401, code="unauthorized", message="Missing bearer token")
 
-    if not admin_token:
-        logger.error("Admin token auth requested but ADMIN_TOKEN not configured")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Admin token auth not configured",
-        )
-
-    if token != admin_token:
+    if not secrets.compare_digest(credentials.credentials, settings.admin_token):
         logger.warning("Invalid admin token provided")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid admin token",
-        )
+        raise AppError(status_code=401, code="unauthorized", message="Invalid admin token")
 
     return "admin"

@@ -1,2 +1,1 @@
-"""Shared configuration helpers."""
-
+"""Legacy shared config namespace."""
