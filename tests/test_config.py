@@ -48,7 +48,16 @@ class TestConfig:
         with pytest.raises(ValueError, match="At least one geofence notification channel must be enabled"):
             get_api_settings()
 
-    def test_fails_when_whatsapp_enabled_without_required_values(self, monkeypatch):
+    def test_fails_when_whatsapp_enabled_without_required_values(self, monkeypatch, tmp_path):
+        # Isolate from repository .env so this assertion doesn't depend on local secrets/config.
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("ADMIN_TOKEN", "test-token")
+        monkeypatch.setenv("GEOFENCE_SUBJECT_TEMPLATE", "Subject {area} {event}")
+        monkeypatch.setenv("GEOFENCE_EMAIL_TEMPLATE", "Email {area} {event}")
+        monkeypatch.setenv("GEOFENCE_WHATSAPP_TEMPLATE", "WA {area} {event}")
+        monkeypatch.setenv("GEOFENCE_UPDATES_RECIPIENT", "alerts@example.com")
+        monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
+        monkeypatch.setenv("SMTP_PORT", "587")
         monkeypatch.setenv("EMAIL_ENABLED", "false")
         monkeypatch.setenv("NTFY_ENABLED", "false")
         monkeypatch.setenv("WHATSAPP_ENABLED", "true")

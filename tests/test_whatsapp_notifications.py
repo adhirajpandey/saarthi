@@ -61,3 +61,30 @@ def test_send_whatsapp_message_timeout(monkeypatch) -> None:
     )
 
     assert sent is False
+
+
+def test_send_whatsapp_message_quotes_remote_command(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_run(*args, **_kwargs):
+        captured["command"] = args[0]
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("shared.notifications.whatsapp.subprocess.run", _fake_run)
+
+    sent = send_whatsapp_message(
+        message="DB Backup Success (SUCCESS)",
+        whatsapp_settings=WhatsAppSettings(
+            ssh_host="pookie",
+            remote_script_path="/remote/send_whatsapp_message.py",
+            target="1203@g.us",
+            timeout_seconds=5,
+        ),
+    )
+
+    assert sent is True
+    assert captured["command"] == [
+        "ssh",
+        "pookie",
+        "python3 /remote/send_whatsapp_message.py --message 'DB Backup Success (SUCCESS)' --target 1203@g.us",
+    ]

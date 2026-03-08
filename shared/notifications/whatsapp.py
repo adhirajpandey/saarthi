@@ -1,6 +1,7 @@
 """WhatsApp notification sender over SSH."""
 
 import logging
+import shlex
 import subprocess
 
 from shared.settings import WhatsAppSettings
@@ -13,15 +14,20 @@ def send_whatsapp_message(
     whatsapp_settings: WhatsAppSettings,
 ) -> bool:
     """Send a WhatsApp message by running a remote script via SSH."""
+    remote_command = " ".join(
+        [
+            "python3",
+            shlex.quote(whatsapp_settings.remote_script_path),
+            "--message",
+            shlex.quote(message),
+            "--target",
+            shlex.quote(whatsapp_settings.target),
+        ]
+    )
     command = [
         "ssh",
         whatsapp_settings.ssh_host,
-        "python3",
-        whatsapp_settings.remote_script_path,
-        "--message",
-        message,
-        "--target",
-        whatsapp_settings.target,
+        remote_command,
     ]
 
     try:
