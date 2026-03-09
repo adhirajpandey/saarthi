@@ -129,7 +129,7 @@ def _dispatch_notifications(
             logger.error("Failed to dispatch WhatsApp backup notification: %s", exc)
 
 
-def main() -> None:
+def main() -> int:
     settings = get_backup_db_settings()
     setup_logging(settings.logging_settings())
     db_map = build_db_map(settings)
@@ -183,12 +183,13 @@ def main() -> None:
         title = "DB Backup Failed"
 
     _dispatch_notifications(settings=settings, title=title, output_lines=output_lines, success=success)
+    return 0 if success else 1
 
 
 if __name__ == "__main__":
     settings = get_backup_db_settings()
     try:
-        main()
+        sys.exit(main())
     except Exception as exc:
         error_msg = f"Backup failed: {exc}"
         logger.exception(error_msg)

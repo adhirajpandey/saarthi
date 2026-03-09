@@ -2,6 +2,7 @@
 
 import logging
 import subprocess
+import sys
 
 from shared.logging import setup_logging
 from shared.notifications.ntfy import send_ntfy_message
@@ -18,7 +19,7 @@ def _build_whatsapp_summary(title: str, output_lines: list[str], success: bool) 
     return "\n".join([f"{title} ({status})", *key_lines[:8]])
 
 
-def main() -> None:
+def main() -> int:
     settings = get_backup_gdrive_settings()
     setup_logging(settings.logging_settings())
     output_lines: list[str] = []
@@ -77,6 +78,8 @@ def main() -> None:
         except Exception as exc:
             logger.error("Failed to dispatch WhatsApp backup notification: %s", exc)
 
+    return 0 if success else 1
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

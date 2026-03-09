@@ -1,11 +1,14 @@
 """Tests for script configuration behavior."""
 
+import subprocess
 from pathlib import Path
 
+from scripts.backup_dbs import main as backup_dbs_main
+from scripts.backup_gdrive import main as backup_gdrive_main
 from scripts.backup_dbs.main import _dispatch_notifications, build_db_map
 from scripts.backup_gdrive.main import _build_whatsapp_summary
 from scripts.schedule_scripts.main import generate_files
-from shared.settings import BackupDbSettings, SchedulerSettings
+from shared.settings import BackupDbSettings, BackupGdriveSettings, SchedulerSettings
 
 
 def test_build_db_map_uses_settings_values() -> None:
@@ -102,3 +105,141 @@ def test_build_whatsapp_summary_is_concise() -> None:
 
     assert "GDrive Backup Success (SUCCESS)" in summary
     assert len(summary.splitlines()) <= 6
+
+
+def test_backup_dbs_main_returns_non_zero_when_any_db_fails(monkeypatch) -> None:
+    settings = BackupDbSettings(
+        aws_access_key="ak",
+        aws_secret_access_key="sk",
+        vidwiz_db_url="postgres://vidwiz",
+        trackcrow_db_url="postgres://trackcrow",
+        ntfy_enabled=False,
+        whatsapp_enabled=True,
+        whatsapp_ssh_host="pookie",
+        whatsapp_remote_script_path="/remote/send.py",
+        whatsapp_target_personal="1203@s.whatsapp.net",
+        backup_bucket="my-bucket",
+        vidwiz_s3_prefix="db/vidwiz",
+        trackcrow_s3_prefix="db/trackcrow",
+        vidwiz_dump_filename="vidwiz-custom",
+        trackcrow_dump_filename="trackcrow-custom",
+    )
+    observed: dict[str, object] = {}
+
+    monkeypatch.setattr("scripts.backup_dbs.main.get_backup_db_settings", lambda: settings)
+    monkeypatch.setattr("scripts.backup_dbs.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.backup_dbs.main.build_db_map",
+        lambda *_: {
+            "vidwiz": {
+                "url": "postgres://vidwiz",
+                "filename": "vidwiz-custom",
+                "s3_bucket": "my-bucket",
+                "s3_prefix": "db/vidwiz",
+            }
+        },
+    )
+    monkeypatch.setattr(
+        "scripts.backup_dbs.main.run_pg_dump",
+        lambda *_: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    monkeypatch.setattr("scripts.backup_dbs.main.teardown", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.backup_dbs.main._dispatch_notifications",
+        lambda **kwargs: observed.update(kwargs),
+    )
+
+    exit_code = backup_dbs_main.main()
+
+    assert exit_code == 1
+    assert observed["success"] is False
+    assert observed["title"] == "DB Backup Failed"
+
+
+def test_backup_dbs_main_returns_zero_when_all_dbs_succeed(monkeypatch) -> None:
+    settings = BackupDbSettings(
+        aws_access_key="ak",
+        aws_secret_access_key="sk",
+        vidwiz_db_url="postgres://vidwiz",
+        trackcrow_db_url="postgres://trackcrow",
+        ntfy_enabled=False,
+        whatsapp_enabled=True,
+        whatsapp_ssh_host="pookie",
+        whatsapp_remote_script_path="/remote/send.py",
+        whatsapp_target_personal="1203@s.whatsapp.net",
+        backup_bucket="my-bucket",
+        vidwiz_s3_prefix="db/vidwiz",
+        trackcrow_s3_prefix="db/trackcrow",
+        vidwiz_dump_filename="vidwiz-custom",
+        trackcrow_dump_filename="trackcrow-custom",
+    )
+    observed: dict[str, object] = {}
+
+    monkeypatch.setattr("scripts.backup_dbs.main.get_backup_db_settings", lambda: settings)
+    monkeypatch.setattr("scripts.backup_dbs.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr("scripts.backup_dbs.main.run_pg_dump", lambda *_: None)
+    monkeypatch.setattr("scripts.backup_dbs.main.sanity_check", lambda *_: None)
+    monkeypatch.setattr("scripts.backup_dbs.main.upload_to_s3", lambda **_: None)
+    monkeypatch.setattr("scripts.backup_dbs.main.teardown", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.backup_dbs.main._dispatch_notifications",
+        lambda **kwargs: observed.update(kwargs),
+    )
+
+    exit_code = backup_dbs_main.main()
+
+    assert exit_code == 0
+    assert observed["success"] is True
+    assert observed["title"] == "DB Backup Success"
+
+
+def test_backup_gdrive_main_returns_non_zero_on_any_folder_failure(monkeypatch) -> None:
+    settings = BackupGdriveSettings(
+        ntfy_enabled=False,
+        whatsapp_enabled=True,
+        whatsapp_ssh_host="pookie",
+        whatsapp_remote_script_path="/remote/send.py",
+        whatsapp_target_personal="1203@s.whatsapp.net",
+        gdrive_source="personal-drive",
+        gdrive_destination="dwaar-s3:dwaar/backups/gdrive",
+        gdrive_folders=["folder-1"],
+    )
+
+    monkeypatch.setattr("scripts.backup_gdrive.main.get_backup_gdrive_settings", lambda: settings)
+    monkeypatch.setattr("scripts.backup_gdrive.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.backup_gdrive.main.subprocess.run",
+        lambda *_, **__: (_ for _ in ()).throw(
+            subprocess.CalledProcessError(returncode=1, cmd=["rclone", "copy"])
+        ),
+    )
+    monkeypatch.setattr("scripts.backup_gdrive.main.send_whatsapp_message", lambda **_: True)
+
+    exit_code = backup_gdrive_main.main()
+
+    assert exit_code == 1
+
+
+def test_backup_gdrive_main_returns_zero_when_all_folders_succeed(monkeypatch) -> None:
+    settings = BackupGdriveSettings(
+        ntfy_enabled=False,
+        whatsapp_enabled=True,
+        whatsapp_ssh_host="pookie",
+        whatsapp_remote_script_path="/remote/send.py",
+        whatsapp_target_personal="1203@s.whatsapp.net",
+        gdrive_source="personal-drive",
+        gdrive_destination="dwaar-s3:dwaar/backups/gdrive",
+        gdrive_folders=["folder-1"],
+    )
+
+    monkeypatch.setattr("scripts.backup_gdrive.main.get_backup_gdrive_settings", lambda: settings)
+    monkeypatch.setattr("scripts.backup_gdrive.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.backup_gdrive.main.subprocess.run",
+        lambda *_, **__: subprocess.CompletedProcess(args=["rclone", "copy"], returncode=0),
+    )
+    monkeypatch.setattr("scripts.backup_gdrive.main.send_whatsapp_message", lambda **_: True)
+
+    exit_code = backup_gdrive_main.main()
+
+    assert exit_code == 0
