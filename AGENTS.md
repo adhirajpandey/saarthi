@@ -64,6 +64,13 @@
   - config/env implications,
   - sample requests/responses for API changes.
 
+## Documentation Voice & Audience
+- Saarthi docs are for a personal project, not a multi-tenant/public product.
+- Prefer a personal, practical tone over enterprise/product marketing language.
+- Keep README high-level and narrative-first (what it is, why it exists, what it currently includes).
+- Avoid overloading README with deep setup/runbook detail unless explicitly requested.
+- Preserve the project tagline and identity: **Smart Aide for Actions, Retrieval, Tasks, Handling Information**.
+
 ## Security & Configuration
 - Do not commit secrets (`.env`, tokens, credentials, private keys).
 - Keep `.env.example` aligned with any new required settings.
