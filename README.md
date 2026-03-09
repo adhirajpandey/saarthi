@@ -25,7 +25,7 @@ At the moment, Saarthi helps with:
 - Operational continuity through repeatable backup and sync automation.
 - Maintainable growth by keeping APIs, shared infrastructure, and scripts organized by responsibility.
 
-## API Notes (Current)
+## API Notes (2026-03-10)
 
 - `GET /health`: basic health response with IST timestamp.
 - `POST /geofence/events`: admin-protected endpoint to send geofence notifications.
