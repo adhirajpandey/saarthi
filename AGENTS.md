@@ -1,40 +1,72 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `app/`: FastAPI application code (entrypoint in `app/main.py`, routers in `app/api/routers/`, dependencies/services by feature).
-- `shared/`: cross-cutting modules used by both API and scripts (settings, logging, notifications).
-- `scripts/`: operational CLIs (`backup_dbs`, `backup_gdrive`, `schedule_scripts`).
-- `tests/`: pytest suite (`test_*.py`) for config, API behavior, and geofence flows.
-- Runtime artifacts live in `logs/`; environment templates are in `.env.example`.
+- `app/`: FastAPI app code.
+  - `app/main.py`: app factory + lifespan startup.
+  - `app/api/routers/`: HTTP routes (`health`, `geofence`, `me`).
+  - `app/services/`: business logic (notifications, geofence engine, location persistence).
+  - `app/dependencies/`: request-time auth/config dependencies.
+- `shared/`: cross-cutting runtime utilities (typed settings, logging, notification clients).
+- `scripts/`: operational CLIs (`backup-dbs`, `backup-gdrive`, `schedule-scripts`).
+- `tests/`: pytest suite for API contracts, auth behavior, and service/script logic.
+- Runtime/generated artifacts:
+  - `logs/` for application logs.
+  - SQLite DB path and geofence mapping path are environment-configured.
 
 ## Build, Test, and Development Commands
-- `uv sync --dev`: install runtime + dev dependencies from `pyproject.toml`/`uv.lock`.
-- `uv run uvicorn app.main:app --reload`: run API locally with auto-reload.
-- `uv run pytest`: run all tests.
-- `uv run pytest tests/test_geofence.py -q`: run a focused test file.
-- `uv run backup-dbs` / `uv run backup-gdrive` / `uv run schedule-scripts`: run packaged automation scripts.
+- Install deps: `uv sync --dev`
+- Run API locally (reload): `uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+- Run all tests: `uv run pytest`
+- Run focused tests:
+  - `uv run pytest tests/test_geofence.py -q`
+  - `uv run pytest tests/test_me_location.py -q`
+- Run scripts:
+  - `uv run backup-dbs`
+  - `uv run backup-gdrive`
+  - `uv run schedule-scripts`
+- Docker local run:
+  - `docker compose up --build`
 
 ## Coding Style & Naming Conventions
-- Target Python `>=3.12`; follow PEP 8 with 4-space indentation and type hints where practical.
-- Module/function names: `snake_case`; classes: `PascalCase`; constants/env keys: `UPPER_SNAKE_CASE`.
-- Keep routers thin (`app/api/routers/*`), move logic into `app/services/*` or `shared/*`.
-- Use concise docstrings for non-obvious behavior and structured error responses via `AppError`.
-- Prefer per-module `logging.getLogger(__name__)` and only call `shared.logging.setup()` for global configuration; do not import a singleton logger from `shared.logging`.
+- Python `>=3.12`, PEP 8, 4-space indentation, and type hints for public-facing logic.
+- Naming:
+  - modules/functions/variables: `snake_case`
+  - classes: `PascalCase`
+  - constants/env keys: `UPPER_SNAKE_CASE`
+- Keep routers thin; move business decisions into `app/services/*` or `shared/*`.
+- Use structured API failures via `AppError` (consistent `{"error": {"code", "message"}}` shape).
+- Logging:
+  - use `logging.getLogger(__name__)` per module.
+  - initialize global logging only once via `shared.logging.setup_logging(...)` in startup.
 
 ## Testing Guidelines
-- Framework: `pytest` with `fastapi.testclient.TestClient` and fixtures in `tests/conftest.py`.
-- Name files `test_*.py` and test functions `test_<behavior>`.
-- Mock external side effects (email, network, backup commands) to keep tests deterministic.
-- Add/adjust tests with every behavior change, especially auth (`Authorization: Bearer <ADMIN_TOKEN>`) and endpoint contracts.
-- Include focused service/script unit tests (e.g., geofence notification result paths, script config generation) before merging behavior changes.
+- Framework: `pytest`, with `fastapi.testclient.TestClient` and fixtures in `tests/conftest.py`.
+- Test names: files `test_*.py`, functions `test_<behavior>`.
+- For behavior changes, update/add tests in the same PR.
+- Mock side effects (email, ntfy, SSH/WhatsApp bridge, external commands/network) to keep tests deterministic.
+- Prefer contract tests for:
+  - admin auth (`Authorization: Bearer <ADMIN_TOKEN>`),
+  - endpoint response models,
+  - geofence engine side effects and dedupe behavior.
 
 ## Commit & Pull Request Guidelines
-- Follow Conventional Commits seen in history: `feat(scope): ...`, `fix(scope): ...`, `refactor(scope): ...`, `test(scope): ...`.
-- Keep commits focused; use imperative, scoped subjects (example: `fix(backup.py): handle rclone timeout`).
-- PRs should include: purpose, key changes, test evidence (`uv run pytest` output summary), config/env updates, and linked issue/PR when applicable.
-- For API changes, include sample request/response or screenshots of docs/testing client.
+- Use Conventional Commits:
+  - `feat(scope): ...`
+  - `fix(scope): ...`
+  - `docs(scope): ...`
+  - `refactor(scope): ...`
+  - `test(scope): ...`
+- Keep commits scoped and reviewable.
+- PR should include:
+  - purpose/problem statement,
+  - what changed,
+  - test evidence (or why tests were skipped),
+  - config/env implications,
+  - sample requests/responses for API changes.
 
-## Security & Configuration Tips
-- Never commit `.env` secrets; start from `.env.example`.
-- Rotate `ADMIN_TOKEN` and notification credentials before sharing environments.
-- Validate all new env vars in shared settings to fail fast on startup.
+## Security & Configuration
+- Do not commit secrets (`.env`, tokens, credentials, private keys).
+- Keep `.env.example` aligned with any new required settings.
+- Validate new env vars in `shared/settings.py` to fail fast at startup.
+- Protected endpoints must keep admin token guard unless intentionally changed.
+- For notification channels, prefer explicit enable flags (`EMAIL_ENABLED`, `NTFY_ENABLED`, `WHATSAPP_ENABLED`) and graceful fallback when disabled.

@@ -1,32 +1,70 @@
-# Saarthi - Smart Aide for Actions, Retrieval, Tasks, Handling Information
+# Saarthi
 
-Saarthi is a personal, ever-evolving project where I bring together tools, scripts, APIs, and experiments in one place. Right now, it includes a web application and a set of utility scripts, and it keeps growing as I build things to solve real problems, automate repetitive work, and explore new ideas.
+Saarthi is a FastAPI-based backend + automation toolkit for location/geofence workflows, notifications, and operational backup jobs.
 
-## What Saarthi Is
+## Current Scope
+- FastAPI service with typed settings and structured error responses.
+- Admin-protected geofence + location ingestion endpoints.
+- Notification pipeline for geofence events (email / ntfy / WhatsApp bridge, based on config).
+- Utility scripts for DB backup, Google Drive sync, and scheduler orchestration.
 
-Saarthi is a practical workspace for building and operating useful software, not a fixed product.
+## Project Structure
+- `app/` — API routes, dependencies, services, schemas.
+- `shared/` — settings, logging, notification utilities.
+- `scripts/` — operational CLI jobs.
+- `tests/` — pytest test suite.
 
-## What It Includes Today
+## Prerequisites
+- Python `>=3.12`
+- [`uv`](https://docs.astral.sh/uv/) for dependency and task execution
+- Optional: Docker + Docker Compose
 
-- A FastAPI web application for service health and monitoring workflows, protected admin access, and geofence-driven notifications.
-- Utility scripts for operational automation, including database backups, Google Drive sync, and scheduler support.
-- Shared infrastructure for typed settings, logging, and notification delivery so both app and scripts stay consistent.
+## Local Setup (uv)
+1. Clone the repo.
+2. Create env file:
+   - `cp .env.example .env`
+3. Fill required values in `.env` (at minimum `ADMIN_TOKEN` and app/runtime paths).
+4. Install dependencies:
+   - `uv sync --dev`
+5. Run the API:
+   - `uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
 
-## How It's Evolving
+## Docker Setup
+- Build + run:
+  - `docker compose up --build`
+- The app is exposed on port `8000`.
 
-As new use cases come up, Saarthi expands with new components and experiments while maintaining a clean separation between web behavior and operational automation.
+## Running Tests
+- Full suite:
+  - `uv run pytest`
+- Focused runs:
+  - `uv run pytest tests/test_geofence.py -q`
+  - `uv run pytest tests/test_me_location.py -q`
 
-## Current Functional Snapshot
+## Script Commands
+- Database backup:
+  - `uv run backup-dbs`
+- Google Drive sync backup:
+  - `uv run backup-gdrive`
+- Scheduler helper:
+  - `uv run schedule-scripts`
 
-At the moment, Saarthi helps with:
+## API Endpoints (Current)
+- `GET /` — welcome/root message.
+- `GET /health` — service health + IST timestamp.
+- `POST /geofence/events` — submit geofence transition event (admin token required).
+- `POST /me/location` — persist location ping + trigger geofence engine in background (admin token required).
 
-- Observability through simple health and monitoring endpoints.
-- Event-triggered communication through geofence notification flows via `POST /geofence/events`.
-- Operational continuity through repeatable backup and sync automation.
-- Maintainable growth by keeping APIs, shared infrastructure, and scripts organized by responsibility.
+Auth for protected endpoints:
+- Header: `Authorization: Bearer <ADMIN_TOKEN>`
 
-## API Notes
+## Configuration Notes
+- Environment variables are defined in `.env.example`.
+- Keep `.env.example` updated whenever adding/changing required settings.
+- Never commit secrets.
 
-- `GET /health`: basic health response with IST timestamp.
-- `POST /geofence/events`: admin protected endpoint to send geofence notifications.
-- Protected routes use `Authorization: Bearer <ADMIN_TOKEN>`.
+## Development Conventions
+- Keep routers lightweight; put business logic in services.
+- Use structured `AppError` responses for expected failure paths.
+- Add/update tests with behavior changes.
+- Follow Conventional Commits (`feat(...)`, `fix(...)`, `docs(...)`, etc.).
