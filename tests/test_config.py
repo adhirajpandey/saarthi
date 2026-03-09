@@ -69,7 +69,13 @@ class TestConfig:
         with pytest.raises(ValueError, match="WHATSAPP_"):
             get_api_settings()
 
-    def test_whatsapp_only_config_does_not_require_smtp(self, monkeypatch):
+    def test_whatsapp_only_config_does_not_require_smtp(self, monkeypatch, tmp_path):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("ADMIN_TOKEN", "test-token")
+        monkeypatch.setenv("GEOFENCE_SUBJECT_TEMPLATE", "Subject {area} {event}")
+        monkeypatch.setenv("GEOFENCE_EMAIL_TEMPLATE", "Email {area} {event}")
+        monkeypatch.setenv("GEOFENCE_WHATSAPP_TEMPLATE", "WA {area} {event}")
+        monkeypatch.setenv("GEOFENCE_UPDATES_RECIPIENT", "alerts@example.com")
         monkeypatch.setenv("EMAIL_ENABLED", "false")
         monkeypatch.setenv("WHATSAPP_ENABLED", "true")
         monkeypatch.setenv("WHATSAPP_SSH_HOST", "ssh.example.com")
@@ -77,7 +83,26 @@ class TestConfig:
         monkeypatch.setenv("WHATSAPP_TARGET_FAMILY", "+911234567890")
         monkeypatch.delenv("SMTP_EMAIL", raising=False)
         monkeypatch.delenv("SMTP_APP_PASSWORD", raising=False)
+        monkeypatch.delenv("SMTP_HOST", raising=False)
+        monkeypatch.delenv("SMTP_PORT", raising=False)
 
         settings = get_api_settings()
         assert settings.email_enabled is False
         assert settings.whatsapp_enabled is True
+
+    def test_email_enabled_requires_smtp_host_and_port(self, monkeypatch, tmp_path):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("ADMIN_TOKEN", "test-token")
+        monkeypatch.setenv("GEOFENCE_SUBJECT_TEMPLATE", "Subject {area} {event}")
+        monkeypatch.setenv("GEOFENCE_EMAIL_TEMPLATE", "Email {area} {event}")
+        monkeypatch.setenv("GEOFENCE_WHATSAPP_TEMPLATE", "WA {area} {event}")
+        monkeypatch.setenv("GEOFENCE_UPDATES_RECIPIENT", "alerts@example.com")
+        monkeypatch.setenv("EMAIL_ENABLED", "true")
+        monkeypatch.setenv("WHATSAPP_ENABLED", "false")
+        monkeypatch.setenv("SMTP_EMAIL", "smtp@example.com")
+        monkeypatch.setenv("SMTP_APP_PASSWORD", "secret-password")
+        monkeypatch.delenv("SMTP_HOST", raising=False)
+        monkeypatch.delenv("SMTP_PORT", raising=False)
+
+        with pytest.raises(ValueError, match="SMTP_HOST"):
+            get_api_settings()

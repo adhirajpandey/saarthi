@@ -160,8 +160,8 @@ class ApiSettings(RuntimeSettings):
     geofence_sender_name: str | None = None
     smtp_email: str | None = None
     smtp_app_password: str | None = None
-    smtp_host: str
-    smtp_port: int
+    smtp_host: str | None = None
+    smtp_port: int | None = None
 
     @model_validator(mode="after")
     def _validate_api_notification_channels(self) -> "ApiSettings":
@@ -175,13 +175,22 @@ class ApiSettings(RuntimeSettings):
                 raise ValueError("SMTP_EMAIL is required when EMAIL_ENABLED is true")
             if not self.smtp_app_password:
                 raise ValueError("SMTP_APP_PASSWORD is required when EMAIL_ENABLED is true")
+            if not self.smtp_host:
+                raise ValueError("SMTP_HOST is required when EMAIL_ENABLED is true")
+            if self.smtp_port is None:
+                raise ValueError("SMTP_PORT is required when EMAIL_ENABLED is true")
         self._validate_whatsapp_transport()
         if self.whatsapp_enabled and not self.whatsapp_target_family:
             raise ValueError("WHATSAPP_TARGET_FAMILY is required when WHATSAPP_ENABLED is true")
         return self
 
     def smtp_settings(self) -> SmtpSettings:
-        if not self.smtp_email or not self.smtp_app_password:
+        if (
+            not self.smtp_email
+            or not self.smtp_app_password
+            or not self.smtp_host
+            or self.smtp_port is None
+        ):
             raise ValueError("SMTP settings are not configured")
         return SmtpSettings(
             email=self.smtp_email,
