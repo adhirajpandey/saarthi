@@ -8,10 +8,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from shared.constants import (
     DEFAULT_APP_NAME,
     DEFAULT_EMAIL_ENABLED,
+    DEFAULT_GEOFENCE_MAPPING_PATH,
     DEFAULT_LOG_DATE_FORMAT,
     DEFAULT_LOG_FILE,
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_LEVEL,
+    DEFAULT_LOCATION_DB_PATH,
     DEFAULT_NTFY_ENABLED,
     DEFAULT_WHATSAPP_ENABLED,
     DEFAULT_WHATSAPP_TIMEOUT_SECONDS,
@@ -148,6 +150,8 @@ class ApiSettings(RuntimeSettings):
     """Settings required by the FastAPI runtime."""
 
     app_name: str = DEFAULT_APP_NAME
+    location_db_path: str = DEFAULT_LOCATION_DB_PATH
+    geofence_mapping_path: str = DEFAULT_GEOFENCE_MAPPING_PATH
     admin_token: str
     geofence_subject_template: str
     geofence_email_template: str
