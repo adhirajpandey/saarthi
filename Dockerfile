@@ -18,11 +18,10 @@ RUN uv sync --frozen --no-dev
 COPY app ./app
 COPY shared ./shared
 COPY scripts ./scripts
-COPY config.example.py ./config.example.py
 COPY README.md ./README.md
 
 # Runtime directories used by default settings
-RUN mkdir -p logs data && cp config.example.py config.py
+RUN mkdir -p logs data
 
 EXPOSE 8000
 

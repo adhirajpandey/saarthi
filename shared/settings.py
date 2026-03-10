@@ -61,13 +61,13 @@ CONFIG_OWNED_KEYS = frozenset(
 
 ALL_SETTINGS_KEYS = ENV_OWNED_KEYS | CONFIG_OWNED_KEYS
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-CONFIG_FILE = PROJECT_ROOT / "config.py"
+CONFIG_FILE = PROJECT_ROOT / "data" / "config.py"
 ENV_FILE = PROJECT_ROOT / ".env"
 
 
 def _load_repo_config_values() -> dict[str, Any]:
     if not CONFIG_FILE.exists():
-        raise ValueError("Missing config.py. Create it from config.example.py")
+        raise ValueError("Missing data/config.py. Create it from config.example.py")
 
     payload = runpy.run_path(str(CONFIG_FILE))
     config = payload.get("CONFIG")

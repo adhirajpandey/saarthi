@@ -118,7 +118,7 @@ class TestConfig:
         missing = tmp_path / "missing-config.py"
         monkeypatch.setattr(settings_module, "CONFIG_FILE", missing)
 
-        with pytest.raises(ValueError, match="Missing config.py"):
+        with pytest.raises(ValueError, match="Missing data/config.py"):
             get_api_settings()
 
     def test_fails_when_config_object_is_missing(self):
