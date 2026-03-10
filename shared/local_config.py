@@ -51,8 +51,13 @@ def load_local_config(*, required: bool = False) -> dict[str, Any]:
     if isinstance(config, dict):
         return {str(key): value for key, value in config.items()}
 
-    return {
-        key: value
-        for key, value in vars(module).items()
-        if key.isupper() and not key.startswith("_")
-    }
+    merged: dict[str, Any] = {}
+    for key, value in vars(module).items():
+        if key.startswith("_"):
+            continue
+        if key.endswith("_CONFIG") and isinstance(value, dict):
+            merged.update({str(k): v for k, v in value.items()})
+        elif key.isupper() and not isinstance(value, dict):
+            merged[key] = value
+
+    return merged
