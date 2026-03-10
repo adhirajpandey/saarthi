@@ -5,18 +5,22 @@ import json
 import sqlite3
 from pathlib import Path
 import runpy
+import sys
+import types
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
 from app.main import app
-import shared.settings as settings_module
 
-_EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.example.py"
+_EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "app" / "config" / "config.example.py"
 _BASE_CONFIG = runpy.run_path(str(_EXAMPLE_CONFIG_PATH))["CONFIG"]
 
+
 def _write_config(cfg: dict) -> None:
-    settings_module.CONFIG_FILE.write_text(f"CONFIG = {repr(cfg)}\n", encoding="utf-8")
+    module = types.ModuleType("tests.runtime_config")
+    module.CONFIG = cfg
+    sys.modules["tests.runtime_config"] = module
 
 
 def test_me_location_requires_token() -> None:

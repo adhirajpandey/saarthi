@@ -5,16 +5,15 @@ import json
 import os
 from pathlib import Path
 import runpy
+import sys
+import types
 
 import pytest
 
 import shared.settings as settings_module
 
-_EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.example.py"
+_EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "app" / "config" / "config.example.py"
 _BASE_CONFIG = runpy.run_path(str(_EXAMPLE_CONFIG_PATH))["CONFIG"]
-
-def _write_config(path: Path, config: dict) -> None:
-    path.write_text(f"CONFIG = {repr(config)}\n", encoding="utf-8")
 
 
 @pytest.fixture(autouse=True)
@@ -36,7 +35,6 @@ def block_real_whatsapp_send(monkeypatch):
 @pytest.fixture(autouse=True)
 def test_settings_environment(tmp_path, monkeypatch):
     """Provide stable settings values for tests."""
-    config_path = tmp_path / "config.py"
     env_path = tmp_path / ".env"
     env_path.write_text("", encoding="utf-8")
 
@@ -61,10 +59,13 @@ def test_settings_environment(tmp_path, monkeypatch):
     cfg["LOCATION_DB_PATH"] = str(tmp_path / "saarthi-test.db")
     cfg["GEOFENCE_MAPPING_PATH"] = str(mapping_path)
     cfg["WHATSAPP_ENABLED"] = False
-    _write_config(config_path, cfg)
 
-    monkeypatch.setattr(settings_module, "CONFIG_FILE", config_path)
     monkeypatch.setattr(settings_module, "ENV_FILE", env_path)
+    monkeypatch.setattr(settings_module, "CONFIG_MODULE_PATH", "tests.runtime_config")
+    sys.modules.pop("tests.runtime_config", None)
+    runtime_module = types.ModuleType("tests.runtime_config")
+    runtime_module.CONFIG = cfg
+    sys.modules["tests.runtime_config"] = runtime_module
 
     env_vars = {
         "ADMIN_TOKEN": "test-admin-token",
@@ -84,3 +85,4 @@ def test_settings_environment(tmp_path, monkeypatch):
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = original
+        sys.modules.pop("tests.runtime_config", None)

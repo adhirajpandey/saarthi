@@ -11,7 +11,9 @@ wheels/
 
 todo.txt
 .env
-config.py
+/config.py
+/config.example.py
+/app/config/config.py
 logs
 data/
 sessions/

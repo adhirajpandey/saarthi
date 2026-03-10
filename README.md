@@ -28,8 +28,8 @@ At the moment, Saarthi helps with:
 ## Configuration Notes
 
 - Use `.env` for secrets and connection URLs.
-- Use `config.py` for non-sensitive runtime configuration.
-- `config.example.py` and `.env.example` show the expected shape.
+- Use `app/config/config.py` for non-sensitive runtime configuration.
+- `app/config/config.example.py` and `.env.example` show the expected shape.
 
 ## API Notes (2026-03-10)
 

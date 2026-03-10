@@ -12,7 +12,7 @@ from scripts.backup_gdrive.main import _build_whatsapp_summary
 from scripts.schedule_scripts.main import generate_files
 from shared.settings import BackupDbSettings, BackupGdriveSettings, SchedulerSettings
 
-_EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.example.py"
+_EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "app" / "config" / "config.example.py"
 _BASE_CONFIG = runpy.run_path(str(_EXAMPLE_CONFIG_PATH))["CONFIG"]
 
 

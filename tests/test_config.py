@@ -3,17 +3,22 @@
 import copy
 from pathlib import Path
 import runpy
+import sys
+import types
 
 import pytest
 
 import shared.settings as settings_module
 from shared.settings import get_api_settings
 
-_EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.example.py"
+_EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "app" / "config" / "config.example.py"
 _BASE_CONFIG = runpy.run_path(str(_EXAMPLE_CONFIG_PATH))["CONFIG"]
 
+
 def _write_config(cfg: dict) -> None:
-    settings_module.CONFIG_FILE.write_text(f"CONFIG = {repr(cfg)}\n", encoding="utf-8")
+    module = types.ModuleType("tests.runtime_config")
+    module.CONFIG = cfg
+    sys.modules["tests.runtime_config"] = module
 
 
 class TestConfig:
@@ -44,7 +49,7 @@ class TestConfig:
         assert first.admin_token == "first-token"
         assert second.admin_token == "second-token"
 
-    def test_fails_when_all_notification_channels_disabled(self, monkeypatch):
+    def test_fails_when_all_notification_channels_disabled(self):
         cfg = copy.deepcopy(_BASE_CONFIG)
         cfg["EMAIL_ENABLED"] = False
         cfg["WHATSAPP_ENABLED"] = False
@@ -56,7 +61,7 @@ class TestConfig:
         ):
             get_api_settings()
 
-    def test_fails_when_whatsapp_enabled_without_required_values(self, monkeypatch):
+    def test_fails_when_whatsapp_enabled_without_required_values(self):
         cfg = copy.deepcopy(_BASE_CONFIG)
         cfg["EMAIL_ENABLED"] = False
         cfg["WHATSAPP_ENABLED"] = True
@@ -103,26 +108,28 @@ class TestConfig:
     def test_fails_when_config_owned_key_is_set_in_env(self, monkeypatch):
         monkeypatch.setenv("EMAIL_ENABLED", "false")
 
-        with pytest.raises(ValueError, match="config.py-owned keys"):
+        with pytest.raises(ValueError, match="app/config/config.py-owned keys"):
             get_api_settings()
 
-    def test_fails_when_config_py_missing_required_key(self, monkeypatch):
+    def test_fails_when_config_py_missing_required_key(self):
         cfg = copy.deepcopy(_BASE_CONFIG)
         del cfg["GEOFENCE_SUBJECT_TEMPLATE"]
         _write_config(cfg)
 
-        with pytest.raises(ValueError, match="config.py is missing required keys"):
+        with pytest.raises(ValueError, match="app/config/config.py is missing required keys"):
             get_api_settings()
 
-    def test_fails_when_config_file_is_missing(self, monkeypatch, tmp_path):
-        missing = tmp_path / "missing-config.py"
-        monkeypatch.setattr(settings_module, "CONFIG_FILE", missing)
+    def test_fails_when_config_module_is_missing(self, monkeypatch):
+        monkeypatch.setattr(settings_module, "CONFIG_MODULE_PATH", "tests.missing_runtime_config")
+        sys.modules.pop("tests.missing_runtime_config", None)
 
-        with pytest.raises(ValueError, match="Missing data/config.py"):
+        with pytest.raises(ValueError, match="Missing app/config/config.py"):
             get_api_settings()
 
     def test_fails_when_config_object_is_missing(self):
-        settings_module.CONFIG_FILE.write_text("NOT_CONFIG = {}\n", encoding="utf-8")
+        module = types.ModuleType("tests.runtime_config")
+        module.NOT_CONFIG = {}
+        sys.modules["tests.runtime_config"] = module
 
         with pytest.raises(ValueError, match="must define CONFIG"):
             get_api_settings()

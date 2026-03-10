@@ -1,7 +1,7 @@
 """Typed runtime settings for API and scripts."""
 
+import importlib
 import os
-import runpy
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, cast
@@ -60,58 +60,76 @@ CONFIG_OWNED_KEYS = frozenset(
 )
 
 ALL_SETTINGS_KEYS = ENV_OWNED_KEYS | CONFIG_OWNED_KEYS
+CONFIG_MODULE_PATH = "app.config.config"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-CONFIG_FILE = PROJECT_ROOT / "data" / "config.py"
 ENV_FILE = PROJECT_ROOT / ".env"
 
 
-def _load_repo_config_values() -> dict[str, Any]:
-    if not CONFIG_FILE.exists():
-        raise ValueError("Missing data/config.py. Create it from config.example.py")
+def _import_repo_config() -> Mapping[str, Any]:
+    try:
+        module = importlib.import_module(CONFIG_MODULE_PATH)
+    except ModuleNotFoundError as exc:
+        if exc.name == CONFIG_MODULE_PATH:
+            raise ValueError(
+                "Missing app/config/config.py. Create it from app/config/config.example.py"
+            ) from exc
+        raise
 
-    payload = runpy.run_path(str(CONFIG_FILE))
-    config = payload.get("CONFIG")
+    config = getattr(module, "CONFIG", None)
     if not isinstance(config, Mapping):
-        raise ValueError("config.py must define CONFIG as a dictionary")
+        raise ValueError("app/config/config.py must define CONFIG as a dictionary")
+    return config
 
+
+def _validate_repo_config(config: Mapping[str, Any]) -> None:
     wrong_keys = sorted(key for key in config if key in ENV_OWNED_KEYS)
     if wrong_keys:
-        raise ValueError(f"config.py contains env-owned keys: {', '.join(wrong_keys)}")
+        raise ValueError(f"app/config/config.py contains env-owned keys: {', '.join(wrong_keys)}")
 
     missing_keys = sorted(key for key in CONFIG_OWNED_KEYS if key not in config)
     if missing_keys:
-        raise ValueError(f"config.py is missing required keys: {', '.join(missing_keys)}")
+        raise ValueError(f"app/config/config.py is missing required keys: {', '.join(missing_keys)}")
 
+
+def _load_repo_config_values() -> dict[str, Any]:
+    config = _import_repo_config()
+    _validate_repo_config(config)
     return {key: config[key] for key in CONFIG_OWNED_KEYS}
 
 
-def _load_env_values() -> dict[str, str]:
-    env_values: dict[str, str] = {}
+def _collect_env_values() -> dict[str, str]:
+    values: dict[str, str] = {}
 
     for key, value in dotenv_values(ENV_FILE).items():
         if key in ALL_SETTINGS_KEYS and isinstance(value, str) and value.strip():
-            env_values[key] = value
+            values[key] = value
 
     for key in ALL_SETTINGS_KEYS:
         value = os.environ.get(key)
         if value is not None and value.strip():
-            env_values[key] = value
+            values[key] = value
 
-    wrong_keys = sorted(key for key in env_values if key in CONFIG_OWNED_KEYS)
+    return values
+
+
+def _validate_env_values(values: Mapping[str, str]) -> None:
+    wrong_keys = sorted(key for key in values if key in CONFIG_OWNED_KEYS)
     if wrong_keys:
         raise ValueError(
-            ".env/environment contains config.py-owned keys: "
+            ".env/environment contains app/config/config.py-owned keys: "
             f"{', '.join(wrong_keys)}"
         )
 
-    return {key: value for key, value in env_values.items() if key in ENV_OWNED_KEYS}
+
+def _load_env_values() -> dict[str, str]:
+    values = _collect_env_values()
+    _validate_env_values(values)
+    return {key: value for key, value in values.items() if key in ENV_OWNED_KEYS}
 
 
 def _build_payload() -> dict[str, Any]:
-    config_values = _load_repo_config_values()
-    env_values = _load_env_values()
-    merged = {**config_values, **env_values}
-    return {key.lower(): value for key, value in merged.items()}
+    payload = {**_load_repo_config_values(), **_load_env_values()}
+    return {key.lower(): value for key, value in payload.items()}
 
 
 class LoggingSettings(BaseModel):

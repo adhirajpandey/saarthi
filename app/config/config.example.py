@@ -1,6 +1,6 @@
 """Example repository-managed runtime configuration.
 
-Copy this file to `config.py` and adjust non-sensitive operational values.
+Copy this file to `app/config/config.py` and adjust non-sensitive operational values.
 Keep secrets and URL/DB connection values in `.env`.
 """
 
