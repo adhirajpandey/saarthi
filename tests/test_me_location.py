@@ -15,6 +15,9 @@ import shared.settings as settings_module
 _EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.example.py"
 _BASE_CONFIG = runpy.run_path(str(_EXAMPLE_CONFIG_PATH))["CONFIG"]
 
+def _write_config(cfg: dict) -> None:
+    settings_module.CONFIG_FILE.write_text(f"CONFIG = {repr(cfg)}\n", encoding="utf-8")
+
 
 def test_me_location_requires_token() -> None:
     with TestClient(app) as client:
@@ -49,7 +52,7 @@ def test_me_location_persists_row(monkeypatch, tmp_path: Path) -> None:
     cfg = copy.deepcopy(_BASE_CONFIG)
     cfg["LOCATION_DB_PATH"] = str(db_path)
     cfg["GEOFENCE_MAPPING_PATH"] = str(mapping_path)
-    monkeypatch.setattr(settings_module, "_load_repo_config_values", lambda: copy.deepcopy(cfg))
+    _write_config(cfg)
 
     with TestClient(app) as client:
         response = client.post(

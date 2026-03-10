@@ -12,6 +12,9 @@ from shared.settings import get_api_settings
 _EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.example.py"
 _BASE_CONFIG = runpy.run_path(str(_EXAMPLE_CONFIG_PATH))["CONFIG"]
 
+def _write_config(cfg: dict) -> None:
+    settings_module.CONFIG_FILE.write_text(f"CONFIG = {repr(cfg)}\n", encoding="utf-8")
+
 
 class TestConfig:
     """Test configuration values match expected settings."""
@@ -45,7 +48,7 @@ class TestConfig:
         cfg = copy.deepcopy(_BASE_CONFIG)
         cfg["EMAIL_ENABLED"] = False
         cfg["WHATSAPP_ENABLED"] = False
-        monkeypatch.setattr(settings_module, "_load_repo_config_values", lambda: copy.deepcopy(cfg))
+        _write_config(cfg)
 
         with pytest.raises(
             ValueError,
@@ -60,7 +63,7 @@ class TestConfig:
         cfg["WHATSAPP_SSH_HOST"] = None
         cfg["WHATSAPP_REMOTE_SCRIPT_PATH"] = None
         cfg["WHATSAPP_TARGET_FAMILY"] = None
-        monkeypatch.setattr(settings_module, "_load_repo_config_values", lambda: copy.deepcopy(cfg))
+        _write_config(cfg)
 
         with pytest.raises(ValueError, match="WHATSAPP_"):
             get_api_settings()
@@ -72,7 +75,7 @@ class TestConfig:
         cfg["WHATSAPP_SSH_HOST"] = "ssh.example.com"
         cfg["WHATSAPP_REMOTE_SCRIPT_PATH"] = "/opt/send_whatsapp.sh"
         cfg["WHATSAPP_TARGET_FAMILY"] = "+911234567890"
-        monkeypatch.setattr(settings_module, "_load_repo_config_values", lambda: copy.deepcopy(cfg))
+        _write_config(cfg)
 
         monkeypatch.delenv("SMTP_EMAIL", raising=False)
         monkeypatch.delenv("SMTP_APP_PASSWORD", raising=False)
@@ -87,7 +90,7 @@ class TestConfig:
         cfg = copy.deepcopy(_BASE_CONFIG)
         cfg["EMAIL_ENABLED"] = True
         cfg["WHATSAPP_ENABLED"] = False
-        monkeypatch.setattr(settings_module, "_load_repo_config_values", lambda: copy.deepcopy(cfg))
+        _write_config(cfg)
 
         monkeypatch.setenv("SMTP_EMAIL", "smtp@example.com")
         monkeypatch.setenv("SMTP_APP_PASSWORD", "secret-password")
@@ -106,7 +109,20 @@ class TestConfig:
     def test_fails_when_config_py_missing_required_key(self, monkeypatch):
         cfg = copy.deepcopy(_BASE_CONFIG)
         del cfg["GEOFENCE_SUBJECT_TEMPLATE"]
-        monkeypatch.setattr(settings_module, "_load_repo_config_values", lambda: copy.deepcopy(cfg))
+        _write_config(cfg)
 
-        with pytest.raises(ValueError, match="Field required"):
+        with pytest.raises(ValueError, match="config.py is missing required keys"):
+            get_api_settings()
+
+    def test_fails_when_config_file_is_missing(self, monkeypatch, tmp_path):
+        missing = tmp_path / "missing-config.py"
+        monkeypatch.setattr(settings_module, "CONFIG_FILE", missing)
+
+        with pytest.raises(ValueError, match="Missing config.py"):
+            get_api_settings()
+
+    def test_fails_when_config_object_is_missing(self):
+        settings_module.CONFIG_FILE.write_text("NOT_CONFIG = {}\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="must define CONFIG"):
             get_api_settings()

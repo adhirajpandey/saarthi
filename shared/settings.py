@@ -60,8 +60,9 @@ CONFIG_OWNED_KEYS = frozenset(
 )
 
 ALL_SETTINGS_KEYS = ENV_OWNED_KEYS | CONFIG_OWNED_KEYS
-CONFIG_FILE = Path("config.py")
-ENV_FILE = Path(".env")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+CONFIG_FILE = PROJECT_ROOT / "config.py"
+ENV_FILE = PROJECT_ROOT / ".env"
 
 
 def _load_repo_config_values() -> dict[str, Any]:
