@@ -1,6 +1,6 @@
-"""Typed runtime settings for API and scripts."""
+"""Typed runtime settings for API and scripts with strict config/env separation."""
 
-from typing import cast
+from typing import Any, cast
 
 from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,8 +18,9 @@ from shared.constants import (
     DEFAULT_WHATSAPP_ENABLED,
     DEFAULT_WHATSAPP_TIMEOUT_SECONDS,
 )
+from shared.local_config import load_local_config
 
-_SETTINGS_CONFIG = SettingsConfigDict(
+_SECRET_SETTINGS_CONFIG = SettingsConfigDict(
     env_file=".env",
     env_file_encoding="utf-8",
     env_ignore_empty=True,
@@ -62,10 +63,22 @@ class WhatsAppSettings(BaseModel):
     timeout_seconds: int = DEFAULT_WHATSAPP_TIMEOUT_SECONDS
 
 
-class RuntimeSettings(BaseSettings):
-    """Base settings with shared logging configuration."""
+class SecretSettings(BaseSettings):
+    """Secret values loaded only from environment variables."""
 
-    model_config = _SETTINGS_CONFIG
+    model_config = _SECRET_SETTINGS_CONFIG
+
+    admin_token: str | None = None
+    smtp_app_password: str | None = None
+    aws_access_key: str | None = None
+    aws_secret_access_key: str | None = None
+    vidwiz_db_url: str | None = None
+    trackcrow_db_url: str | None = None
+    ntfy_token: str | None = None
+
+
+class RuntimeSettings(BaseModel):
+    """Non-secret runtime values loaded only from config.py."""
 
     log_level: str = DEFAULT_LOG_LEVEL
     log_format: str = DEFAULT_LOG_FORMAT
@@ -264,16 +277,51 @@ class SchedulerSettings(BaseModel):
         return self
 
 
+def _config_to_model_input(model_cls: type[BaseModel], config: dict[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    for field_name in model_cls.model_fields:
+        env_style_key = field_name.upper()
+        if env_style_key in config:
+            payload[field_name] = config[env_style_key]
+    return payload
+
+
+def _merge_secret_payload(payload: dict[str, Any], secrets: SecretSettings) -> dict[str, Any]:
+    merged = dict(payload)
+    secret_map = {
+        "ADMIN_TOKEN": "admin_token",
+        "SMTP_APP_PASSWORD": "smtp_app_password",
+        "AWS_ACCESS_KEY": "aws_access_key",
+        "AWS_SECRET_ACCESS_KEY": "aws_secret_access_key",
+        "VIDWIZ_DB_URL": "vidwiz_db_url",
+        "TRACKCROW_DB_URL": "trackcrow_db_url",
+        "NTFY_TOKEN": "ntfy_token",
+    }
+    for _, field_name in secret_map.items():
+        value = getattr(secrets, field_name)
+        if value is not None:
+            merged[field_name] = value
+    return merged
+
+
+def _build_settings(model_cls: type[BaseModel]) -> BaseModel:
+    config = load_local_config(required=True)
+    secrets = SecretSettings()
+    payload = _config_to_model_input(model_cls, config)
+    payload = _merge_secret_payload(payload, secrets)
+    return model_cls(**payload)
+
+
 def get_api_settings() -> ApiSettings:
     """Return API settings."""
-    return ApiSettings()
+    return cast(ApiSettings, _build_settings(ApiSettings))
 
 
 def get_backup_db_settings() -> BackupDbSettings:
     """Return DB backup settings."""
-    return BackupDbSettings()
+    return cast(BackupDbSettings, _build_settings(BackupDbSettings))
 
 
 def get_backup_gdrive_settings() -> BackupGdriveSettings:
     """Return GDrive backup settings."""
-    return BackupGdriveSettings()
+    return cast(BackupGdriveSettings, _build_settings(BackupGdriveSettings))

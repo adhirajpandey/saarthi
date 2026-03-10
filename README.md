@@ -25,6 +25,16 @@ At the moment, Saarthi helps with:
 - Operational continuity through repeatable backup and sync automation.
 - Maintainable growth by keeping APIs, shared infrastructure, and scripts organized by responsibility.
 
+## Runtime Config Pattern (2026-03-10)
+
+- Keep **secrets** in `.env` (tokens, passwords, DB URLs, auth keys).
+- Keep **non-secret runtime values** in local `config.py` (gitignored).
+- Start from `config.example.py` and create your own `config.py`.
+- These flows are intentionally separate:
+  - non-secrets are read from `config.py` only,
+  - secrets are read from env only.
+- Saarthi fails fast on startup if required values are missing from either source.
+
 ## API Notes (2026-03-10)
 
 - `GET /health`: basic health response with IST timestamp.

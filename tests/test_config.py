@@ -1,36 +1,40 @@
-"""Tests for configuration loading.
-
-These tests verify that the CONFIG object loads correctly with expected values.
-"""
+"""Tests for configuration loading split between config.py and env secrets."""
 
 import pytest
 
 from shared.settings import get_api_settings
 
 
-class TestConfig:
-    """Test configuration values match expected settings."""
+BASE_CONFIG = {
+    "APP_NAME": "SAARTHI",
+    "EMAIL_ENABLED": True,
+    "NTFY_ENABLED": False,
+    "WHATSAPP_ENABLED": False,
+    "GEOFENCE_SUBJECT_TEMPLATE": "Subject {area} {event}",
+    "GEOFENCE_EMAIL_TEMPLATE": "Email {area} {event}",
+    "GEOFENCE_WHATSAPP_TEMPLATE": "WA {area} {event}",
+    "GEOFENCE_UPDATES_RECIPIENT": "alerts@example.com",
+    "SMTP_EMAIL": "smtp@example.com",
+    "SMTP_HOST": "smtp.example.com",
+    "SMTP_PORT": 587,
+}
 
-    def test_base_config(self):
-        """Test base configuration values."""
+
+class TestConfig:
+    def test_base_config(self, monkeypatch):
+        monkeypatch.setattr("shared.settings.load_local_config", lambda required=True: BASE_CONFIG)
         settings = get_api_settings()
         assert settings.app_name == "SAARTHI"
 
-    def test_admin_token_is_set(self):
-        """Test admin token is loaded from environment."""
-        settings = get_api_settings()
-        assert settings.admin_token is not None
-        assert len(settings.admin_token) > 0
+    def test_admin_token_is_set_from_environment(self, monkeypatch):
+        monkeypatch.setattr("shared.settings.load_local_config", lambda required=True: BASE_CONFIG)
+        monkeypatch.setenv("ADMIN_TOKEN", "env-admin-token")
 
-    def test_smtp_config_is_set(self):
-        """Test SMTP configuration values are present."""
         settings = get_api_settings()
-        smtp = settings.smtp_settings()
-        assert smtp.email
-        assert smtp.app_password
+        assert settings.admin_token == "env-admin-token"
 
-    def test_settings_getter_returns_fresh_values(self, monkeypatch):
-        """Test getter reads latest environment values per call."""
+    def test_settings_getter_returns_fresh_secret_values(self, monkeypatch):
+        monkeypatch.setattr("shared.settings.load_local_config", lambda required=True: BASE_CONFIG)
         monkeypatch.setenv("ADMIN_TOKEN", "first-token")
         first = get_api_settings()
 
@@ -41,68 +45,62 @@ class TestConfig:
         assert second.admin_token == "second-token"
 
     def test_fails_when_all_notification_channels_disabled(self, monkeypatch):
-        monkeypatch.setenv("EMAIL_ENABLED", "false")
-        monkeypatch.setenv("NTFY_ENABLED", "false")
-        monkeypatch.setenv("WHATSAPP_ENABLED", "false")
+        config = dict(BASE_CONFIG)
+        config["EMAIL_ENABLED"] = False
+        config["WHATSAPP_ENABLED"] = False
+        monkeypatch.setattr("shared.settings.load_local_config", lambda required=True: config)
 
         with pytest.raises(ValueError, match="At least one geofence notification channel must be enabled"):
             get_api_settings()
 
-    def test_fails_when_whatsapp_enabled_without_required_values(self, monkeypatch, tmp_path):
-        # Isolate from repository .env so this assertion doesn't depend on local secrets/config.
-        monkeypatch.chdir(tmp_path)
-        monkeypatch.setenv("ADMIN_TOKEN", "test-token")
-        monkeypatch.setenv("GEOFENCE_SUBJECT_TEMPLATE", "Subject {area} {event}")
-        monkeypatch.setenv("GEOFENCE_EMAIL_TEMPLATE", "Email {area} {event}")
-        monkeypatch.setenv("GEOFENCE_WHATSAPP_TEMPLATE", "WA {area} {event}")
-        monkeypatch.setenv("GEOFENCE_UPDATES_RECIPIENT", "alerts@example.com")
-        monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
-        monkeypatch.setenv("SMTP_PORT", "587")
-        monkeypatch.setenv("EMAIL_ENABLED", "false")
-        monkeypatch.setenv("NTFY_ENABLED", "false")
-        monkeypatch.setenv("WHATSAPP_ENABLED", "true")
-        monkeypatch.delenv("WHATSAPP_SSH_HOST", raising=False)
-        monkeypatch.delenv("WHATSAPP_REMOTE_SCRIPT_PATH", raising=False)
-        monkeypatch.delenv("WHATSAPP_TARGET_FAMILY", raising=False)
-        monkeypatch.delenv("WHATSAPP_TARGET_PERSONAL", raising=False)
+    def test_fails_when_whatsapp_enabled_without_required_values(self, monkeypatch):
+        config = dict(BASE_CONFIG)
+        config["EMAIL_ENABLED"] = False
+        config["WHATSAPP_ENABLED"] = True
+        monkeypatch.setattr("shared.settings.load_local_config", lambda required=True: config)
 
         with pytest.raises(ValueError, match="WHATSAPP_"):
             get_api_settings()
 
-    def test_whatsapp_only_config_does_not_require_smtp(self, monkeypatch, tmp_path):
-        monkeypatch.chdir(tmp_path)
-        monkeypatch.setenv("ADMIN_TOKEN", "test-token")
-        monkeypatch.setenv("GEOFENCE_SUBJECT_TEMPLATE", "Subject {area} {event}")
-        monkeypatch.setenv("GEOFENCE_EMAIL_TEMPLATE", "Email {area} {event}")
-        monkeypatch.setenv("GEOFENCE_WHATSAPP_TEMPLATE", "WA {area} {event}")
-        monkeypatch.setenv("GEOFENCE_UPDATES_RECIPIENT", "alerts@example.com")
-        monkeypatch.setenv("EMAIL_ENABLED", "false")
-        monkeypatch.setenv("WHATSAPP_ENABLED", "true")
-        monkeypatch.setenv("WHATSAPP_SSH_HOST", "ssh.example.com")
-        monkeypatch.setenv("WHATSAPP_REMOTE_SCRIPT_PATH", "/opt/send_whatsapp.sh")
-        monkeypatch.setenv("WHATSAPP_TARGET_FAMILY", "+911234567890")
-        monkeypatch.delenv("SMTP_EMAIL", raising=False)
-        monkeypatch.delenv("SMTP_APP_PASSWORD", raising=False)
-        monkeypatch.delenv("SMTP_HOST", raising=False)
-        monkeypatch.delenv("SMTP_PORT", raising=False)
+    def test_whatsapp_only_config_does_not_require_smtp(self, monkeypatch):
+        config = dict(BASE_CONFIG)
+        config["EMAIL_ENABLED"] = False
+        config["WHATSAPP_ENABLED"] = True
+        config["WHATSAPP_SSH_HOST"] = "ssh.example.com"
+        config["WHATSAPP_REMOTE_SCRIPT_PATH"] = "/opt/send_whatsapp.sh"
+        config["WHATSAPP_TARGET_FAMILY"] = "+911234567890"
+        config.pop("SMTP_EMAIL", None)
+        config.pop("SMTP_HOST", None)
+        config.pop("SMTP_PORT", None)
+        monkeypatch.setattr("shared.settings.load_local_config", lambda required=True: config)
 
         settings = get_api_settings()
         assert settings.email_enabled is False
         assert settings.whatsapp_enabled is True
 
-    def test_email_enabled_requires_smtp_host_and_port(self, monkeypatch, tmp_path):
-        monkeypatch.chdir(tmp_path)
-        monkeypatch.setenv("ADMIN_TOKEN", "test-token")
-        monkeypatch.setenv("GEOFENCE_SUBJECT_TEMPLATE", "Subject {area} {event}")
-        monkeypatch.setenv("GEOFENCE_EMAIL_TEMPLATE", "Email {area} {event}")
-        monkeypatch.setenv("GEOFENCE_WHATSAPP_TEMPLATE", "WA {area} {event}")
-        monkeypatch.setenv("GEOFENCE_UPDATES_RECIPIENT", "alerts@example.com")
-        monkeypatch.setenv("EMAIL_ENABLED", "true")
-        monkeypatch.setenv("WHATSAPP_ENABLED", "false")
-        monkeypatch.setenv("SMTP_EMAIL", "smtp@example.com")
-        monkeypatch.setenv("SMTP_APP_PASSWORD", "secret-password")
-        monkeypatch.delenv("SMTP_HOST", raising=False)
-        monkeypatch.delenv("SMTP_PORT", raising=False)
+    def test_email_enabled_requires_smtp_host_and_port_from_config(self, monkeypatch):
+        config = dict(BASE_CONFIG)
+        config.pop("SMTP_HOST", None)
+        config.pop("SMTP_PORT", None)
+        monkeypatch.setattr("shared.settings.load_local_config", lambda required=True: config)
 
         with pytest.raises(ValueError, match="SMTP_HOST"):
             get_api_settings()
+
+    def test_local_config_supplies_non_secret_fields(self, monkeypatch):
+        monkeypatch.setattr(
+            "shared.settings.load_local_config",
+            lambda required=True: {**BASE_CONFIG, "APP_NAME": "SAARTHI-LOCAL"},
+        )
+        settings = get_api_settings()
+        assert settings.app_name == "SAARTHI-LOCAL"
+
+    def test_env_non_secret_does_not_override_config(self, monkeypatch):
+        monkeypatch.setenv("APP_NAME", "SAARTHI-ENV")
+        monkeypatch.setattr(
+            "shared.settings.load_local_config",
+            lambda required=True: {**BASE_CONFIG, "APP_NAME": "SAARTHI-LOCAL"},
+        )
+
+        settings = get_api_settings()
+        assert settings.app_name == "SAARTHI-LOCAL"
