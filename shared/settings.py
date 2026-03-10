@@ -1,30 +1,120 @@
 """Typed runtime settings for API and scripts."""
 
-from typing import cast
+import os
+from collections.abc import Mapping
+from typing import Any, cast
 
+import config as runtime_config
+from dotenv import dotenv_values
 from pydantic import BaseModel, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from shared.constants import (
     DEFAULT_APP_NAME,
-    DEFAULT_EMAIL_ENABLED,
     DEFAULT_GEOFENCE_MAPPING_PATH,
     DEFAULT_LOG_DATE_FORMAT,
     DEFAULT_LOG_FILE,
     DEFAULT_LOG_FORMAT,
     DEFAULT_LOG_LEVEL,
     DEFAULT_LOCATION_DB_PATH,
-    DEFAULT_NTFY_ENABLED,
-    DEFAULT_WHATSAPP_ENABLED,
     DEFAULT_WHATSAPP_TIMEOUT_SECONDS,
 )
 
-_SETTINGS_CONFIG = SettingsConfigDict(
-    env_file=".env",
-    env_file_encoding="utf-8",
-    env_ignore_empty=True,
-    extra="ignore",
+ENV_OWNED_KEYS = frozenset(
+    {
+        "ADMIN_TOKEN",
+        "SMTP_EMAIL",
+        "SMTP_APP_PASSWORD",
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "AWS_ACCESS_KEY",
+        "AWS_SECRET_ACCESS_KEY",
+        "VIDWIZ_DB_URL",
+        "TRACKCROW_DB_URL",
+        "NTFY_BASE_URL",
+        "NTFY_TOKEN",
+    }
 )
+
+CONFIG_OWNED_KEYS = frozenset(
+    {
+        "APP_NAME",
+        "LOCATION_DB_PATH",
+        "GEOFENCE_MAPPING_PATH",
+        "LOG_LEVEL",
+        "LOG_FORMAT",
+        "LOG_DATE_FORMAT",
+        "LOG_FILE",
+        "EMAIL_ENABLED",
+        "NTFY_ENABLED",
+        "WHATSAPP_ENABLED",
+        "WHATSAPP_SSH_HOST",
+        "WHATSAPP_REMOTE_SCRIPT_PATH",
+        "WHATSAPP_TARGET_FAMILY",
+        "WHATSAPP_TARGET_PERSONAL",
+        "WHATSAPP_TIMEOUT_SECONDS",
+        "GEOFENCE_SUBJECT_TEMPLATE",
+        "GEOFENCE_EMAIL_TEMPLATE",
+        "GEOFENCE_WHATSAPP_TEMPLATE",
+        "GEOFENCE_UPDATES_RECIPIENT",
+        "GEOFENCE_SENDER_NAME",
+        "NTFY_TOPIC",
+        "BACKUP_BUCKET",
+        "VIDWIZ_S3_PREFIX",
+        "TRACKCROW_S3_PREFIX",
+        "VIDWIZ_DUMP_FILENAME",
+        "TRACKCROW_DUMP_FILENAME",
+        "GDRIVE_SOURCE",
+        "GDRIVE_DESTINATION",
+        "GDRIVE_FOLDERS",
+    }
+)
+
+SETTINGS_KEYS = ENV_OWNED_KEYS | CONFIG_OWNED_KEYS
+
+
+def _load_repo_config_values() -> dict[str, Any]:
+    raw_config = getattr(runtime_config, "CONFIG", None)
+    if not isinstance(raw_config, Mapping):
+        raise ValueError("config.py must define CONFIG as a dictionary")
+
+    wrong_source_keys = sorted(key for key in raw_config if key in ENV_OWNED_KEYS)
+    if wrong_source_keys:
+        joined = ", ".join(wrong_source_keys)
+        raise ValueError(f"config.py contains env-owned keys: {joined}")
+
+    missing_keys = sorted(key for key in CONFIG_OWNED_KEYS if key not in raw_config)
+    if missing_keys:
+        joined = ", ".join(missing_keys)
+        raise ValueError(f"config.py is missing required keys: {joined}")
+
+    return {key: raw_config[key] for key in CONFIG_OWNED_KEYS}
+
+
+def _load_env_values() -> dict[str, str]:
+    env_values: dict[str, str] = {}
+
+    for key, value in dotenv_values(".env").items():
+        if key in SETTINGS_KEYS and isinstance(value, str) and value.strip():
+            env_values[key] = value
+
+    for key in SETTINGS_KEYS:
+        value = os.environ.get(key)
+        if value is not None and value.strip():
+            env_values[key] = value
+
+    wrong_source_keys = sorted(key for key in env_values if key in CONFIG_OWNED_KEYS)
+    if wrong_source_keys:
+        joined = ", ".join(wrong_source_keys)
+        raise ValueError(f".env/environment contains config.py-owned keys: {joined}")
+
+    return {key: value for key, value in env_values.items() if key in ENV_OWNED_KEYS}
+
+
+def _build_payload() -> dict[str, Any]:
+    config_values = _load_repo_config_values()
+    env_values = _load_env_values()
+    merged = {**config_values, **env_values}
+    return {key.lower(): value for key, value in merged.items()}
 
 
 class LoggingSettings(BaseModel):
@@ -62,18 +152,16 @@ class WhatsAppSettings(BaseModel):
     timeout_seconds: int = DEFAULT_WHATSAPP_TIMEOUT_SECONDS
 
 
-class RuntimeSettings(BaseSettings):
+class RuntimeSettings(BaseModel):
     """Base settings with shared logging configuration."""
-
-    model_config = _SETTINGS_CONFIG
 
     log_level: str = DEFAULT_LOG_LEVEL
     log_format: str = DEFAULT_LOG_FORMAT
     log_date_format: str = DEFAULT_LOG_DATE_FORMAT
     log_file: str = DEFAULT_LOG_FILE
-    email_enabled: bool = DEFAULT_EMAIL_ENABLED
-    ntfy_enabled: bool = DEFAULT_NTFY_ENABLED
-    whatsapp_enabled: bool = DEFAULT_WHATSAPP_ENABLED
+    email_enabled: bool = True
+    ntfy_enabled: bool = True
+    whatsapp_enabled: bool = False
     whatsapp_ssh_host: str | None = None
     whatsapp_remote_script_path: str | None = None
     whatsapp_target_family: str | None = None
@@ -119,7 +207,7 @@ class NtfyRuntimeSettings(RuntimeSettings):
 
     ntfy_base_url: str | None = None
     ntfy_token: str | None = None
-    ntfy_topic: str
+    ntfy_topic: str = "saarthi-backups"
 
     @model_validator(mode="after")
     def _validate_ntfy_config(self) -> "NtfyRuntimeSettings":
@@ -153,11 +241,11 @@ class ApiSettings(RuntimeSettings):
     location_db_path: str = DEFAULT_LOCATION_DB_PATH
     geofence_mapping_path: str = DEFAULT_GEOFENCE_MAPPING_PATH
     admin_token: str
-    geofence_subject_template: str
-    geofence_email_template: str
-    geofence_whatsapp_template: str
-    geofence_updates_recipient: str
-    geofence_sender_name: str | None = None
+    geofence_subject_template: str = "Saarthi geofence: {area}"
+    geofence_email_template: str = "Geofence update: {area} {event}"
+    geofence_whatsapp_template: str = "Area {area}: {event}"
+    geofence_updates_recipient: str = "alerts@example.com"
+    geofence_sender_name: str | None = "Saarthi"
     smtp_email: str | None = None
     smtp_app_password: str | None = None
     smtp_host: str | None = None
@@ -207,19 +295,19 @@ class BackupDbSettings(NtfyRuntimeSettings):
     aws_secret_access_key: str
     vidwiz_db_url: str
     trackcrow_db_url: str
-    backup_bucket: str
-    vidwiz_s3_prefix: str
-    trackcrow_s3_prefix: str
-    vidwiz_dump_filename: str
-    trackcrow_dump_filename: str
+    backup_bucket: str = "backups"
+    vidwiz_s3_prefix: str = "db/vidwiz"
+    trackcrow_s3_prefix: str = "db/trackcrow"
+    vidwiz_dump_filename: str = "vidwiz_backup"
+    trackcrow_dump_filename: str = "trackcrow_backup"
 
 
 class BackupGdriveSettings(NtfyRuntimeSettings):
     """Settings required by the Google Drive backup script."""
 
-    gdrive_source: str
-    gdrive_destination: str
-    gdrive_folders: list[str]
+    gdrive_source: str = "personal-drive"
+    gdrive_destination: str = "dwaar-s3:dwaar/backups/gdrive"
+    gdrive_folders: list[str] = ["home", "workspace"]
 
     @model_validator(mode="before")
     @classmethod
@@ -266,14 +354,14 @@ class SchedulerSettings(BaseModel):
 
 def get_api_settings() -> ApiSettings:
     """Return API settings."""
-    return ApiSettings()
+    return ApiSettings.model_validate(_build_payload())
 
 
 def get_backup_db_settings() -> BackupDbSettings:
     """Return DB backup settings."""
-    return BackupDbSettings()
+    return BackupDbSettings.model_validate(_build_payload())
 
 
 def get_backup_gdrive_settings() -> BackupGdriveSettings:
     """Return GDrive backup settings."""
-    return BackupGdriveSettings()
+    return BackupGdriveSettings.model_validate(_build_payload())

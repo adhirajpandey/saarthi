@@ -1,8 +1,12 @@
 """Pytest configuration and fixtures."""
 
+import copy
 import json
 import os
+
 import pytest
+
+import shared.settings as settings_module
 
 
 @pytest.fixture(autouse=True)
@@ -22,8 +26,10 @@ def block_real_whatsapp_send(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def test_settings_environment(tmp_path):
-    """Provide stable environment variables for settings-backed tests."""
+def test_settings_environment(tmp_path, monkeypatch):
+    """Provide stable settings values for tests."""
+    monkeypatch.chdir(tmp_path)
+
     mapping_path = tmp_path / "geofence_mapping.json"
     mapping_path.write_text(
         json.dumps(
@@ -41,15 +47,18 @@ def test_settings_environment(tmp_path):
         encoding="utf-8",
     )
 
+    cfg = copy.deepcopy(settings_module.runtime_config.CONFIG)
+    cfg["LOCATION_DB_PATH"] = str(tmp_path / "saarthi-test.db")
+    cfg["GEOFENCE_MAPPING_PATH"] = str(mapping_path)
+    cfg["WHATSAPP_ENABLED"] = False
+    monkeypatch.setattr(settings_module.runtime_config, "CONFIG", cfg)
+
     env_vars = {
         "ADMIN_TOKEN": "test-admin-token",
-        "GEOFENCE_UPDATES_RECIPIENT": "test@example.com",
-        "GEOFENCE_SENDER_NAME": "Test Sender",
         "SMTP_EMAIL": "smtp@example.com",
         "SMTP_APP_PASSWORD": "secret-password",
-        "WHATSAPP_ENABLED": "false",
-        "LOCATION_DB_PATH": str(tmp_path / "saarthi-test.db"),
-        "GEOFENCE_MAPPING_PATH": str(mapping_path),
+        "SMTP_HOST": "smtp.example.com",
+        "SMTP_PORT": "465",
     }
     original_values = {key: os.environ.get(key) for key in env_vars}
     for key, value in env_vars.items():
