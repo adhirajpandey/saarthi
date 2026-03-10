@@ -1,1 +1,1 @@
-"""Legacy app config package retained for compatibility."""
+"""App configuration package."""

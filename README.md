@@ -25,6 +25,12 @@ At the moment, Saarthi helps with:
 - Operational continuity through repeatable backup and sync automation.
 - Maintainable growth by keeping APIs, shared infrastructure, and scripts organized by responsibility.
 
+## Configuration Notes
+
+- Use `.env` for secrets and connection URLs.
+- Use `app/config/config.py` for non-sensitive runtime configuration.
+- `app/config/config.example.py` and `.env.example` show the expected shape.
+
 ## API Notes (2026-03-10)
 
 - `GET /health`: basic health response with IST timestamp.
