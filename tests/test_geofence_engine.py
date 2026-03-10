@@ -17,8 +17,8 @@ from app.services.geofence_engine import (
 from app.services.location import LocationRecord
 
 
-def test_load_geofence_mapping_success(tmp_path: Path) -> None:
-    mapping_path = tmp_path / "geofence_mapping.json"
+def test_load_geofence_mapping_success(test_workspace: Path) -> None:
+    mapping_path = test_workspace / "geofence_mapping.json"
     mapping_path.write_text(
         json.dumps(
             {
@@ -36,9 +36,25 @@ def test_load_geofence_mapping_success(tmp_path: Path) -> None:
     assert mapping[0].name == "Home"
 
 
-def test_load_geofence_mapping_raises_when_missing(tmp_path: Path) -> None:
+def test_load_geofence_mapping_raises_when_missing(test_workspace: Path) -> None:
     with pytest.raises(ValueError, match="not found"):
-        load_geofence_mapping(str(tmp_path / "missing.json"))
+        load_geofence_mapping(str(test_workspace / "missing.json"))
+
+
+def test_load_geofence_mapping_raises_when_payload_invalid(test_workspace: Path) -> None:
+    mapping_path = test_workspace / "geofence_mapping.json"
+    mapping_path.write_text(json.dumps({"GEOFENCE_MAPPING": []}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must contain at least one geofence"):
+        load_geofence_mapping(str(mapping_path))
+
+
+def test_load_geofence_mapping_raises_on_invalid_json(test_workspace: Path) -> None:
+    mapping_path = test_workspace / "geofence_mapping.json"
+    mapping_path.write_text("{invalid-json", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid geofence mapping JSON"):
+        load_geofence_mapping(str(mapping_path))
 
 
 def test_resolve_geofence_prefers_nearest_in_overlap() -> None:
@@ -87,6 +103,17 @@ def test_detect_transitions_in_to_in_different() -> None:
     ]
 
 
+def test_detect_transitions_out_to_out_is_noop() -> None:
+    transitions = detect_transitions(previous_area=None, current_area=None)
+    assert transitions == []
+
+
+def test_detect_transitions_same_area_is_noop() -> None:
+    home = GeofenceArea(name="Home", latitude=12.0, longitude=77.0, radius_meters=100)
+    transitions = detect_transitions(previous_area=home, current_area=home)
+    assert transitions == []
+
+
 def test_run_geofence_engine_dispatches_exit_then_enter(monkeypatch) -> None:
     class _DummySettings:
         pass
@@ -120,3 +147,25 @@ def test_run_geofence_engine_dispatches_exit_then_enter(monkeypatch) -> None:
     asyncio.run(run_geofence_engine(settings=_DummySettings(), db_path="unused.db", mapping=mapping))
 
     assert calls == [("Home", "exited"), ("Office", "entered")]
+
+
+def test_run_geofence_engine_skips_when_less_than_two_points(monkeypatch) -> None:
+    class _DummySettings:
+        pass
+
+    async def _fake_get_latest_location_records(*_, **__):
+        return [LocationRecord(id=1, latitude=12.9, longitude=77.5, timestamp=datetime.now(UTC))]
+
+    async def _fake_send_geofence_notification(*_, **__):
+        raise AssertionError("Notifications must not be called when fewer than two points exist")
+
+    monkeypatch.setattr(
+        "app.services.geofence_engine.get_latest_location_records",
+        _fake_get_latest_location_records,
+    )
+    monkeypatch.setattr(
+        "app.services.geofence_engine.send_geofence_notification",
+        _fake_send_geofence_notification,
+    )
+
+    asyncio.run(run_geofence_engine(settings=_DummySettings(), db_path="unused.db", mapping=[]))
