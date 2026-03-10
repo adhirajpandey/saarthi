@@ -24,9 +24,9 @@ def test_me_location_requires_token() -> None:
 
 def test_me_location_persists_row(monkeypatch, tmp_path: Path) -> None:
     db_path = tmp_path / "data" / "saarthi.db"
-    cfg = copy.deepcopy(settings_module.runtime_config.CONFIG)
+    cfg = copy.deepcopy(settings_module.CONFIG)
     cfg["LOCATION_DB_PATH"] = str(db_path)
-    monkeypatch.setattr(settings_module.runtime_config, "CONFIG", cfg)
+    monkeypatch.setattr(settings_module, "CONFIG", cfg)
 
     with TestClient(app) as client:
         response = client.post(

@@ -18,6 +18,7 @@ RUN uv sync --frozen --no-dev
 COPY app ./app
 COPY shared ./shared
 COPY scripts ./scripts
+COPY config.py ./config.py
 COPY README.md ./README.md
 
 # Runtime directories used by default settings

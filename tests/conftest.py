@@ -47,11 +47,11 @@ def test_settings_environment(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    cfg = copy.deepcopy(settings_module.runtime_config.CONFIG)
+    cfg = copy.deepcopy(settings_module.CONFIG)
     cfg["LOCATION_DB_PATH"] = str(tmp_path / "saarthi-test.db")
     cfg["GEOFENCE_MAPPING_PATH"] = str(mapping_path)
     cfg["WHATSAPP_ENABLED"] = False
-    monkeypatch.setattr(settings_module.runtime_config, "CONFIG", cfg)
+    monkeypatch.setattr(settings_module, "CONFIG", cfg)
 
     env_vars = {
         "ADMIN_TOKEN": "test-admin-token",

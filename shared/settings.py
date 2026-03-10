@@ -4,20 +4,9 @@ import os
 from collections.abc import Mapping
 from typing import Any, cast
 
-import config as runtime_config
+from config import CONFIG
 from dotenv import dotenv_values
 from pydantic import BaseModel, model_validator
-
-from shared.constants import (
-    DEFAULT_APP_NAME,
-    DEFAULT_GEOFENCE_MAPPING_PATH,
-    DEFAULT_LOG_DATE_FORMAT,
-    DEFAULT_LOG_FILE,
-    DEFAULT_LOG_FORMAT,
-    DEFAULT_LOG_LEVEL,
-    DEFAULT_LOCATION_DB_PATH,
-    DEFAULT_WHATSAPP_TIMEOUT_SECONDS,
-)
 
 ENV_OWNED_KEYS = frozenset(
     {
@@ -73,21 +62,20 @@ SETTINGS_KEYS = ENV_OWNED_KEYS | CONFIG_OWNED_KEYS
 
 
 def _load_repo_config_values() -> dict[str, Any]:
-    raw_config = getattr(runtime_config, "CONFIG", None)
-    if not isinstance(raw_config, Mapping):
+    if not isinstance(CONFIG, Mapping):
         raise ValueError("config.py must define CONFIG as a dictionary")
 
-    wrong_source_keys = sorted(key for key in raw_config if key in ENV_OWNED_KEYS)
+    wrong_source_keys = sorted(key for key in CONFIG if key in ENV_OWNED_KEYS)
     if wrong_source_keys:
         joined = ", ".join(wrong_source_keys)
         raise ValueError(f"config.py contains env-owned keys: {joined}")
 
-    missing_keys = sorted(key for key in CONFIG_OWNED_KEYS if key not in raw_config)
+    missing_keys = sorted(key for key in CONFIG_OWNED_KEYS if key not in CONFIG)
     if missing_keys:
         joined = ", ".join(missing_keys)
         raise ValueError(f"config.py is missing required keys: {joined}")
 
-    return {key: raw_config[key] for key in CONFIG_OWNED_KEYS}
+    return {key: CONFIG[key] for key in CONFIG_OWNED_KEYS}
 
 
 def _load_env_values() -> dict[str, str]:
@@ -120,10 +108,10 @@ def _build_payload() -> dict[str, Any]:
 class LoggingSettings(BaseModel):
     """Logging configuration shared by app and scripts."""
 
-    level: str = DEFAULT_LOG_LEVEL
-    format: str = DEFAULT_LOG_FORMAT
-    date_format: str = DEFAULT_LOG_DATE_FORMAT
-    file: str = DEFAULT_LOG_FILE
+    level: str
+    format: str
+    date_format: str
+    file: str
 
 
 class SmtpSettings(BaseModel):
@@ -149,24 +137,24 @@ class WhatsAppSettings(BaseModel):
     ssh_host: str
     remote_script_path: str
     target: str
-    timeout_seconds: int = DEFAULT_WHATSAPP_TIMEOUT_SECONDS
+    timeout_seconds: int
 
 
 class RuntimeSettings(BaseModel):
     """Base settings with shared logging configuration."""
 
-    log_level: str = DEFAULT_LOG_LEVEL
-    log_format: str = DEFAULT_LOG_FORMAT
-    log_date_format: str = DEFAULT_LOG_DATE_FORMAT
-    log_file: str = DEFAULT_LOG_FILE
-    email_enabled: bool = True
-    ntfy_enabled: bool = True
-    whatsapp_enabled: bool = False
+    log_level: str
+    log_format: str
+    log_date_format: str
+    log_file: str
+    email_enabled: bool
+    ntfy_enabled: bool
+    whatsapp_enabled: bool
     whatsapp_ssh_host: str | None = None
     whatsapp_remote_script_path: str | None = None
     whatsapp_target_family: str | None = None
     whatsapp_target_personal: str | None = None
-    whatsapp_timeout_seconds: int = DEFAULT_WHATSAPP_TIMEOUT_SECONDS
+    whatsapp_timeout_seconds: int
 
     def logging_settings(self) -> LoggingSettings:
         return LoggingSettings(
@@ -207,7 +195,7 @@ class NtfyRuntimeSettings(RuntimeSettings):
 
     ntfy_base_url: str | None = None
     ntfy_token: str | None = None
-    ntfy_topic: str = "saarthi-backups"
+    ntfy_topic: str
 
     @model_validator(mode="after")
     def _validate_ntfy_config(self) -> "NtfyRuntimeSettings":
@@ -237,15 +225,15 @@ class NtfyRuntimeSettings(RuntimeSettings):
 class ApiSettings(RuntimeSettings):
     """Settings required by the FastAPI runtime."""
 
-    app_name: str = DEFAULT_APP_NAME
-    location_db_path: str = DEFAULT_LOCATION_DB_PATH
-    geofence_mapping_path: str = DEFAULT_GEOFENCE_MAPPING_PATH
+    app_name: str
+    location_db_path: str
+    geofence_mapping_path: str
     admin_token: str
-    geofence_subject_template: str = "Saarthi geofence: {area}"
-    geofence_email_template: str = "Geofence update: {area} {event}"
-    geofence_whatsapp_template: str = "Area {area}: {event}"
-    geofence_updates_recipient: str = "alerts@example.com"
-    geofence_sender_name: str | None = "Saarthi"
+    geofence_subject_template: str
+    geofence_email_template: str
+    geofence_whatsapp_template: str
+    geofence_updates_recipient: str
+    geofence_sender_name: str | None
     smtp_email: str | None = None
     smtp_app_password: str | None = None
     smtp_host: str | None = None
@@ -295,19 +283,19 @@ class BackupDbSettings(NtfyRuntimeSettings):
     aws_secret_access_key: str
     vidwiz_db_url: str
     trackcrow_db_url: str
-    backup_bucket: str = "backups"
-    vidwiz_s3_prefix: str = "db/vidwiz"
-    trackcrow_s3_prefix: str = "db/trackcrow"
-    vidwiz_dump_filename: str = "vidwiz_backup"
-    trackcrow_dump_filename: str = "trackcrow_backup"
+    backup_bucket: str
+    vidwiz_s3_prefix: str
+    trackcrow_s3_prefix: str
+    vidwiz_dump_filename: str
+    trackcrow_dump_filename: str
 
 
 class BackupGdriveSettings(NtfyRuntimeSettings):
     """Settings required by the Google Drive backup script."""
 
-    gdrive_source: str = "personal-drive"
-    gdrive_destination: str = "dwaar-s3:dwaar/backups/gdrive"
-    gdrive_folders: list[str] = ["home", "workspace"]
+    gdrive_source: str
+    gdrive_destination: str
+    gdrive_folders: list[str]
 
     @model_validator(mode="before")
     @classmethod

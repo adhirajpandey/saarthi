@@ -1,5 +1,6 @@
 """Tests for script configuration behavior."""
 
+import copy
 import subprocess
 from pathlib import Path
 
@@ -8,11 +9,34 @@ from scripts.backup_gdrive import main as backup_gdrive_main
 from scripts.backup_dbs.main import _dispatch_notifications, build_db_map
 from scripts.backup_gdrive.main import _build_whatsapp_summary
 from scripts.schedule_scripts.main import generate_files
+import shared.settings as settings_module
 from shared.settings import BackupDbSettings, BackupGdriveSettings, SchedulerSettings
+
+
+def _runtime_kwargs(**overrides):
+    cfg = copy.deepcopy(settings_module.CONFIG)
+    data = {
+        "log_level": cfg["LOG_LEVEL"],
+        "log_format": cfg["LOG_FORMAT"],
+        "log_date_format": cfg["LOG_DATE_FORMAT"],
+        "log_file": cfg["LOG_FILE"],
+        "email_enabled": cfg["EMAIL_ENABLED"],
+        "ntfy_enabled": cfg["NTFY_ENABLED"],
+        "whatsapp_enabled": cfg["WHATSAPP_ENABLED"],
+        "whatsapp_ssh_host": cfg["WHATSAPP_SSH_HOST"],
+        "whatsapp_remote_script_path": cfg["WHATSAPP_REMOTE_SCRIPT_PATH"],
+        "whatsapp_target_family": cfg["WHATSAPP_TARGET_FAMILY"],
+        "whatsapp_target_personal": cfg["WHATSAPP_TARGET_PERSONAL"],
+        "whatsapp_timeout_seconds": cfg["WHATSAPP_TIMEOUT_SECONDS"],
+        "ntfy_topic": cfg["NTFY_TOPIC"],
+    }
+    data.update(overrides)
+    return data
 
 
 def test_build_db_map_uses_settings_values() -> None:
     settings = BackupDbSettings(
+        **_runtime_kwargs(),
         aws_access_key="ak",
         aws_secret_access_key="sk",
         vidwiz_db_url="postgres://vidwiz",
@@ -66,15 +90,22 @@ def test_generate_files_uses_home_dir_from_config(tmp_path: Path) -> None:
 
 def test_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
     settings = BackupDbSettings(
+        **_runtime_kwargs(
+            ntfy_enabled=False,
+            whatsapp_enabled=True,
+            whatsapp_ssh_host="pookie",
+            whatsapp_remote_script_path="/remote/send.py",
+            whatsapp_target_personal="1203@s.whatsapp.net",
+            backup_bucket=settings_module.CONFIG["BACKUP_BUCKET"],
+            vidwiz_s3_prefix=settings_module.CONFIG["VIDWIZ_S3_PREFIX"],
+            trackcrow_s3_prefix=settings_module.CONFIG["TRACKCROW_S3_PREFIX"],
+            vidwiz_dump_filename=settings_module.CONFIG["VIDWIZ_DUMP_FILENAME"],
+            trackcrow_dump_filename=settings_module.CONFIG["TRACKCROW_DUMP_FILENAME"],
+        ),
         aws_access_key="ak",
         aws_secret_access_key="sk",
         vidwiz_db_url="postgres://vidwiz",
         trackcrow_db_url="postgres://trackcrow",
-        ntfy_enabled=False,
-        whatsapp_enabled=True,
-        whatsapp_ssh_host="pookie",
-        whatsapp_remote_script_path="/remote/send.py",
-        whatsapp_target_personal="1203@s.whatsapp.net",
     )
 
     calls = {"ntfy": 0, "wa": 0}
@@ -109,20 +140,22 @@ def test_build_whatsapp_summary_is_concise() -> None:
 
 def test_backup_dbs_main_returns_non_zero_when_any_db_fails(monkeypatch) -> None:
     settings = BackupDbSettings(
+        **_runtime_kwargs(
+            ntfy_enabled=False,
+            whatsapp_enabled=True,
+            whatsapp_ssh_host="pookie",
+            whatsapp_remote_script_path="/remote/send.py",
+            whatsapp_target_personal="1203@s.whatsapp.net",
+            backup_bucket="my-bucket",
+            vidwiz_s3_prefix="db/vidwiz",
+            trackcrow_s3_prefix="db/trackcrow",
+            vidwiz_dump_filename="vidwiz-custom",
+            trackcrow_dump_filename="trackcrow-custom",
+        ),
         aws_access_key="ak",
         aws_secret_access_key="sk",
         vidwiz_db_url="postgres://vidwiz",
         trackcrow_db_url="postgres://trackcrow",
-        ntfy_enabled=False,
-        whatsapp_enabled=True,
-        whatsapp_ssh_host="pookie",
-        whatsapp_remote_script_path="/remote/send.py",
-        whatsapp_target_personal="1203@s.whatsapp.net",
-        backup_bucket="my-bucket",
-        vidwiz_s3_prefix="db/vidwiz",
-        trackcrow_s3_prefix="db/trackcrow",
-        vidwiz_dump_filename="vidwiz-custom",
-        trackcrow_dump_filename="trackcrow-custom",
     )
     observed: dict[str, object] = {}
 
@@ -158,20 +191,22 @@ def test_backup_dbs_main_returns_non_zero_when_any_db_fails(monkeypatch) -> None
 
 def test_backup_dbs_main_returns_zero_when_all_dbs_succeed(monkeypatch) -> None:
     settings = BackupDbSettings(
+        **_runtime_kwargs(
+            ntfy_enabled=False,
+            whatsapp_enabled=True,
+            whatsapp_ssh_host="pookie",
+            whatsapp_remote_script_path="/remote/send.py",
+            whatsapp_target_personal="1203@s.whatsapp.net",
+            backup_bucket="my-bucket",
+            vidwiz_s3_prefix="db/vidwiz",
+            trackcrow_s3_prefix="db/trackcrow",
+            vidwiz_dump_filename="vidwiz-custom",
+            trackcrow_dump_filename="trackcrow-custom",
+        ),
         aws_access_key="ak",
         aws_secret_access_key="sk",
         vidwiz_db_url="postgres://vidwiz",
         trackcrow_db_url="postgres://trackcrow",
-        ntfy_enabled=False,
-        whatsapp_enabled=True,
-        whatsapp_ssh_host="pookie",
-        whatsapp_remote_script_path="/remote/send.py",
-        whatsapp_target_personal="1203@s.whatsapp.net",
-        backup_bucket="my-bucket",
-        vidwiz_s3_prefix="db/vidwiz",
-        trackcrow_s3_prefix="db/trackcrow",
-        vidwiz_dump_filename="vidwiz-custom",
-        trackcrow_dump_filename="trackcrow-custom",
     )
     observed: dict[str, object] = {}
 
@@ -195,11 +230,13 @@ def test_backup_dbs_main_returns_zero_when_all_dbs_succeed(monkeypatch) -> None:
 
 def test_backup_gdrive_main_returns_non_zero_on_any_folder_failure(monkeypatch) -> None:
     settings = BackupGdriveSettings(
-        ntfy_enabled=False,
-        whatsapp_enabled=True,
-        whatsapp_ssh_host="pookie",
-        whatsapp_remote_script_path="/remote/send.py",
-        whatsapp_target_personal="1203@s.whatsapp.net",
+        **_runtime_kwargs(
+            ntfy_enabled=False,
+            whatsapp_enabled=True,
+            whatsapp_ssh_host="pookie",
+            whatsapp_remote_script_path="/remote/send.py",
+            whatsapp_target_personal="1203@s.whatsapp.net",
+        ),
         gdrive_source="personal-drive",
         gdrive_destination="dwaar-s3:dwaar/backups/gdrive",
         gdrive_folders=["folder-1"],
@@ -222,11 +259,13 @@ def test_backup_gdrive_main_returns_non_zero_on_any_folder_failure(monkeypatch) 
 
 def test_backup_gdrive_main_returns_zero_when_all_folders_succeed(monkeypatch) -> None:
     settings = BackupGdriveSettings(
-        ntfy_enabled=False,
-        whatsapp_enabled=True,
-        whatsapp_ssh_host="pookie",
-        whatsapp_remote_script_path="/remote/send.py",
-        whatsapp_target_personal="1203@s.whatsapp.net",
+        **_runtime_kwargs(
+            ntfy_enabled=False,
+            whatsapp_enabled=True,
+            whatsapp_ssh_host="pookie",
+            whatsapp_remote_script_path="/remote/send.py",
+            whatsapp_target_personal="1203@s.whatsapp.net",
+        ),
         gdrive_source="personal-drive",
         gdrive_destination="dwaar-s3:dwaar/backups/gdrive",
         gdrive_folders=["folder-1"],
