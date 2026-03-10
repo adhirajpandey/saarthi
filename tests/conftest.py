@@ -3,10 +3,15 @@
 import copy
 import json
 import os
+from pathlib import Path
+import runpy
 
 import pytest
 
 import shared.settings as settings_module
+
+_EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.example.py"
+_BASE_CONFIG = runpy.run_path(str(_EXAMPLE_CONFIG_PATH))["CONFIG"]
 
 
 @pytest.fixture(autouse=True)
@@ -47,11 +52,11 @@ def test_settings_environment(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    cfg = copy.deepcopy(settings_module.CONFIG)
+    cfg = copy.deepcopy(_BASE_CONFIG)
     cfg["LOCATION_DB_PATH"] = str(tmp_path / "saarthi-test.db")
     cfg["GEOFENCE_MAPPING_PATH"] = str(mapping_path)
     cfg["WHATSAPP_ENABLED"] = False
-    monkeypatch.setattr(settings_module, "CONFIG", cfg)
+    monkeypatch.setattr(settings_module, "_load_repo_config_values", lambda: copy.deepcopy(cfg))
 
     env_vars = {
         "ADMIN_TOKEN": "test-admin-token",

@@ -3,18 +3,21 @@
 import copy
 import subprocess
 from pathlib import Path
+import runpy
 
 from scripts.backup_dbs import main as backup_dbs_main
 from scripts.backup_gdrive import main as backup_gdrive_main
 from scripts.backup_dbs.main import _dispatch_notifications, build_db_map
 from scripts.backup_gdrive.main import _build_whatsapp_summary
 from scripts.schedule_scripts.main import generate_files
-import shared.settings as settings_module
 from shared.settings import BackupDbSettings, BackupGdriveSettings, SchedulerSettings
+
+_EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config.example.py"
+_BASE_CONFIG = runpy.run_path(str(_EXAMPLE_CONFIG_PATH))["CONFIG"]
 
 
 def _runtime_kwargs(**overrides):
-    cfg = copy.deepcopy(settings_module.CONFIG)
+    cfg = copy.deepcopy(_BASE_CONFIG)
     data = {
         "log_level": cfg["LOG_LEVEL"],
         "log_format": cfg["LOG_FORMAT"],
@@ -96,11 +99,11 @@ def test_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
             whatsapp_ssh_host="pookie",
             whatsapp_remote_script_path="/remote/send.py",
             whatsapp_target_personal="1203@s.whatsapp.net",
-            backup_bucket=settings_module.CONFIG["BACKUP_BUCKET"],
-            vidwiz_s3_prefix=settings_module.CONFIG["VIDWIZ_S3_PREFIX"],
-            trackcrow_s3_prefix=settings_module.CONFIG["TRACKCROW_S3_PREFIX"],
-            vidwiz_dump_filename=settings_module.CONFIG["VIDWIZ_DUMP_FILENAME"],
-            trackcrow_dump_filename=settings_module.CONFIG["TRACKCROW_DUMP_FILENAME"],
+            backup_bucket=_BASE_CONFIG["BACKUP_BUCKET"],
+            vidwiz_s3_prefix=_BASE_CONFIG["VIDWIZ_S3_PREFIX"],
+            trackcrow_s3_prefix=_BASE_CONFIG["TRACKCROW_S3_PREFIX"],
+            vidwiz_dump_filename=_BASE_CONFIG["VIDWIZ_DUMP_FILENAME"],
+            trackcrow_dump_filename=_BASE_CONFIG["TRACKCROW_DUMP_FILENAME"],
         ),
         aws_access_key="ak",
         aws_secret_access_key="sk",

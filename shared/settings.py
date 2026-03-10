@@ -1,10 +1,11 @@
 """Typed runtime settings for API and scripts."""
 
 import os
+import runpy
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any, cast
 
-from config import CONFIG
 from dotenv import dotenv_values
 from pydantic import BaseModel, model_validator
 
@@ -58,42 +59,49 @@ CONFIG_OWNED_KEYS = frozenset(
     }
 )
 
-SETTINGS_KEYS = ENV_OWNED_KEYS | CONFIG_OWNED_KEYS
+ALL_SETTINGS_KEYS = ENV_OWNED_KEYS | CONFIG_OWNED_KEYS
+CONFIG_FILE = Path("config.py")
+ENV_FILE = Path(".env")
 
 
 def _load_repo_config_values() -> dict[str, Any]:
-    if not isinstance(CONFIG, Mapping):
+    if not CONFIG_FILE.exists():
+        raise ValueError("Missing config.py. Create it from config.example.py")
+
+    payload = runpy.run_path(str(CONFIG_FILE))
+    config = payload.get("CONFIG")
+    if not isinstance(config, Mapping):
         raise ValueError("config.py must define CONFIG as a dictionary")
 
-    wrong_source_keys = sorted(key for key in CONFIG if key in ENV_OWNED_KEYS)
-    if wrong_source_keys:
-        joined = ", ".join(wrong_source_keys)
-        raise ValueError(f"config.py contains env-owned keys: {joined}")
+    wrong_keys = sorted(key for key in config if key in ENV_OWNED_KEYS)
+    if wrong_keys:
+        raise ValueError(f"config.py contains env-owned keys: {', '.join(wrong_keys)}")
 
-    missing_keys = sorted(key for key in CONFIG_OWNED_KEYS if key not in CONFIG)
+    missing_keys = sorted(key for key in CONFIG_OWNED_KEYS if key not in config)
     if missing_keys:
-        joined = ", ".join(missing_keys)
-        raise ValueError(f"config.py is missing required keys: {joined}")
+        raise ValueError(f"config.py is missing required keys: {', '.join(missing_keys)}")
 
-    return {key: CONFIG[key] for key in CONFIG_OWNED_KEYS}
+    return {key: config[key] for key in CONFIG_OWNED_KEYS}
 
 
 def _load_env_values() -> dict[str, str]:
     env_values: dict[str, str] = {}
 
-    for key, value in dotenv_values(".env").items():
-        if key in SETTINGS_KEYS and isinstance(value, str) and value.strip():
+    for key, value in dotenv_values(ENV_FILE).items():
+        if key in ALL_SETTINGS_KEYS and isinstance(value, str) and value.strip():
             env_values[key] = value
 
-    for key in SETTINGS_KEYS:
+    for key in ALL_SETTINGS_KEYS:
         value = os.environ.get(key)
         if value is not None and value.strip():
             env_values[key] = value
 
-    wrong_source_keys = sorted(key for key in env_values if key in CONFIG_OWNED_KEYS)
-    if wrong_source_keys:
-        joined = ", ".join(wrong_source_keys)
-        raise ValueError(f".env/environment contains config.py-owned keys: {joined}")
+    wrong_keys = sorted(key for key in env_values if key in CONFIG_OWNED_KEYS)
+    if wrong_keys:
+        raise ValueError(
+            ".env/environment contains config.py-owned keys: "
+            f"{', '.join(wrong_keys)}"
+        )
 
     return {key: value for key, value in env_values.items() if key in ENV_OWNED_KEYS}
 
