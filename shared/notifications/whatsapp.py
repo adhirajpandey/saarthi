@@ -26,6 +26,10 @@ def send_whatsapp_message(
     )
     command = [
         "ssh",
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
         whatsapp_settings.ssh_host,
         remote_command,
     ]
@@ -46,10 +50,17 @@ def send_whatsapp_message(
         logger.info("WhatsApp message sent successfully")
         return True
 
-    logger.error(
-        "WhatsApp sender returned non-zero exit code %s (stdout=%s, stderr=%s)",
-        result.returncode,
-        result.stdout.strip(),
-        result.stderr.strip(),
-    )
+    if result.returncode == 255:
+        logger.error(
+            "WhatsApp SSH transport failed with exit code 255 (stdout=%s, stderr=%s)",
+            result.stdout.strip(),
+            result.stderr.strip(),
+        )
+    else:
+        logger.error(
+            "WhatsApp sender returned non-zero exit code %s (stdout=%s, stderr=%s)",
+            result.returncode,
+            result.stdout.strip(),
+            result.stderr.strip(),
+        )
     return False

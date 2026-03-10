@@ -85,6 +85,10 @@ def test_send_whatsapp_message_quotes_remote_command(monkeypatch) -> None:
     assert sent is True
     assert captured["command"] == [
         "ssh",
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
         "pookie",
         "python3 /remote/send_whatsapp_message.py --message 'DB Backup Success (SUCCESS)' --target 1203@g.us",
     ]

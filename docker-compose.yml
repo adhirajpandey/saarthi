@@ -13,3 +13,4 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+      - /home/adhiraj/.ssh/id_ed25519:/root/.ssh/id_ed25519:ro
