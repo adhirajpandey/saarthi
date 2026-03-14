@@ -9,11 +9,8 @@ wheels/
 # Virtual environments
 .venv
 
-todo.txt
+# Custom
 .env
-/config.py
-/config.example.py
 /app/config/config.py
-logs
+logs/
 data/
-sessions/

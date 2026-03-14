@@ -176,4 +176,4 @@ Remarks:
 
 - `uv run backup-dbs`
 - `uv run backup-gdrive`
-- `uv run schedule-scripts`
+- `sudo env "PATH=$PATH" uv run schedule-scripts`
