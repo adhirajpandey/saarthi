@@ -45,4 +45,6 @@ Saarthi is a Python 3.12 project with two execution surfaces:
 2. Always try to complete the tasks by making minimal code change
 3. If a task appears to require a major refactor, architectural change, or convention-breaking update, stop and ask the user for explicit approval before proceeding.
 4. Always list files in the `docs/` directory and read all of them before planning or making any change.
-5. Once the change/task/request is completed, always prompt the user to update the docs with the suggested changes.
+5. Do not update files in `docs/` in between tasks by default; only update docs if the user explicitly asks.
+6. Once a change/task/request seems complete, or if the user explicitly asks, always prompt the user with suggested docs changes.
+7. When updating docs, always follow the existing `docs/` structure and conventions.
