@@ -59,12 +59,13 @@ JSON success response
 ### `GET /health`
 
 Short description:
-Returns service liveness status, current IST timestamp, and Dell home connectivity via Tailscale.
+Returns service liveness status, current IST timestamp, Dell home connectivity via Tailscale,
+and host tool availability diagnostics.
 
 ASCII flow:
 
 ```text
-Client -> /health -> health router -> get_now_ist() + tailscale ping -> response
+Client -> /health -> health router -> get_now_ist() + tool probes + optional tailscale ping -> response
 ```
 
 Expected input:
@@ -78,7 +79,10 @@ Expected output:
 {
   "status": "ok",
   "timestamp": "2026-03-14T12:34:56+05:30",
-  "dell_home_connectivity": true
+  "dell_home_connectivity": true,
+  "tailscale_available": true,
+  "rclone_available": true,
+  "pg_dump_available": true
 }
 ```
 
@@ -86,6 +90,9 @@ Remarks:
 
 - Timestamp is generated in IST (`Asia/Kolkata`).
 - `dell_home_connectivity` is `true` only when `tailscale ping` to configured Dell IP succeeds.
+- `tailscale_available` and `rclone_available` indicate whether each command is present and runnable.
+- `pg_dump_available` indicates whether `pg_dump` is present on PATH (host-mounted binary check).
+- If `tailscale_available` is `false`, `dell_home_connectivity` is reported as `false` without running `tailscale ping`.
 - When Tailscale is unavailable/unreachable, `dell_home_connectivity` is reported as `false`.
 
 ### `POST /geofence/events`

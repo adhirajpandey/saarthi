@@ -27,7 +27,10 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-`docker-compose.yml` also mounts Tailscale runtime into the container so `/health` can evaluate `dell_home_connectivity`.
+`docker-compose.yml` mounts `tailscale`, `rclone`, and `pg_dump` binaries from host, and
+mounts the Tailscale runtime socket path so `/health` can evaluate
+`dell_home_connectivity`.
+For `pg_dump_available`, `/health` checks host-mounted PATH presence of `pg_dump`.
 
 4. Configure backup timers:
 

@@ -70,7 +70,8 @@ Layer responsibilities:
 - Routers: HTTP contract + dependency wiring
 - Dependencies: auth and settings access
 - Services: persistence, transition detection, notification dispatch
-- Health endpoint also performs a Tailscale reachability probe to Dell home.
+- Health endpoint also reports host tool availability (`tailscale`, `rclone`, `pg_dump`)
+  and performs a Tailscale reachability probe to Dell home.
 
 Error shape:
 

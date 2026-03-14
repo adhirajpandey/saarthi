@@ -8,7 +8,7 @@ Saarthi is a practical workspace for building and operating useful software, not
 
 ## Current Capabilities
 
-- FastAPI endpoints for health checks, protected operations, and geofence/location-driven flows.
+- FastAPI endpoints for health checks (including host tool availability diagnostics), protected operations, and geofence/location-driven flows.
 - Geofence transition handling with event-triggered notifications.
 - Operational automation for database backups, Google Drive sync, and scheduler setup.
 - Shared runtime infrastructure for settings, logging, and notification clients.

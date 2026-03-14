@@ -10,6 +10,9 @@ class HealthCheckResponse(BaseModel):
     status: str
     timestamp: datetime
     dell_home_connectivity: bool
+    tailscale_available: bool
+    rclone_available: bool
+    pg_dump_available: bool
 
 
 class GeofenceEvent(StrEnum):
