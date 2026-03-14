@@ -7,6 +7,10 @@ requires-python = ">=3.12"
 dependencies = [
     "boto3>=1.40.0",
     "fastapi>=0.115.12",
+    "kaleido>=1.2.0",
+    "numpy>=2.4.2",
+    "pandas>=3.0.1",
+    "plotly>=6.5.2",
     "pydantic-settings>=2.11.0",
     "python-dotenv>=1.1.0",
     "requests>=2.32.0",
@@ -18,6 +22,7 @@ dependencies = [
 backup-dbs = "scripts.backup_dbs.main:main"
 backup-gdrive = "scripts.backup_gdrive.main:main"
 schedule-scripts = "scripts.schedule_scripts.main:main"
+shikari-visualize = "scripts.shikari_visualize.main:main"
 
 [tool.uv]
 package = true

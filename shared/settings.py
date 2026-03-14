@@ -57,6 +57,10 @@ CONFIG_OWNED_KEYS = frozenset(
         "GDRIVE_SOURCE",
         "GDRIVE_DESTINATION",
         "GDRIVE_FOLDERS",
+        "SHIKARI_SESSIONS_PATH",
+        "SHIKARI_OUTPUTS_PATH",
+        "SHIKARI_DEFAULT_THEME",
+        "SHIKARI_DEFAULT_OUTPUT_FORMAT",
     }
 )
 
@@ -369,6 +373,15 @@ class SchedulerSettings(BaseModel):
         return self
 
 
+class ShikariSettings(RuntimeSettings):
+    """Settings required by the Shikari visualization script."""
+
+    shikari_sessions_path: str
+    shikari_outputs_path: str
+    shikari_default_theme: str
+    shikari_default_output_format: str
+
+
 def get_api_settings() -> ApiSettings:
     """Return API settings."""
     return ApiSettings.model_validate(_build_payload())
@@ -382,3 +395,8 @@ def get_backup_db_settings() -> BackupDbSettings:
 def get_backup_gdrive_settings() -> BackupGdriveSettings:
     """Return GDrive backup settings."""
     return BackupGdriveSettings.model_validate(_build_payload())
+
+
+def get_shikari_settings() -> ShikariSettings:
+    """Return Shikari visualization settings."""
+    return ShikariSettings.model_validate(_build_payload())

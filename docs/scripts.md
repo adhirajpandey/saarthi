@@ -9,6 +9,7 @@ Scripts are exposed via `pyproject.toml`:
 - `backup-dbs` -> `scripts.backup_dbs.main:main`
 - `backup-gdrive` -> `scripts.backup_gdrive.main:main`
 - `schedule-scripts` -> `scripts.schedule_scripts.main:main`
+- `shikari-visualize` -> `scripts.shikari_visualize.main:main`
 
 ### Shared Runtime Behavior
 
@@ -172,8 +173,66 @@ Remarks:
 - Script does not use ntfy/WhatsApp notifications.
 - Invalid `time` values in config are rejected by model validation.
 
+### `shikari-visualize`
+
+Short description:
+Generates Plotly dashboards from bike sensor session directories.
+
+ASCII flow:
+
+```text
+Load ShikariSettings
+  -> resolve session data path
+  -> discover candidate sessions (requires meta/device.csv + >=1 sensor csv)
+  -> load + normalize sensor/meta CSVs
+  -> build combined dashboard figure
+  -> write html/png/pdf outputs
+  -> exit 0 or 1
+```
+
+Expected input:
+
+Configuration (`app/config/config.py`):
+
+- `SHIKARI_SESSIONS_PATH`
+- `SHIKARI_OUTPUTS_PATH`
+- `SHIKARI_DEFAULT_THEME`
+- `SHIKARI_DEFAULT_OUTPUT_FORMAT`
+
+CLI options:
+
+- `session` (optional)
+- `--list`
+- `--data-dir` (override sessions path)
+- `--output` (`png`, `html`, `pdf`)
+- `--theme` (`light`, `dark`)
+
+Runtime prerequisites:
+
+- Python dependencies installed via `uv sync` (includes `plotly` + `kaleido`)
+
+Expected output:
+
+- Exit code `0` on success.
+- Exit code `1` for invalid input paths, load failures, or render/export failures.
+- Generated files in `SHIKARI_OUTPUTS_PATH` (default `data/shikari/outputs`).
+
+Remarks:
+
+- Data merge target is `data/shikari/sessions`.
+- Early/partial sessions without `meta/device.csv` are excluded from candidates.
+- `--data-dir` can be used to render from any alternate sessions directory.
+
+### Migration Notes
+
+- Sessions were consolidated into `data/shikari/sessions`.
+- Legacy source used for migration: `/home/adhiraj/testing/shikari/sessions`.
+- Generated artifacts are intentionally written to `data/shikari/outputs` (git-ignored via `data/`).
+
 ## Run Commands
 
 - `uv run backup-dbs`
 - `uv run backup-gdrive`
 - `sudo env "PATH=$PATH" uv run schedule-scripts`
+- `uv run shikari-visualize --list`
+- `uv run shikari-visualize 2026-03-13-22:02:58 --output html png`

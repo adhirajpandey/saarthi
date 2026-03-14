@@ -32,7 +32,8 @@ Both surfaces reuse shared modules for settings, logging, and notification trans
       +---------v----------+                    +---------v----------------+
       | FastAPI Runtime    |                    | Operational Script CLIs   |
       | app/main.py        |                    | backup-dbs / backup-gdrive|
-      | routers + services |                    | / schedule-scripts        |
+      | routers + services |                    | / schedule-scripts /      |
+      |                    |                    | shikari-visualize         |
       +---------+----------+                    +---------+----------------+
                 |                                         |
       +---------v----------+                    +---------v----------------+
@@ -108,6 +109,17 @@ Flow:
 3. Generate systemd unit files.
 4. Reload daemon and enable timers.
 
+### `shikari-visualize`
+
+Flow:
+
+1. Load typed Shikari settings.
+2. Resolve session data from `SHIKARI_SESSIONS_PATH` (or CLI override).
+3. Discover candidate sensor session folders.
+4. Normalize sensor/meta CSV schemas.
+5. Build combined Plotly dashboard.
+6. Write outputs under `data/shikari/outputs` (by default).
+
 ## Shared Infrastructure
 
 ### Settings (`shared/settings.py`)
@@ -134,6 +146,10 @@ Validation enforces key ownership and channel-specific requirements.
 - `LOCATION_DB_PATH`: SQLite location history
 - `GEOFENCE_MAPPING_PATH`: geofence definitions
 - `scripts/schedule_scripts/config.json`: scheduler input
+- `data/shikari/sessions`: merged Shikari + Saarthi sensor sessions
+- `data/shikari/outputs`: generated visualization artifacts
+- Shikari config keys: `SHIKARI_SESSIONS_PATH`, `SHIKARI_OUTPUTS_PATH`,
+  `SHIKARI_DEFAULT_THEME`, `SHIKARI_DEFAULT_OUTPUT_FORMAT`
 
 ## Remarks
 

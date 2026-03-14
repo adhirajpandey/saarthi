@@ -6,6 +6,7 @@ Raspberry Pi Linux host with:
 
 - API in Docker Compose (`saarthi-app`)
 - Backups scheduled via host systemd timers (`schedule-scripts`)
+- Local Shikari visualization CLI for ride dashboards (`shikari-visualize`)
 
 ## Quick Setup
 
@@ -38,6 +39,12 @@ For `pg_dump_available`, `/health` checks host-mounted PATH presence of `pg_dump
 sudo env "PATH=$PATH" uv run schedule-scripts
 ```
 
+5. Ensure Shikari data paths exist:
+
+```bash
+mkdir -p data/shikari/sessions data/shikari/outputs
+```
+
 ## Verify
 
 ```bash
@@ -45,6 +52,7 @@ curl -s http://localhost:8000/health
 docker compose logs -f saarthi-app
 systemctl status saarthi-backup-dbs.timer
 systemctl status saarthi-backup-gdrive.timer
+uv run shikari-visualize --list
 ```
 
 ## Common Ops
@@ -60,4 +68,8 @@ docker compose restart saarthi-app
 # Manual backup runs
 uv run backup-dbs
 uv run backup-gdrive
+
+# Manual Shikari output generation
+uv run shikari-visualize --list
+uv run shikari-visualize 2026-03-13-22:02:58 --output html
 ```

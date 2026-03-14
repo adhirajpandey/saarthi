@@ -56,6 +56,10 @@ JSON success response
 
 ## Endpoints
 
+### Remarks
+
+- Shikari visualization is exposed as CLI (`uv run shikari-visualize`), not as an HTTP endpoint.
+
 ### `GET /health`
 
 Short description:

@@ -6,7 +6,7 @@ import types
 import pytest
 
 import shared.settings as settings_module
-from shared.settings import get_api_settings
+from shared.settings import get_api_settings, get_shikari_settings
 
 def test_settings_getter_returns_fresh_values(monkeypatch) -> None:
     monkeypatch.setenv("ADMIN_TOKEN", "first-token")
@@ -110,3 +110,21 @@ def test_fails_when_config_object_is_missing() -> None:
 
     with pytest.raises(ValueError, match="must define CONFIG"):
         get_api_settings()
+
+
+def test_shikari_settings_loads_repo_values(runtime_config) -> None:
+    runtime_config(
+        {
+            "SHIKARI_SESSIONS_PATH": "data/shikari/sessions",
+            "SHIKARI_OUTPUTS_PATH": "data/shikari/outputs",
+            "SHIKARI_DEFAULT_THEME": "dark",
+            "SHIKARI_DEFAULT_OUTPUT_FORMAT": "png",
+        }
+    )
+
+    settings = get_shikari_settings()
+
+    assert settings.shikari_sessions_path == "data/shikari/sessions"
+    assert settings.shikari_outputs_path == "data/shikari/outputs"
+    assert settings.shikari_default_theme == "dark"
+    assert settings.shikari_default_output_format == "png"

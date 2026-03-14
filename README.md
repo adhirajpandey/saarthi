@@ -11,7 +11,16 @@ Saarthi is a practical workspace for building and operating useful software, not
 - FastAPI endpoints for health checks (including host tool availability diagnostics), protected operations, and geofence/location-driven flows.
 - Geofence transition handling with event-triggered notifications.
 - Operational automation for database backups, Google Drive sync, and scheduler setup.
+- Shikari sensor-session visualization CLI for ride dashboards.
 - Shared runtime infrastructure for settings, logging, and notification clients.
+
+## Quick Commands
+
+```bash
+uv run uvicorn app.main:app --reload
+uv run shikari-visualize --list
+uv run shikari-visualize 2026-03-13-22:02:58 --output html png
+```
 
 ## More Docs
 

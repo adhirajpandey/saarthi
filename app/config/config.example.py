@@ -58,6 +58,13 @@ GDRIVE_CONFIG = {
     "GDRIVE_FOLDERS": ["home", "workspace"],
 }
 
+SHIKARI_CONFIG = {
+    "SHIKARI_SESSIONS_PATH": "data/shikari/sessions",
+    "SHIKARI_OUTPUTS_PATH": "data/shikari/outputs",
+    "SHIKARI_DEFAULT_THEME": "dark",
+    "SHIKARI_DEFAULT_OUTPUT_FORMAT": "png",
+}
+
 CONFIG = {
     **APP_CONFIG,
     **LOGGING_CONFIG,
@@ -67,4 +74,5 @@ CONFIG = {
     **NTFY_CONFIG,
     **BACKUP_DB_CONFIG,
     **GDRIVE_CONFIG,
+    **SHIKARI_CONFIG,
 }
