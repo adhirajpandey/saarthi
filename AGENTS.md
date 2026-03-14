@@ -48,3 +48,4 @@ Saarthi is a Python 3.12 project with two execution surfaces:
 5. Do not update files in `docs/` in between tasks by default; only update docs if the user explicitly asks.
 6. Once a change/task/request seems complete, or if the user explicitly asks, always prompt the user with suggested docs changes.
 7. When updating docs, always follow the existing `docs/` structure and conventions.
+8. Keep `README.md` thin and functional; do not change its structure.

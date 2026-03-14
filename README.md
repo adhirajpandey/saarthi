@@ -14,14 +14,6 @@ Saarthi is a practical workspace for building and operating useful software, not
 - Shikari sensor-session visualization CLI for ride dashboards.
 - Shared runtime infrastructure for settings, logging, and notification clients.
 
-## Quick Commands
-
-```bash
-uv run uvicorn app.main:app --reload
-uv run shikari-visualize --list
-uv run shikari-visualize 2026-03-13-22:02:58 --output html png
-```
-
 ## More Docs
 
 For technical details, see [docs/README.md](docs/README.md).
