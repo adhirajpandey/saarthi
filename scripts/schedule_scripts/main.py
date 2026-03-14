@@ -3,6 +3,7 @@
 import json
 import logging
 import subprocess
+import sys
 from pathlib import Path
 
 from shared.logging import setup_logging
@@ -86,12 +87,28 @@ def enable_timers(timer_names: list[str]) -> None:
     logger.info("All timers enabled")
 
 
-def main() -> None:
+def main() -> int:
     setup_logging()
-    config = load_config()
-    timer_names = generate_files(config)
-    enable_timers(timer_names)
+    try:
+        config = load_config()
+        timer_names = generate_files(config)
+        enable_timers(timer_names)
+        return 0
+    except PermissionError as exc:
+        target = exc.filename or "configured systemd path"
+        logger.error(
+            "Permission denied while writing systemd units (%s). "
+            "Run with elevated privileges or change systemd_path.",
+            target,
+        )
+        return 1
+    except subprocess.CalledProcessError as exc:
+        logger.error("systemctl command failed: %s", exc)
+        return 1
+    except Exception:
+        logger.exception("Failed to configure scheduler scripts")
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

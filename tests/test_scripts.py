@@ -172,10 +172,46 @@ def test_schedule_scripts_main_bootstrap_is_side_effect_safe(monkeypatch, test_w
         lambda _names: calls.__setitem__("enabled", calls["enabled"] + 1),
     )
 
-    schedule_main.main()
+    exit_code = schedule_main.main()
 
+    assert exit_code == 0
     assert calls["generated"] == 1
     assert calls["enabled"] == 1
+
+
+def test_schedule_scripts_main_returns_1_on_permission_error(
+    monkeypatch,
+    test_workspace: Path,
+) -> None:
+    config = SchedulerSettings.model_validate(
+        {
+            "systemd_path": str(test_workspace),
+            "uv_bin": "/home/test/.local/bin/uv",
+            "working_dir": "/home/test/projects/saarthi",
+            "home_dir": "/home/test",
+            "scripts": [],
+        }
+    )
+    calls = {"enabled": 0}
+
+    monkeypatch.setattr("shared.logging.setup.os.makedirs", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("shared.logging.setup.logging.config.dictConfig", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("scripts.schedule_scripts.main.load_config", lambda: config)
+    monkeypatch.setattr(
+        "scripts.schedule_scripts.main.generate_files",
+        lambda *_: (_ for _ in ()).throw(
+            PermissionError(13, "Permission denied", "/etc/systemd/system/demo.service")
+        ),
+    )
+    monkeypatch.setattr(
+        "scripts.schedule_scripts.main.enable_timers",
+        lambda _names: calls.__setitem__("enabled", calls["enabled"] + 1),
+    )
+
+    exit_code = schedule_main.main()
+
+    assert exit_code == 1
+    assert calls["enabled"] == 0
 
 
 def test_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
