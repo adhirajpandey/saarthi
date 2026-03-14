@@ -44,3 +44,5 @@ Saarthi is a Python 3.12 project with two execution surfaces:
 1. Always follow existing project patterns, architecture, and naming conventions by understanding and going through the codebase.
 2. Always try to complete the tasks by making minimal code change
 3. If a task appears to require a major refactor, architectural change, or convention-breaking update, stop and ask the user for explicit approval before proceeding.
+4. Always list files in the `docs/` directory and read all of them before planning or making any change.
+5. Once the change/task/request is completed, always prompt the user to update the docs with the suggested changes.

@@ -86,6 +86,7 @@ Remarks:
 
 - Timestamp is generated in IST (`Asia/Kolkata`).
 - `dell_home_connectivity` is `true` only when `tailscale ping` to configured Dell IP succeeds.
+- When Tailscale is unavailable/unreachable, `dell_home_connectivity` is reported as `false`.
 
 ### `POST /geofence/events`
 
