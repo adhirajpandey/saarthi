@@ -59,12 +59,12 @@ JSON success response
 ### `GET /health`
 
 Short description:
-Returns service liveness status and current IST timestamp.
+Returns service liveness status, current IST timestamp, and Dell home connectivity via Tailscale.
 
 ASCII flow:
 
 ```text
-Client -> /health -> health router -> get_now_ist() -> response
+Client -> /health -> health router -> get_now_ist() + tailscale ping -> response
 ```
 
 Expected input:
@@ -77,13 +77,15 @@ Expected output:
 ```json
 {
   "status": "ok",
-  "timestamp": "2026-03-14T12:34:56+05:30"
+  "timestamp": "2026-03-14T12:34:56+05:30",
+  "dell_home_connectivity": true
 }
 ```
 
 Remarks:
 
 - Timestamp is generated in IST (`Asia/Kolkata`).
+- `dell_home_connectivity` is `true` only when `tailscale ping` to configured Dell IP succeeds.
 
 ### `POST /geofence/events`
 

@@ -14,3 +14,5 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
       - /home/adhiraj/.ssh/id_ed25519:/root/.ssh/id_ed25519:ro
+      - /usr/bin/tailscale:/usr/bin/tailscale:ro
+      - /var/run/tailscale:/var/run/tailscale

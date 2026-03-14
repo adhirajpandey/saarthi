@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 class HealthCheckResponse(BaseModel):
     status: str
     timestamp: datetime
+    dell_home_connectivity: bool
 
 
 class GeofenceEvent(StrEnum):

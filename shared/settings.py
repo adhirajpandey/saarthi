@@ -30,6 +30,7 @@ CONFIG_OWNED_KEYS = frozenset(
         "APP_NAME",
         "LOCATION_DB_PATH",
         "GEOFENCE_MAPPING_PATH",
+        "DELL_TAILSCALE_IP",
         "LOG_LEVEL",
         "LOG_FORMAT",
         "LOG_DATE_FORMAT",
@@ -255,6 +256,7 @@ class ApiSettings(RuntimeSettings):
     app_name: str
     location_db_path: str
     geofence_mapping_path: str
+    dell_tailscale_ip: str
     admin_token: str
     geofence_subject_template: str
     geofence_email_template: str

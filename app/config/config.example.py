@@ -8,6 +8,7 @@ APP_CONFIG = {
     "APP_NAME": "SAARTHI",
     "LOCATION_DB_PATH": "data/saarthi.db",
     "GEOFENCE_MAPPING_PATH": "data/geofence_mapping.json",
+    "DELL_TAILSCALE_IP": "100.100.100.100",
 }
 
 LOGGING_CONFIG = {
