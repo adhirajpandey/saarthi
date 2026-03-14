@@ -130,73 +130,80 @@ def _dispatch_notifications(
 
 
 def main() -> int:
-    settings = get_backup_db_settings()
-    setup_logging(settings.logging_settings())
-    db_map = build_db_map(settings)
-
-    created_files: list[Path] = []
+    settings: BackupDbSettings | None = None
     output_lines: list[str] = []
-    success = True
-
     try:
-        for db_name, db_conf in db_map.items():
-            msg = f"\n=== Processing DB: {db_name} ==="
-            logger.info(msg.strip())
-            output_lines.append(msg)
+        settings = get_backup_db_settings()
+        setup_logging(settings.logging_settings())
+        db_map = build_db_map(settings)
 
-            dump_path = Path(f"{db_conf['filename']}.sql")
-            created_files.append(dump_path)
-            try:
-                run_pg_dump(dump_path, db_conf["url"])
-                output_lines.append("Running pg_dump command...")
+        created_files: list[Path] = []
+        success = True
 
-                sanity_check(dump_path)
-                output_lines.append("Sanity check passed")
-
-                upload_to_s3(
-                    local_file=dump_path,
-                    bucket=db_conf["s3_bucket"],
-                    prefix=db_conf["s3_prefix"],
-                    settings=settings,
-                )
-                output_lines.append(
-                    f"Uploading to s3://{db_conf['s3_bucket']}/{db_conf['s3_prefix']}/..."
-                )
-
-                msg = f"Backup complete for {db_name}"
-                logger.info(msg)
+        try:
+            for db_name, db_conf in db_map.items():
+                msg = f"\n=== Processing DB: {db_name} ==="
+                logger.info(msg.strip())
                 output_lines.append(msg)
-            except Exception as exc:
-                success = False
-                msg = f"Backup failed for {db_name}: {exc}"
-                logger.error(msg)
-                output_lines.append(msg)
-    finally:
-        logger.info("=== Teardown ===")
-        output_lines.append("\n=== Teardown ===")
-        teardown(created_files)
 
-    if success:
-        output_lines.append("All backups completed successfully")
-        title = "DB Backup Success"
-    else:
-        title = "DB Backup Failed"
+                dump_path = Path(f"{db_conf['filename']}.sql")
+                created_files.append(dump_path)
+                try:
+                    run_pg_dump(dump_path, db_conf["url"])
+                    output_lines.append("Running pg_dump command...")
 
-    _dispatch_notifications(settings=settings, title=title, output_lines=output_lines, success=success)
-    return 0 if success else 1
+                    sanity_check(dump_path)
+                    output_lines.append("Sanity check passed")
+
+                    upload_to_s3(
+                        local_file=dump_path,
+                        bucket=db_conf["s3_bucket"],
+                        prefix=db_conf["s3_prefix"],
+                        settings=settings,
+                    )
+                    output_lines.append(
+                        f"Uploading to s3://{db_conf['s3_bucket']}/{db_conf['s3_prefix']}/..."
+                    )
+
+                    msg = f"Backup complete for {db_name}"
+                    logger.info(msg)
+                    output_lines.append(msg)
+                except Exception as exc:
+                    success = False
+                    msg = f"Backup failed for {db_name}: {exc}"
+                    logger.error(msg)
+                    output_lines.append(msg)
+        finally:
+            logger.info("=== Teardown ===")
+            output_lines.append("\n=== Teardown ===")
+            teardown(created_files)
+
+        if success:
+            output_lines.append("All backups completed successfully")
+            title = "DB Backup Success"
+        else:
+            title = "DB Backup Failed"
+
+        _dispatch_notifications(
+            settings=settings,
+            title=title,
+            output_lines=output_lines,
+            success=success,
+        )
+        return 0 if success else 1
+    except Exception as exc:
+        setup_logging()
+        error_msg = f"Backup failed: {exc}"
+        logger.exception(error_msg)
+        if settings is not None:
+            _dispatch_notifications(
+                settings=settings,
+                title="DB Backup Failed",
+                output_lines=[error_msg, *output_lines],
+                success=False,
+            )
+        return 1
 
 
 if __name__ == "__main__":
-    settings = get_backup_db_settings()
-    try:
-        sys.exit(main())
-    except Exception as exc:
-        error_msg = f"Backup failed: {exc}"
-        logger.exception(error_msg)
-        _dispatch_notifications(
-            settings=settings,
-            title="DB Backup Failed",
-            output_lines=[error_msg],
-            success=False,
-        )
-        sys.exit(1)
+    sys.exit(main())

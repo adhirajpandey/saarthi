@@ -9,7 +9,9 @@ from scripts.backup_dbs import main as backup_dbs_main
 from scripts.backup_gdrive import main as backup_gdrive_main
 from scripts.backup_dbs.main import _dispatch_notifications, build_db_map
 from scripts.backup_gdrive.main import _build_whatsapp_summary
+from scripts.schedule_scripts import main as schedule_main
 from scripts.schedule_scripts.main import generate_files
+from shared.logging.setup import setup_logging
 from shared.settings import BackupDbSettings, BackupGdriveSettings, SchedulerSettings
 
 _EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "app" / "config" / "config.example.py"
@@ -131,6 +133,51 @@ def test_generate_files_uses_home_dir_from_config(test_workspace: Path) -> None:
     assert "OnCalendar=*-*-* 04:00:00" in timer_content
 
 
+def test_setup_logging_defaults_without_validation_error(monkeypatch) -> None:
+    observed = {"called": False}
+
+    monkeypatch.setattr("shared.logging.setup.os.makedirs", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        "shared.logging.setup.logging.config.dictConfig",
+        lambda _cfg: observed.__setitem__("called", True),
+    )
+
+    setup_logging()
+
+    assert observed["called"] is True
+
+
+def test_schedule_scripts_main_bootstrap_is_side_effect_safe(monkeypatch, test_workspace: Path) -> None:
+    config = SchedulerSettings.model_validate(
+        {
+            "systemd_path": str(test_workspace),
+            "uv_bin": "/home/test/.local/bin/uv",
+            "working_dir": "/home/test/projects/saarthi",
+            "home_dir": "/home/test",
+            "scripts": [],
+        }
+    )
+
+    calls = {"generated": 0, "enabled": 0}
+
+    monkeypatch.setattr("shared.logging.setup.os.makedirs", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("shared.logging.setup.logging.config.dictConfig", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr("scripts.schedule_scripts.main.load_config", lambda: config)
+    monkeypatch.setattr(
+        "scripts.schedule_scripts.main.generate_files",
+        lambda _config: calls.__setitem__("generated", calls["generated"] + 1) or [],
+    )
+    monkeypatch.setattr(
+        "scripts.schedule_scripts.main.enable_timers",
+        lambda _names: calls.__setitem__("enabled", calls["enabled"] + 1),
+    )
+
+    schedule_main.main()
+
+    assert calls["generated"] == 1
+    assert calls["enabled"] == 1
+
+
 def test_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
     settings = _backup_db_settings(
         backup_bucket=_BASE_CONFIG["BACKUP_BUCKET"],
@@ -236,3 +283,47 @@ def test_backup_gdrive_main_exit_codes(monkeypatch) -> None:
     )
     exit_code = backup_gdrive_main.main()
     assert exit_code == 0
+
+
+def test_backup_dbs_main_top_level_failure_dispatches_notification(monkeypatch) -> None:
+    settings = _backup_db_settings()
+    observed: dict[str, object] = {}
+
+    monkeypatch.setattr("scripts.backup_dbs.main.get_backup_db_settings", lambda: settings)
+    monkeypatch.setattr("scripts.backup_dbs.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.backup_dbs.main.build_db_map",
+        lambda *_: (_ for _ in ()).throw(RuntimeError("bootstrap boom")),
+    )
+    monkeypatch.setattr(
+        "scripts.backup_dbs.main._dispatch_notifications",
+        lambda **kwargs: observed.update(kwargs),
+    )
+
+    exit_code = backup_dbs_main.main()
+
+    assert exit_code == 1
+    assert observed["success"] is False
+    assert observed["title"] == "DB Backup Failed"
+
+
+def test_backup_gdrive_main_top_level_failure_dispatches_notification(monkeypatch) -> None:
+    settings = _backup_gdrive_settings()
+    observed: dict[str, object] = {}
+
+    monkeypatch.setattr("scripts.backup_gdrive.main.get_backup_gdrive_settings", lambda: settings)
+    monkeypatch.setattr("scripts.backup_gdrive.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.backup_gdrive.main.subprocess.run",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("rclone missing")),
+    )
+    monkeypatch.setattr(
+        "scripts.backup_gdrive.main._dispatch_notifications",
+        lambda **kwargs: observed.update(kwargs),
+    )
+
+    exit_code = backup_gdrive_main.main()
+
+    assert exit_code == 1
+    assert observed["success"] is False
+    assert observed["title"] == "GDrive Backup Failed"
