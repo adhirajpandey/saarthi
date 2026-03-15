@@ -16,6 +16,8 @@ Description={description}
 
 [Service]
 Type=oneshot
+User={run_user}
+Group={run_group}
 ExecStart={exec_start}
 WorkingDirectory={working_dir}
 Environment="PATH=/usr/local/bin:/usr/bin:/bin"
@@ -47,6 +49,8 @@ def generate_files(config: SchedulerSettings) -> list[str]:
     uv_bin = config.uv_bin
     working_dir = config.working_dir
     timer_names: list[str] = []
+    run_user = Path(config.home_dir).name
+    run_group = run_user
 
     for script in config.scripts:
         name = script.name
@@ -56,6 +60,8 @@ def generate_files(config: SchedulerSettings) -> list[str]:
 
         service_content = SERVICE_TEMPLATE.format(
             description=script.description,
+            run_user=run_user,
+            run_group=run_group,
             exec_start=exec_start,
             working_dir=working_dir,
             home_dir=config.home_dir,
