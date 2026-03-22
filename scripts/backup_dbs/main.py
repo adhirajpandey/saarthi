@@ -38,6 +38,12 @@ def build_db_map(settings: BackupDbSettings) -> dict[str, DbBackupTarget]:
             "s3_bucket": settings.backup_bucket,
             "s3_prefix": settings.trackcrow_s3_prefix,
         },
+        "smashdiary": {
+            "url": settings.smashdiary_db_url,
+            "filename": settings.smashdiary_dump_filename,
+            "s3_bucket": settings.backup_bucket,
+            "s3_prefix": settings.smashdiary_s3_prefix,
+        },
     }
 
 

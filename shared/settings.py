@@ -20,6 +20,7 @@ ENV_OWNED_KEYS = frozenset(
         "AWS_SECRET_ACCESS_KEY",
         "VIDWIZ_DB_URL",
         "TRACKCROW_DB_URL",
+        "SMASHDIARY_DB_URL",
         "NTFY_BASE_URL",
         "NTFY_TOKEN",
     }
@@ -52,8 +53,10 @@ CONFIG_OWNED_KEYS = frozenset(
         "BACKUP_BUCKET",
         "VIDWIZ_S3_PREFIX",
         "TRACKCROW_S3_PREFIX",
+        "SMASHDIARY_S3_PREFIX",
         "VIDWIZ_DUMP_FILENAME",
         "TRACKCROW_DUMP_FILENAME",
+        "SMASHDIARY_DUMP_FILENAME",
         "GDRIVE_SOURCE",
         "GDRIVE_DESTINATION",
         "GDRIVE_FOLDERS",
@@ -314,13 +317,16 @@ class BackupDbSettings(NtfyRuntimeSettings):
 
     aws_access_key: str
     aws_secret_access_key: str
+    backup_bucket: str
     vidwiz_db_url: str
     trackcrow_db_url: str
-    backup_bucket: str
+    smashdiary_db_url: str
     vidwiz_s3_prefix: str
     trackcrow_s3_prefix: str
+    smashdiary_s3_prefix: str
     vidwiz_dump_filename: str
     trackcrow_dump_filename: str
+    smashdiary_dump_filename: str
 
 
 class BackupGdriveSettings(NtfyRuntimeSettings):

@@ -33,9 +33,9 @@ WHATSAPP_CONFIG = {
 }
 
 GEOFENCE_CONFIG = {
-    "GEOFENCE_SUBJECT_TEMPLATE": "Saarthi geofence: {area}",
-    "GEOFENCE_EMAIL_TEMPLATE": "Geofence update: {area} {event}",
-    "GEOFENCE_WHATSAPP_TEMPLATE": "Area {area}: {event}",
+    "GEOFENCE_SUBJECT_TEMPLATE": "Parivaar Location Update: {area}",
+    "GEOFENCE_EMAIL_TEMPLATE": "Namaste,\n\nAdhiraj ne {area} area me {event} kiya hai.\n\nDhanyavaad,\nSaarthi",
+    "GEOFENCE_WHATSAPP_TEMPLATE": "Location update: Adhiraj ne {area} area me {event} kiya hai.",
     "GEOFENCE_UPDATES_RECIPIENT": "alerts@example.com",
     "GEOFENCE_SENDER_NAME": "Saarthi",
 }
@@ -48,8 +48,10 @@ BACKUP_DB_CONFIG = {
     "BACKUP_BUCKET": "backups",
     "VIDWIZ_S3_PREFIX": "db/vidwiz",
     "TRACKCROW_S3_PREFIX": "db/trackcrow",
+    "SMASHDIARY_S3_PREFIX": "db/smashdiary",
     "VIDWIZ_DUMP_FILENAME": "vidwiz_backup",
     "TRACKCROW_DUMP_FILENAME": "trackcrow_backup",
+    "SMASHDIARY_DUMP_FILENAME": "smashdiary_backup",
 }
 
 GDRIVE_CONFIG = {
