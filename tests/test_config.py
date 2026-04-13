@@ -6,7 +6,8 @@ import types
 import pytest
 
 import shared.settings as settings_module
-from shared.settings import get_api_settings, get_shikari_settings
+from shared.settings import get_api_settings, get_mcp_settings, get_shikari_settings
+
 
 def test_settings_getter_returns_fresh_values(monkeypatch) -> None:
     monkeypatch.setenv("ADMIN_TOKEN", "first-token")
@@ -63,6 +64,35 @@ def test_whatsapp_only_config_does_not_require_smtp(monkeypatch, runtime_config)
     settings = get_api_settings()
     assert settings.email_enabled is False
     assert settings.whatsapp_enabled is True
+
+
+def test_mcp_settings_requires_personal_whatsapp_target(runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": None,
+        }
+    )
+
+    with pytest.raises(ValueError, match="WHATSAPP_TARGET_PERSONAL"):
+        get_mcp_settings()
+
+
+def test_mcp_settings_requires_mcp_token(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+        }
+    )
+    monkeypatch.delenv("MCP_TOKEN", raising=False)
+
+    with pytest.raises(ValueError, match="mcp_token"):
+        get_mcp_settings()
 
 
 def test_email_enabled_requires_smtp_host_and_port(monkeypatch, runtime_config) -> None:

@@ -12,6 +12,7 @@ from pydantic import BaseModel, model_validator
 ENV_OWNED_KEYS = frozenset(
     {
         "ADMIN_TOKEN",
+        "MCP_TOKEN",
         "SMTP_EMAIL",
         "SMTP_APP_PASSWORD",
         "SMTP_HOST",
@@ -312,6 +313,24 @@ class ApiSettings(RuntimeSettings):
         )
 
 
+class McpSettings(RuntimeSettings):
+    """Settings required by the MCP runtime."""
+
+    mcp_token: str
+
+    @model_validator(mode="after")
+    def _validate_mcp_whatsapp_config(self) -> "McpSettings":
+        if not self.whatsapp_enabled:
+            raise ValueError("WHATSAPP_ENABLED is required for the MCP server")
+        self._validate_whatsapp_transport()
+        if not self.whatsapp_target_personal:
+            raise ValueError("WHATSAPP_TARGET_PERSONAL is required for the MCP server")
+        return self
+
+    def whatsapp_settings_for_mcp(self) -> WhatsAppSettings:
+        return self._build_whatsapp_settings(self.whatsapp_target_personal)
+
+
 class BackupDbSettings(NtfyRuntimeSettings):
     """Settings required by the database backup script."""
 
@@ -391,6 +410,11 @@ class ShikariSettings(RuntimeSettings):
 def get_api_settings() -> ApiSettings:
     """Return API settings."""
     return ApiSettings.model_validate(_build_payload())
+
+
+def get_mcp_settings() -> McpSettings:
+    """Return MCP server settings."""
+    return McpSettings.model_validate(_build_payload())
 
 
 def get_backup_db_settings() -> BackupDbSettings:

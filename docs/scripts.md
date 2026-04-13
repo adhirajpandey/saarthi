@@ -11,6 +11,10 @@ Scripts are exposed via `pyproject.toml`:
 - `schedule-scripts` -> `scripts.schedule_scripts.main:main`
 - `shikari-visualize` -> `scripts.shikari_visualize.main:main`
 
+Remarks:
+
+- MCP is served by `mcp-server/server.py`; it is not a `pyproject.toml` script entry point.
+
 ### Shared Runtime Behavior
 
 - Scripts load typed settings from `shared/settings.py`.
@@ -27,6 +31,9 @@ Backup scripts (`backup-dbs`, `backup-gdrive`) send notifications based on toggl
 - WhatsApp (`WHATSAPP_ENABLED`)
 
 Each script attempts notification dispatch but does not crash purely because a notification channel fails.
+
+The same WhatsApp transport is also exposed through the MCP `send_whatsapp_message`
+tool for authenticated local tool access.
 
 ## Scripts
 

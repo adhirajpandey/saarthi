@@ -23,11 +23,12 @@ RUN uv sync --frozen --no-dev
 COPY app ./app
 COPY shared ./shared
 COPY scripts ./scripts
+COPY mcp-server ./mcp-server
 COPY README.md ./README.md
 
 # Runtime directories used by default settings
 RUN mkdir -p logs data
 
-EXPOSE 8000
+EXPOSE 8000 8001
 
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,6 +1,6 @@
 services:
-  saarthi-app:
-    container_name: saarthi-app
+  saarthi-api:
+    container_name: saarthi-api
     build:
       context: .
       dockerfile: Dockerfile
@@ -18,3 +18,19 @@ services:
       - /usr/bin/rclone:/usr/bin/rclone:ro
       - /usr/bin/pg_dump:/usr/bin/pg_dump:ro
       - /var/run/tailscale:/var/run/tailscale
+
+  saarthi-mcp:
+    container_name: saarthi-mcp
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: adhirajpandey/saarthi:latest
+    env_file:
+      - .env
+    restart: unless-stopped
+    command: ["uv", "run", "python", "mcp-server/server.py"]
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./logs:/app/logs
+      - /home/adhiraj/.ssh/id_ed25519:/root/.ssh/id_ed25519:ro

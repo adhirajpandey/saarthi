@@ -49,8 +49,10 @@ def _backup_db_settings(**overrides) -> BackupDbSettings:
         "backup_bucket": "my-bucket",
         "vidwiz_s3_prefix": "db/vidwiz",
         "trackcrow_s3_prefix": "db/trackcrow",
+        "smashdiary_s3_prefix": "db/smashdiary",
         "vidwiz_dump_filename": "vidwiz-custom",
         "trackcrow_dump_filename": "trackcrow-custom",
+        "smashdiary_dump_filename": "smashdiary-custom",
     }
     defaults.update(overrides)
     return BackupDbSettings(
@@ -59,6 +61,7 @@ def _backup_db_settings(**overrides) -> BackupDbSettings:
         aws_secret_access_key="sk",
         vidwiz_db_url="postgres://vidwiz",
         trackcrow_db_url="postgres://trackcrow",
+        smashdiary_db_url="postgres://smashdiary",
     )
 
 
@@ -86,13 +89,16 @@ def test_build_db_map_uses_settings_values() -> None:
         aws_secret_access_key="sk",
         vidwiz_db_url="postgres://vidwiz",
         trackcrow_db_url="postgres://trackcrow",
+        smashdiary_db_url="postgres://smashdiary",
         ntfy_base_url="https://ntfy.example.com",
         ntfy_token="token",
         backup_bucket="my-bucket",
         vidwiz_s3_prefix="db/vidwiz",
         trackcrow_s3_prefix="db/trackcrow",
+        smashdiary_s3_prefix="db/smashdiary",
         vidwiz_dump_filename="vidwiz-custom",
         trackcrow_dump_filename="trackcrow-custom",
+        smashdiary_dump_filename="smashdiary-custom",
     )
 
     db_map = build_db_map(settings)
@@ -102,6 +108,8 @@ def test_build_db_map_uses_settings_values() -> None:
     assert db_map["vidwiz"]["filename"] == "vidwiz-custom"
     assert db_map["trackcrow"]["s3_prefix"] == "db/trackcrow"
     assert db_map["trackcrow"]["filename"] == "trackcrow-custom"
+    assert db_map["smashdiary"]["s3_prefix"] == "db/smashdiary"
+    assert db_map["smashdiary"]["filename"] == "smashdiary-custom"
 
 
 def test_generate_files_uses_home_dir_from_config(test_workspace: Path) -> None:
@@ -219,8 +227,10 @@ def test_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
         backup_bucket=_BASE_CONFIG["BACKUP_BUCKET"],
         vidwiz_s3_prefix=_BASE_CONFIG["VIDWIZ_S3_PREFIX"],
         trackcrow_s3_prefix=_BASE_CONFIG["TRACKCROW_S3_PREFIX"],
+        smashdiary_s3_prefix=_BASE_CONFIG["SMASHDIARY_S3_PREFIX"],
         vidwiz_dump_filename=_BASE_CONFIG["VIDWIZ_DUMP_FILENAME"],
         trackcrow_dump_filename=_BASE_CONFIG["TRACKCROW_DUMP_FILENAME"],
+        smashdiary_dump_filename=_BASE_CONFIG["SMASHDIARY_DUMP_FILENAME"],
     )
 
     calls = {"ntfy": 0, "wa": 0}

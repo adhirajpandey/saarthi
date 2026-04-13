@@ -2,12 +2,13 @@
 
 ## General
 
-Saarthi has two execution surfaces:
+Saarthi has three execution surfaces:
 
 - FastAPI runtime for HTTP-triggered workflows
+- FastMCP runtime for authenticated local tool access
 - CLI script runtime for operational automation
 
-Both surfaces reuse shared modules for settings, logging, and notification transports.
+All surfaces reuse shared modules for settings, logging, and notification transports.
 
 ## High-Level Diagram
 
@@ -26,20 +27,20 @@ Both surfaces reuse shared modules for settings, logging, and notification trans
                          | shared/settings.py  |
                          | typed validation    |
                          +-----+----------+----+
-                               |          |
-                +--------------+          +------------------+
-                |                                         |
-      +---------v----------+                    +---------v----------------+
-      | FastAPI Runtime    |                    | Operational Script CLIs   |
-      | app/main.py        |                    | backup-dbs / backup-gdrive|
-      | routers + services |                    | / schedule-scripts /      |
-      |                    |                    | shikari-visualize         |
-      +---------+----------+                    +---------+----------------+
-                |                                         |
-      +---------v----------+                    +---------v----------------+
-      | SQLite + Geofence  |                    | pg_dump / rclone /       |
-      | transition engine  |                    | systemd + cloud uploads  |
-      +--------------------+                    +--------------------------+
+                               |          |          |
+                +--------------+          |          +------------------+
+                |                         |                             |
+      +---------v----------+     +--------v---------+        +---------v----------------+
+      | FastAPI Runtime    |     | FastMCP Runtime  |        | Operational Script CLIs   |
+      | app/main.py        |     | mcp-server       |        | backup-dbs / backup-gdrive|
+      | routers + services |     | authenticated    |        | / schedule-scripts /      |
+      |                    |     | tool access      |        | shikari-visualize         |
+      +---------+----------+     +--------+---------+        +---------+----------------+
+                |                         |                            |
+      +---------v----------+     +--------v---------+        +---------v----------------+
+      | SQLite + Geofence  |     | WhatsApp tool    |        | pg_dump / rclone /       |
+      | transition engine  |     | via SSH sender   |        | systemd + cloud uploads  |
+      +--------------------+     +------------------+        +--------------------------+
 
                           +------------------------------+
                           | shared/logging +             |
@@ -50,6 +51,7 @@ Both surfaces reuse shared modules for settings, logging, and notification trans
 ## Components
 
 - `app/`: API runtime and business services
+- `mcp-server/`: FastMCP runtime and tool definitions
 - `scripts/`: operational command entry points
 - `shared/`: cross-cutting runtime modules
 - `tests/`: behavior and contract test suite
@@ -77,6 +79,26 @@ Layer responsibilities:
 Error shape:
 
 - `AppError` is translated to `{"error": {"code", "message"}}`
+
+## MCP Runtime
+
+Startup flow (`mcp-server/server.py`):
+
+1. Load and validate MCP settings.
+2. Configure FastMCP bearer-token auth from `MCP_TOKEN`.
+3. Register MCP tools.
+4. Serve streamable HTTP on `/mcp`.
+
+Current tool surface:
+
+- `send_whatsapp_message(message)`: sends a WhatsApp message to
+  `WHATSAPP_TARGET_PERSONAL` using the shared SSH WhatsApp transport.
+
+Deployment defaults:
+
+- Docker service: `saarthi-mcp`
+- URL: `http://localhost:8001/mcp`
+- Auth: `Authorization: Bearer <MCP_TOKEN>`
 
 ## Script Runtime
 
@@ -145,6 +167,7 @@ Validation enforces key ownership and channel-specific requirements.
 
 - `LOCATION_DB_PATH`: SQLite location history
 - `GEOFENCE_MAPPING_PATH`: geofence definitions
+- `MCP_TOKEN`: bearer token required by the MCP server
 - `scripts/schedule_scripts/config.json`: scheduler input
 - `data/shikari/sessions`: merged Shikari + Saarthi sensor sessions
 - `data/shikari/outputs`: generated visualization artifacts
@@ -153,5 +176,5 @@ Validation enforces key ownership and channel-specific requirements.
 
 ## Remarks
 
-- API and scripts are intentionally separate entrypoints.
-- Shared modules keep behavior consistent across both runtimes.
+- API, MCP, and scripts are intentionally separate entrypoints.
+- Shared modules keep behavior consistent across runtimes.

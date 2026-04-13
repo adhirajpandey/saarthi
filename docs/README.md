@@ -14,6 +14,6 @@ This directory contains technical documentation. The root `README.md` stays inte
 ## Usage
 
 - Start with `architecture.md` for system context.
-- Use `api.md` for endpoint contracts and behavior (Shikari is CLI-only; no API route).
+- Use `api.md` for HTTP endpoint contracts and MCP tool contracts (Shikari is CLI-only; no API route).
 - Use `scripts.md` for CLI pipelines and operational expectations, including `shikari-visualize`.
 - Use `deployment.md` for Raspberry Pi runbook steps.
