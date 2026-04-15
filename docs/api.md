@@ -56,11 +56,6 @@ JSON success response
 
 ## Endpoints
 
-### Remarks
-
-- Shikari visualization is exposed as CLI (`uv run shikari-visualize`), not as an HTTP endpoint.
-- MCP tools are exposed by the FastMCP server at `/mcp`, not by the FastAPI app.
-
 ### `GET /health`
 
 Short description:
@@ -232,70 +227,3 @@ Remarks:
 
 - Endpoint response is immediate; geofence evaluation happens asynchronously.
 - Geofence engine needs at least two stored location points to evaluate transitions.
-
-## MCP Tools
-
-### Auth
-
-MCP requests require:
-
-- Header: `Authorization: Bearer <MCP_TOKEN>`
-
-Codex is expected to connect to the configured `saarthi` MCP server and supply
-the bearer token from `MCP_TOKEN`.
-
-### Endpoint
-
-Default URL:
-
-```text
-http://localhost:8001/mcp
-```
-
-Docker service:
-
-```text
-saarthi-mcp
-```
-
-### `send_whatsapp_message`
-
-Short description:
-Sends a WhatsApp message through the shared SSH WhatsApp sender.
-
-Expected input:
-
-```json
-{
-  "message": "Hello from Saarthi"
-}
-```
-
-Expected output:
-
-Success:
-
-```json
-{
-  "success": true,
-  "message": "WhatsApp message sent"
-}
-```
-
-Failure:
-
-```json
-{
-  "success": false,
-  "message": "Failed to send WhatsApp message"
-}
-```
-
-Remarks:
-
-- Empty or whitespace-only messages are rejected.
-- The recipient is fixed to `WHATSAPP_TARGET_PERSONAL`.
-- Transport uses `WHATSAPP_SSH_HOST`, `WHATSAPP_REMOTE_SCRIPT_PATH`, and
-  `WHATSAPP_TIMEOUT_SECONDS`.
-- The MCP server only defines the tool boundary; actual sending is performed by
-  `shared.notifications.whatsapp`.

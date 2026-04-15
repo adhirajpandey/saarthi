@@ -31,9 +31,7 @@ Backup scripts (`backup-dbs`, `backup-gdrive`) send notifications based on toggl
 - WhatsApp (`WHATSAPP_ENABLED`)
 
 Each script attempts notification dispatch but does not crash purely because a notification channel fails.
-
-The same WhatsApp transport is also exposed through the MCP `send_whatsapp_message`
-tool for authenticated local tool access.
+Backup scripts reuse the shared notification transports.
 
 ## Scripts
 
@@ -63,8 +61,10 @@ Configuration (`app/config/config.py`):
 - `BACKUP_BUCKET`
 - `VIDWIZ_S3_PREFIX`
 - `TRACKCROW_S3_PREFIX`
+- `SMASHDIARY_S3_PREFIX`
 - `VIDWIZ_DUMP_FILENAME`
 - `TRACKCROW_DUMP_FILENAME`
+- `SMASHDIARY_DUMP_FILENAME`
 - notification toggles and shared runtime values
 
 Secrets / connections (`.env`):
@@ -73,6 +73,7 @@ Secrets / connections (`.env`):
 - `AWS_SECRET_ACCESS_KEY`
 - `VIDWIZ_DB_URL`
 - `TRACKCROW_DB_URL`
+- `SMASHDIARY_DB_URL`
 - ntfy credentials when ntfy enabled
 
 System prerequisites:
@@ -230,10 +231,10 @@ Remarks:
 - Early/partial sessions without `meta/device.csv` are excluded from candidates.
 - `--data-dir` can be used to render from any alternate sessions directory.
 
-### Migration Notes
+### Historical Migration Notes
 
 - Sessions were consolidated into `data/shikari/sessions`.
-- Legacy source used for migration: `/home/adhiraj/testing/shikari/sessions`.
+- Legacy source used during the one-time migration: `/home/adhiraj/testing/shikari/sessions`.
 - Generated artifacts are intentionally written to `data/shikari/outputs` (git-ignored via `data/`).
 
 ## Run Commands

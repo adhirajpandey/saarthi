@@ -94,6 +94,8 @@ Current tool surface:
 - `send_whatsapp_message(message)`: sends a WhatsApp message to
   `WHATSAPP_TARGET_PERSONAL` using the shared SSH WhatsApp transport.
 
+Detailed MCP contracts are documented in `mcp.md`.
+
 Deployment defaults:
 
 - Docker service: `saarthi-mcp`
@@ -153,7 +155,7 @@ Validation enforces key ownership and channel-specific requirements.
 
 ### Logging (`shared/logging/setup.py`)
 
-- Single setup path for API and scripts
+- Single setup path for API, MCP, and scripts
 - Console + file handlers
 - Configurable format, level, date format, and file path
 
@@ -163,7 +165,7 @@ Validation enforces key ownership and channel-specific requirements.
 - ntfy HTTP
 - WhatsApp via SSH remote command
 
-## Data and State
+## Runtime Paths and State
 
 - `LOCATION_DB_PATH`: SQLite location history
 - `GEOFENCE_MAPPING_PATH`: geofence definitions
@@ -177,4 +179,5 @@ Validation enforces key ownership and channel-specific requirements.
 ## Remarks
 
 - API, MCP, and scripts are intentionally separate entrypoints.
+- Runtime-specific docs contain the full config and secret requirements.
 - Shared modules keep behavior consistent across runtimes.

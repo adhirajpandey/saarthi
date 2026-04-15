@@ -35,18 +35,7 @@ mounts the Tailscale runtime socket path so `/health` can evaluate
 For `pg_dump_available`, `/health` checks host-mounted PATH presence of `pg_dump`.
 
 `saarthi-mcp` serves the MCP endpoint on `http://localhost:8001/mcp` and requires
-`Authorization: Bearer <MCP_TOKEN>`. Codex should be configured with the `saarthi`
-MCP server pointing at that URL and using `MCP_TOKEN` as the bearer token env var.
-
-Expected Codex MCP config:
-
-```toml
-[mcp_servers.saarthi]
-url = "http://127.0.0.1:8001/mcp"
-bearer_token_env_var = "MCP_TOKEN"
-```
-
-The Saarthi MCP container and the Codex process must see the same `MCP_TOKEN` value.
+`Authorization: Bearer <MCP_TOKEN>`. Detailed MCP setup is documented in `mcp.md`.
 
 4. Configure backup timers:
 
@@ -64,8 +53,8 @@ mkdir -p data/shikari/sessions data/shikari/outputs
 
 ```bash
 curl -s http://localhost:8000/health
-docker compose logs -f saarthi-api
-docker compose logs -f saarthi-mcp
+docker compose logs saarthi-api
+docker compose logs saarthi-mcp
 codex mcp get saarthi
 systemctl status saarthi-backup-dbs.timer
 systemctl status saarthi-backup-gdrive.timer
