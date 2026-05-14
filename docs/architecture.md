@@ -33,8 +33,9 @@ All surfaces reuse shared modules for settings, logging, and notification transp
       +---------v----------+     +--------v---------+        +---------v----------------+
       | FastAPI Runtime    |     | FastMCP Runtime  |        | Operational Script CLIs   |
       | app/main.py        |     | mcp-server       |        | backup-dbs / backup-gdrive|
-      | routers + services |     | authenticated    |        | / schedule-scripts /      |
-      |                    |     | tool access      |        | shikari-visualize         |
+      | routers + services |     | authenticated    |        | / restore-dbs-test /     |
+      |                    |     | tool access      |        | schedule-scripts /       |
+      |                    |     |                  |        | shikari-visualize        |
       +---------+----------+     +--------+---------+        +---------+----------------+
                 |                         |                            |
       +---------v----------+     +--------v---------+        +---------v----------------+
@@ -124,6 +125,18 @@ Flow:
 3. Aggregate output/failures.
 4. Send status notifications.
 
+### `restore-dbs-test`
+
+Flow:
+
+1. Load typed restore verification settings.
+2. Build restore target map from shared S3 artifact config plus per-DB test queries.
+3. Create a disposable per-run workspace under `RESTORE_TEMP_DIR`.
+4. Find the latest S3 backup for each configured database.
+5. Download, restore into disposable PostgreSQL containers, and run verification queries.
+6. Remove the run workspace and containers.
+7. Send status notifications.
+
 ### `schedule-scripts`
 
 Flow:
@@ -151,7 +164,9 @@ Flow:
 - `app/config/config.py`: non-sensitive operational values
 - `.env` / environment: secrets and connection values
 
-Validation enforces key ownership and channel-specific requirements.
+Validation enforces key ownership, runtime-specific config subsets, and
+channel-specific requirements for API, MCP, DB backup, DB restore verification,
+GDrive backup, and Shikari runtimes.
 
 ### Logging (`shared/logging/setup.py`)
 

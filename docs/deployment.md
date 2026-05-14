@@ -21,7 +21,7 @@ cp .env.example .env
 2. Fill values:
 
 - `app/config/config.py`: non-secret settings
-- `.env`: secrets (`ADMIN_TOKEN`, `MCP_TOKEN`, SMTP/ntfy/AWS/DB URLs as needed)
+- `.env`: secrets (`ADMIN_TOKEN`, `MCP_TOKEN`, SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as needed)
 
 3. Start API and MCP:
 
@@ -75,6 +75,7 @@ docker compose restart saarthi-mcp
 # Manual backup runs
 uv run backup-dbs
 uv run backup-gdrive
+uv run restore-dbs-test
 
 # Manual Shikari output generation
 uv run shikari-visualize --list

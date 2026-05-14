@@ -9,6 +9,7 @@ from typing import Any, cast
 from dotenv import dotenv_values
 from pydantic import BaseModel, model_validator
 
+# Ownership and runtime key groups
 ENV_OWNED_KEYS = frozenset(
     {
         "ADMIN_TOKEN",
@@ -22,17 +23,14 @@ ENV_OWNED_KEYS = frozenset(
         "VIDWIZ_DB_URL",
         "TRACKCROW_DB_URL",
         "SMASHDIARY_DB_URL",
+        "RESTORE_PG_PASSWORD",
         "NTFY_BASE_URL",
         "NTFY_TOKEN",
     }
 )
 
-CONFIG_OWNED_KEYS = frozenset(
+COMMON_CONFIG_KEYS = frozenset(
     {
-        "APP_NAME",
-        "LOCATION_DB_PATH",
-        "GEOFENCE_MAPPING_PATH",
-        "DELL_TAILSCALE_IP",
         "LOG_LEVEL",
         "LOG_FORMAT",
         "LOG_DATE_FORMAT",
@@ -45,12 +43,26 @@ CONFIG_OWNED_KEYS = frozenset(
         "WHATSAPP_TARGET_FAMILY",
         "WHATSAPP_TARGET_PERSONAL",
         "WHATSAPP_TIMEOUT_SECONDS",
+        "NTFY_TOPIC",
+    }
+)
+
+API_CONFIG_KEYS = frozenset(
+    {
+        "APP_NAME",
+        "LOCATION_DB_PATH",
+        "GEOFENCE_MAPPING_PATH",
+        "DELL_TAILSCALE_IP",
         "GEOFENCE_SUBJECT_TEMPLATE",
         "GEOFENCE_EMAIL_TEMPLATE",
         "GEOFENCE_WHATSAPP_TEMPLATE",
         "GEOFENCE_UPDATES_RECIPIENT",
         "GEOFENCE_SENDER_NAME",
-        "NTFY_TOPIC",
+    }
+)
+
+BACKUP_ARTIFACT_CONFIG_KEYS = frozenset(
+    {
         "BACKUP_BUCKET",
         "VIDWIZ_S3_PREFIX",
         "TRACKCROW_S3_PREFIX",
@@ -58,9 +70,33 @@ CONFIG_OWNED_KEYS = frozenset(
         "VIDWIZ_DUMP_FILENAME",
         "TRACKCROW_DUMP_FILENAME",
         "SMASHDIARY_DUMP_FILENAME",
+    }
+)
+
+BACKUP_GDRIVE_CONFIG_KEYS = frozenset(
+    {
         "GDRIVE_SOURCE",
         "GDRIVE_DESTINATION",
         "GDRIVE_FOLDERS",
+    }
+)
+
+RESTORE_DB_TEST_CONFIG_KEYS = frozenset(
+    {
+        "RESTORE_PG_IMAGE",
+        "RESTORE_TIMEOUT_SECONDS",
+        "RESTORE_TEMP_DIR",
+        "VIDWIZ_RESTORE_TEST_QUERY",
+        "VIDWIZ_RESTORE_EXPECTED_OUTPUT",
+        "TRACKCROW_RESTORE_TEST_QUERY",
+        "TRACKCROW_RESTORE_EXPECTED_OUTPUT",
+        "SMASHDIARY_RESTORE_TEST_QUERY",
+        "SMASHDIARY_RESTORE_EXPECTED_OUTPUT",
+    }
+)
+
+SHIKARI_CONFIG_KEYS = frozenset(
+    {
         "SHIKARI_SESSIONS_PATH",
         "SHIKARI_OUTPUTS_PATH",
         "SHIKARI_DEFAULT_THEME",
@@ -68,12 +104,31 @@ CONFIG_OWNED_KEYS = frozenset(
     }
 )
 
+CONFIG_OWNED_KEYS = (
+    COMMON_CONFIG_KEYS
+    | API_CONFIG_KEYS
+    | BACKUP_ARTIFACT_CONFIG_KEYS
+    | BACKUP_GDRIVE_CONFIG_KEYS
+    | SHIKARI_CONFIG_KEYS
+    | RESTORE_DB_TEST_CONFIG_KEYS
+)
+
+API_RUNTIME_CONFIG_KEYS = COMMON_CONFIG_KEYS | API_CONFIG_KEYS
+MCP_RUNTIME_CONFIG_KEYS = COMMON_CONFIG_KEYS
+BACKUP_DB_RUNTIME_CONFIG_KEYS = COMMON_CONFIG_KEYS | BACKUP_ARTIFACT_CONFIG_KEYS
+RESTORE_DB_TEST_RUNTIME_CONFIG_KEYS = (
+    COMMON_CONFIG_KEYS | BACKUP_ARTIFACT_CONFIG_KEYS | RESTORE_DB_TEST_CONFIG_KEYS
+)
+BACKUP_GDRIVE_RUNTIME_CONFIG_KEYS = COMMON_CONFIG_KEYS | BACKUP_GDRIVE_CONFIG_KEYS
+SHIKARI_RUNTIME_CONFIG_KEYS = COMMON_CONFIG_KEYS | SHIKARI_CONFIG_KEYS
+
 ALL_SETTINGS_KEYS = ENV_OWNED_KEYS | CONFIG_OWNED_KEYS
 CONFIG_MODULE_PATH = "app.config.config"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ENV_FILE = PROJECT_ROOT / ".env"
 
 
+# Source loading and ownership audit
 def _import_repo_config() -> Mapping[str, Any]:
     try:
         module = importlib.import_module(CONFIG_MODULE_PATH)
@@ -90,20 +145,32 @@ def _import_repo_config() -> Mapping[str, Any]:
     return config
 
 
-def _validate_repo_config(config: Mapping[str, Any]) -> None:
+def _validate_repo_config_ownership(config: Mapping[str, Any]) -> None:
     wrong_keys = sorted(key for key in config if key in ENV_OWNED_KEYS)
     if wrong_keys:
-        raise ValueError(f"app/config/config.py contains env-owned keys: {', '.join(wrong_keys)}")
+        raise ValueError(
+            f"app/config/config.py contains env-owned keys: {', '.join(wrong_keys)}"
+        )
 
-    missing_keys = sorted(key for key in CONFIG_OWNED_KEYS if key not in config)
+
+def _validate_repo_config_required_keys(
+    config: Mapping[str, Any],
+    required_keys: frozenset[str] = API_RUNTIME_CONFIG_KEYS,
+) -> None:
+    missing_keys = sorted(key for key in required_keys if key not in config)
     if missing_keys:
-        raise ValueError(f"app/config/config.py is missing required keys: {', '.join(missing_keys)}")
+        raise ValueError(
+            f"app/config/config.py is missing required keys: {', '.join(missing_keys)}"
+        )
 
 
-def _load_repo_config_values() -> dict[str, Any]:
+def _load_repo_config_values(
+    required_keys: frozenset[str] = API_RUNTIME_CONFIG_KEYS,
+) -> dict[str, Any]:
     config = _import_repo_config()
-    _validate_repo_config(config)
-    return {key: config[key] for key in CONFIG_OWNED_KEYS}
+    _validate_repo_config_ownership(config)
+    _validate_repo_config_required_keys(config, required_keys=required_keys)
+    return {key: config[key] for key in required_keys}
 
 
 def _collect_env_values() -> dict[str, str]:
@@ -121,7 +188,7 @@ def _collect_env_values() -> dict[str, str]:
     return values
 
 
-def _validate_env_values(values: Mapping[str, str]) -> None:
+def _validate_env_ownership(values: Mapping[str, str]) -> None:
     wrong_keys = sorted(key for key in values if key in CONFIG_OWNED_KEYS)
     if wrong_keys:
         raise ValueError(
@@ -132,15 +199,21 @@ def _validate_env_values(values: Mapping[str, str]) -> None:
 
 def _load_env_values() -> dict[str, str]:
     values = _collect_env_values()
-    _validate_env_values(values)
+    _validate_env_ownership(values)
     return {key: value for key, value in values.items() if key in ENV_OWNED_KEYS}
 
 
-def _build_payload() -> dict[str, Any]:
-    payload = {**_load_repo_config_values(), **_load_env_values()}
+def _build_payload(
+    config_keys: frozenset[str] = API_RUNTIME_CONFIG_KEYS,
+) -> dict[str, Any]:
+    payload = {
+        **_load_repo_config_values(required_keys=config_keys),
+        **_load_env_values(),
+    }
     return {key.lower(): value for key, value in payload.items()}
 
 
+# Base settings models
 class LoggingSettings(BaseModel):
     """Logging configuration shared by app and scripts."""
 
@@ -226,6 +299,7 @@ class RuntimeSettings(BaseModel):
         return self._build_whatsapp_settings(self.whatsapp_target_personal)
 
 
+# Runtime settings models
 class NtfyRuntimeSettings(RuntimeSettings):
     """Runtime settings that include ntfy integration."""
 
@@ -331,21 +405,41 @@ class McpSettings(RuntimeSettings):
         return self._build_whatsapp_settings(self.whatsapp_target_personal)
 
 
-class BackupDbSettings(NtfyRuntimeSettings):
-    """Settings required by the database backup script."""
+class BackupArtifactSettings(NtfyRuntimeSettings):
+    """Shared settings for DB backup artifacts stored in S3."""
 
     aws_access_key: str
     aws_secret_access_key: str
     backup_bucket: str
-    vidwiz_db_url: str
-    trackcrow_db_url: str
-    smashdiary_db_url: str
     vidwiz_s3_prefix: str
     trackcrow_s3_prefix: str
     smashdiary_s3_prefix: str
     vidwiz_dump_filename: str
     trackcrow_dump_filename: str
     smashdiary_dump_filename: str
+
+
+class BackupDbSettings(BackupArtifactSettings):
+    """Settings required by the database backup script."""
+
+    vidwiz_db_url: str
+    trackcrow_db_url: str
+    smashdiary_db_url: str
+
+
+class RestoreDbTestSettings(BackupArtifactSettings):
+    """Settings required by the DB restore verification script."""
+
+    restore_pg_image: str
+    restore_pg_password: str
+    restore_timeout_seconds: int
+    restore_temp_dir: str
+    vidwiz_restore_test_query: str
+    vidwiz_restore_expected_output: str
+    trackcrow_restore_test_query: str
+    trackcrow_restore_expected_output: str
+    smashdiary_restore_test_query: str
+    smashdiary_restore_expected_output: str
 
 
 class BackupGdriveSettings(NtfyRuntimeSettings):
@@ -362,7 +456,9 @@ class BackupGdriveSettings(NtfyRuntimeSettings):
             return value
         folders = value.get("gdrive_folders")
         if isinstance(folders, str):
-            value["gdrive_folders"] = [item.strip() for item in folders.split(",") if item.strip()]
+            value["gdrive_folders"] = [
+                item.strip() for item in folders.split(",") if item.strip()
+            ]
         return value
 
 
@@ -407,26 +503,32 @@ class ShikariSettings(RuntimeSettings):
     shikari_default_output_format: str
 
 
+# Settings entrypoints
 def get_api_settings() -> ApiSettings:
     """Return API settings."""
-    return ApiSettings.model_validate(_build_payload())
+    return ApiSettings.model_validate(_build_payload(API_RUNTIME_CONFIG_KEYS))
 
 
 def get_mcp_settings() -> McpSettings:
     """Return MCP server settings."""
-    return McpSettings.model_validate(_build_payload())
+    return McpSettings.model_validate(_build_payload(MCP_RUNTIME_CONFIG_KEYS))
 
 
 def get_backup_db_settings() -> BackupDbSettings:
     """Return DB backup settings."""
-    return BackupDbSettings.model_validate(_build_payload())
+    return BackupDbSettings.model_validate(_build_payload(BACKUP_DB_RUNTIME_CONFIG_KEYS))
 
 
 def get_backup_gdrive_settings() -> BackupGdriveSettings:
     """Return GDrive backup settings."""
-    return BackupGdriveSettings.model_validate(_build_payload())
+    return BackupGdriveSettings.model_validate(_build_payload(BACKUP_GDRIVE_RUNTIME_CONFIG_KEYS))
+
+
+def get_restore_db_test_settings() -> RestoreDbTestSettings:
+    """Return DB restore verification settings."""
+    return RestoreDbTestSettings.model_validate(_build_payload(RESTORE_DB_TEST_RUNTIME_CONFIG_KEYS))
 
 
 def get_shikari_settings() -> ShikariSettings:
     """Return Shikari visualization settings."""
-    return ShikariSettings.model_validate(_build_payload())
+    return ShikariSettings.model_validate(_build_payload(SHIKARI_RUNTIME_CONFIG_KEYS))

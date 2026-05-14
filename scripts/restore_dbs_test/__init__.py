@@ -1,0 +1,1 @@
+"""Restore verification script package."""

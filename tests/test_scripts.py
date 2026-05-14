@@ -1,18 +1,37 @@
 """Tests for script configuration behavior."""
 
 import copy
+import re
 import subprocess
 from pathlib import Path
 import runpy
 
 from scripts.backup_dbs import main as backup_dbs_main
 from scripts.backup_gdrive import main as backup_gdrive_main
+from scripts.restore_dbs_test import main as restore_dbs_test_main
 from scripts.backup_dbs.main import _dispatch_notifications, build_db_map
 from scripts.backup_gdrive.main import _build_whatsapp_summary
+from scripts.restore_dbs_test.main import (
+    _dispatch_notifications as dispatch_restore_notifications,
+)
+from scripts.restore_dbs_test.main import (
+    _build_whatsapp_summary as build_restore_whatsapp_summary,
+)
+from scripts.restore_dbs_test.main import (
+    build_restore_db_map,
+    create_restore_run_dir,
+    latest_key,
+    restore_db,
+)
 from scripts.schedule_scripts import main as schedule_main
 from scripts.schedule_scripts.main import generate_files
 from shared.logging.setup import setup_logging
-from shared.settings import BackupDbSettings, BackupGdriveSettings, SchedulerSettings
+from shared.settings import (
+    BackupDbSettings,
+    BackupGdriveSettings,
+    RestoreDbTestSettings,
+    SchedulerSettings,
+)
 
 _EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "app" / "config" / "config.example.py"
 _BASE_CONFIG = runpy.run_path(str(_EXAMPLE_CONFIG_PATH))["CONFIG"]
@@ -82,6 +101,39 @@ def _backup_gdrive_settings(**overrides) -> BackupGdriveSettings:
     )
 
 
+def _restore_db_test_settings(**overrides) -> RestoreDbTestSettings:
+    defaults = {
+        "ntfy_enabled": False,
+        "whatsapp_enabled": True,
+        "whatsapp_ssh_host": "pookie",
+        "whatsapp_remote_script_path": "/remote/send.py",
+        "whatsapp_target_personal": "1203@s.whatsapp.net",
+        "backup_bucket": "my-bucket",
+        "vidwiz_s3_prefix": "db/vidwiz",
+        "trackcrow_s3_prefix": "db/trackcrow",
+        "smashdiary_s3_prefix": "db/smashdiary",
+        "vidwiz_dump_filename": "vidwiz-custom",
+        "trackcrow_dump_filename": "trackcrow-custom",
+        "smashdiary_dump_filename": "smashdiary-custom",
+        "restore_pg_image": "postgres:15",
+        "restore_pg_password": "postgres",
+        "restore_timeout_seconds": 60,
+        "restore_temp_dir": "data/restore-db-tests",
+        "vidwiz_restore_test_query": "SELECT * FROM videos",
+        "vidwiz_restore_expected_output": "video-result",
+        "trackcrow_restore_test_query": 'SELECT * FROM "Transaction"',
+        "trackcrow_restore_expected_output": "store-result",
+        "smashdiary_restore_test_query": "SELECT 1",
+        "smashdiary_restore_expected_output": "1",
+    }
+    defaults.update(overrides)
+    return RestoreDbTestSettings(
+        **_runtime_kwargs(**defaults),
+        aws_access_key="ak",
+        aws_secret_access_key="sk",
+    )
+
+
 def test_build_db_map_uses_settings_values() -> None:
     settings = BackupDbSettings(
         **_runtime_kwargs(),
@@ -110,6 +162,89 @@ def test_build_db_map_uses_settings_values() -> None:
     assert db_map["trackcrow"]["filename"] == "trackcrow-custom"
     assert db_map["smashdiary"]["s3_prefix"] == "db/smashdiary"
     assert db_map["smashdiary"]["filename"] == "smashdiary-custom"
+
+
+def test_build_restore_db_map_uses_inherited_and_restore_values() -> None:
+    settings = _restore_db_test_settings()
+
+    db_map = build_restore_db_map(settings)
+
+    assert db_map["vidwiz"]["s3_bucket"] == "my-bucket"
+    assert db_map["vidwiz"]["filename"] == "vidwiz-custom"
+    assert db_map["vidwiz"]["test_query"] == "SELECT * FROM videos"
+    assert db_map["trackcrow"]["s3_prefix"] == "db/trackcrow"
+    assert db_map["trackcrow"]["expected_output"] == "store-result"
+    assert db_map["smashdiary"]["s3_prefix"] == "db/smashdiary"
+    assert db_map["smashdiary"]["expected_output"] == "1"
+
+
+def test_latest_key_prefers_newest_timestamp() -> None:
+    class FakePaginator:
+        def paginate(self, **_kwargs):
+            return [
+                {"Contents": [{"Key": "db/vidwiz/vidwiz-custom-1710000000.sql"}]},
+                {
+                    "Contents": [
+                        {"Key": "db/vidwiz/vidwiz-custom-1710000020.sql"},
+                        {"Key": "db/vidwiz/not-a-backup.txt"},
+                    ]
+                },
+            ]
+
+    class FakeS3Client:
+        def get_paginator(self, name: str):
+            assert name == "list_objects_v2"
+            return FakePaginator()
+
+    assert latest_key(FakeS3Client(), "my-bucket", "db/vidwiz") == "db/vidwiz/vidwiz-custom-1710000020.sql"
+
+
+def test_create_restore_run_dir_creates_unique_child_under_temp_root(
+    monkeypatch, test_workspace: Path
+) -> None:
+    temp_root = test_workspace / "data" / "restore-db-tests"
+    monkeypatch.setattr("scripts.restore_dbs_test.main.time.time", lambda: 1715660000)
+    monkeypatch.setattr("scripts.restore_dbs_test.main.secrets.token_hex", lambda _n: "deadbeef")
+
+    run_dir = create_restore_run_dir(temp_root)
+
+    assert run_dir == temp_root / "1715660000-deadbeef"
+    assert run_dir.is_dir()
+    assert run_dir.parent == temp_root
+    assert re.fullmatch(r"\d{10}-[0-9a-f]{8}", run_dir.name)
+
+
+def test_restore_db_uses_absolute_readonly_bind_mount_for_relative_temp_dir(
+    monkeypatch, test_workspace: Path
+) -> None:
+    settings = _restore_db_test_settings()
+    dump_path = (
+        test_workspace
+        / "data"
+        / "restore-db-tests"
+        / "1715660000-deadbeef"
+        / "vidwiz"
+        / "vidwiz-custom-1710000020.sql"
+    )
+    observed: list[list[str]] = []
+
+    monkeypatch.setattr("scripts.restore_dbs_test.main.wait_ready", lambda *_: None)
+
+    def fake_run(cmd, **kwargs):
+        observed.append(cmd)
+        return subprocess.CompletedProcess(args=cmd, returncode=0)
+
+    monkeypatch.setattr("scripts.restore_dbs_test.main.subprocess.run", fake_run)
+
+    container = restore_db("vidwiz", dump_path, settings)
+
+    assert container == "restore-test-vidwiz"
+    docker_run_cmd = observed[1]
+    mount_arg = docker_run_cmd[docker_run_cmd.index("--mount") + 1]
+
+    assert "--mount" in docker_run_cmd
+    assert docker_run_cmd[docker_run_cmd.index("--name") + 1] == "restore-test-vidwiz"
+    assert mount_arg == f"type=bind,src={dump_path.parent.resolve()},dst=/backups,readonly"
 
 
 def test_generate_files_uses_home_dir_from_config(test_workspace: Path) -> None:
@@ -249,6 +384,24 @@ def test_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
     assert calls["wa"] == 1
 
 
+def test_restore_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
+    settings = _restore_db_test_settings()
+    calls = {"ntfy": 0, "wa": 0}
+
+    monkeypatch.setattr("scripts.restore_dbs_test.main.send_ntfy_message", lambda **_: calls.__setitem__("ntfy", calls["ntfy"] + 1))
+    monkeypatch.setattr("scripts.restore_dbs_test.main.send_whatsapp_message", lambda **_: calls.__setitem__("wa", calls["wa"] + 1))
+
+    dispatch_restore_notifications(
+        settings=settings,
+        title="DB Restore Verification Success",
+        output_lines=["Restore verification passed for vidwiz"],
+        success=True,
+    )
+
+    assert calls["ntfy"] == 0
+    assert calls["wa"] == 1
+
+
 def test_build_whatsapp_summary_is_concise() -> None:
     output_lines = [
         ">>> rclone copy a b",
@@ -261,6 +414,23 @@ def test_build_whatsapp_summary_is_concise() -> None:
 
     assert "GDrive Backup Success (SUCCESS)" in summary
     assert len(summary.splitlines()) <= 6
+
+
+def test_restore_whatsapp_summary_is_concise() -> None:
+    output_lines = [
+        "noise line 1",
+        "Restore verification passed for vidwiz",
+        "Restore verification failed for trackcrow: boom",
+    ]
+
+    summary = build_restore_whatsapp_summary(
+        "DB Restore Verification Failed",
+        output_lines,
+        success=False,
+    )
+
+    assert "DB Restore Verification Failed (FAILED)" in summary
+    assert len(summary.splitlines()) <= 4
 
 
 def test_backup_dbs_main_exit_code_and_notification_title(monkeypatch) -> None:
@@ -351,6 +521,143 @@ def test_backup_dbs_main_top_level_failure_dispatches_notification(monkeypatch) 
     assert exit_code == 1
     assert observed["success"] is False
     assert observed["title"] == "DB Backup Failed"
+
+
+def test_restore_dbs_test_main_exit_code_and_notification_title(monkeypatch) -> None:
+    settings = _restore_db_test_settings()
+    observed: dict[str, object] = {}
+    run_dir = Path(settings.restore_temp_dir) / "1715660000-deadbeef"
+    downloads: list[Path] = []
+
+    monkeypatch.setattr("scripts.restore_dbs_test.main.get_restore_db_test_settings", lambda: settings)
+    monkeypatch.setattr("scripts.restore_dbs_test.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr("scripts.restore_dbs_test.main.create_restore_run_dir", lambda *_: run_dir)
+    monkeypatch.setattr(
+        "scripts.restore_dbs_test.main.build_restore_db_map",
+        lambda *_: {
+            "vidwiz": {
+                "filename": "vidwiz-custom",
+                "s3_bucket": "my-bucket",
+                "s3_prefix": "db/vidwiz",
+                "test_query": "SELECT 1",
+                "expected_output": "1",
+            }
+        },
+    )
+
+    class FakeSession:
+        def client(self, name: str):
+            assert name == "s3"
+            return object()
+
+    monkeypatch.setattr("scripts.restore_dbs_test.main.boto3.Session", lambda **_: FakeSession())
+    monkeypatch.setattr("scripts.restore_dbs_test.main.latest_key", lambda *_: "db/vidwiz/vidwiz-custom-1710000020.sql")
+    monkeypatch.setattr(
+        "scripts.restore_dbs_test.main.download_backup",
+        lambda *_args: downloads.append(_args[3]),
+    )
+    monkeypatch.setattr("scripts.restore_dbs_test.main.teardown", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.restore_dbs_test.main._dispatch_notifications",
+        lambda **kwargs: observed.update(kwargs),
+    )
+
+    fail_restore = RuntimeError("boom")
+    monkeypatch.setattr(
+        "scripts.restore_dbs_test.main.restore_db",
+        lambda *_: (_ for _ in ()).throw(fail_restore),
+    )
+    monkeypatch.setattr("scripts.restore_dbs_test.main.run_test_query", lambda *_: None)
+    exit_code = restore_dbs_test_main.main()
+
+    assert exit_code == 1
+    assert observed["success"] is False
+    assert observed["title"] == "DB Restore Verification Failed"
+    assert downloads == [run_dir / "vidwiz" / "vidwiz-custom-1710000020.sql"]
+
+    observed.clear()
+    downloads.clear()
+    monkeypatch.setattr("scripts.restore_dbs_test.main.restore_db", lambda *_: "restore-test-vidwiz")
+    exit_code = restore_dbs_test_main.main()
+
+    assert exit_code == 0
+    assert observed["success"] is True
+    assert observed["title"] == "DB Restore Verification Success"
+    assert downloads == [run_dir / "vidwiz" / "vidwiz-custom-1710000020.sql"]
+
+
+def test_restore_dbs_test_main_top_level_failure_dispatches_notification(monkeypatch) -> None:
+    settings = _restore_db_test_settings()
+    observed: dict[str, object] = {}
+
+    monkeypatch.setattr("scripts.restore_dbs_test.main.get_restore_db_test_settings", lambda: settings)
+    monkeypatch.setattr("scripts.restore_dbs_test.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.restore_dbs_test.main.build_restore_db_map",
+        lambda *_: (_ for _ in ()).throw(RuntimeError("bootstrap boom")),
+    )
+    monkeypatch.setattr(
+        "scripts.restore_dbs_test.main._dispatch_notifications",
+        lambda **kwargs: observed.update(kwargs),
+    )
+
+    exit_code = restore_dbs_test_main.main()
+
+    assert exit_code == 1
+    assert observed["success"] is False
+    assert observed["title"] == "DB Restore Verification Failed"
+
+
+def test_restore_dbs_test_main_attempts_teardown_after_failure(monkeypatch) -> None:
+    settings = _restore_db_test_settings()
+    run_dir = Path(settings.restore_temp_dir) / "1715660000-deadbeef"
+    observed = {"called": 0, "temp_dir": None}
+
+    monkeypatch.setattr("scripts.restore_dbs_test.main.get_restore_db_test_settings", lambda: settings)
+    monkeypatch.setattr("scripts.restore_dbs_test.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr("scripts.restore_dbs_test.main.create_restore_run_dir", lambda *_: run_dir)
+    monkeypatch.setattr(
+        "scripts.restore_dbs_test.main.build_restore_db_map",
+        lambda *_: {
+            "vidwiz": {
+                "filename": "vidwiz-custom",
+                "s3_bucket": "my-bucket",
+                "s3_prefix": "db/vidwiz",
+                "test_query": "SELECT 1",
+                "expected_output": "1",
+            }
+        },
+    )
+
+    class FakeSession:
+        def client(self, _name: str):
+            return object()
+
+    monkeypatch.setattr("scripts.restore_dbs_test.main.boto3.Session", lambda **_: FakeSession())
+    monkeypatch.setattr("scripts.restore_dbs_test.main.latest_key", lambda *_: "db/vidwiz/vidwiz-custom-1710000020.sql")
+    monkeypatch.setattr("scripts.restore_dbs_test.main.download_backup", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.restore_dbs_test.main.restore_db",
+        lambda *_: (_ for _ in ()).throw(RuntimeError("restore failed")),
+    )
+    monkeypatch.setattr("scripts.restore_dbs_test.main.run_test_query", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.restore_dbs_test.main._dispatch_notifications",
+        lambda **_: None,
+    )
+    monkeypatch.setattr(
+        "scripts.restore_dbs_test.main.teardown",
+        lambda temp_dir, *_: (
+            observed.__setitem__("called", observed["called"] + 1),
+            observed.__setitem__("temp_dir", temp_dir),
+        ),
+    )
+
+    exit_code = restore_dbs_test_main.main()
+
+    assert exit_code == 1
+    assert observed["called"] == 1
+    assert observed["temp_dir"] == run_dir
 
 
 def test_backup_gdrive_main_top_level_failure_dispatches_notification(monkeypatch) -> None:

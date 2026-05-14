@@ -6,7 +6,14 @@ import types
 import pytest
 
 import shared.settings as settings_module
-from shared.settings import get_api_settings, get_mcp_settings, get_shikari_settings
+from shared.settings import (
+    get_backup_db_settings,
+    get_backup_gdrive_settings,
+    get_api_settings,
+    get_mcp_settings,
+    get_restore_db_test_settings,
+    get_shikari_settings,
+)
 
 
 def test_settings_getter_returns_fresh_values(monkeypatch) -> None:
@@ -114,6 +121,45 @@ def test_fails_when_config_owned_key_is_set_in_env(monkeypatch) -> None:
         get_api_settings()
 
 
+def test_global_env_audit_rejects_api_config_key_for_mcp_runtime(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+        }
+    )
+    monkeypatch.setenv("APP_NAME", "wrong-source")
+
+    with pytest.raises(ValueError, match="APP_NAME"):
+        get_mcp_settings()
+
+
+def test_global_env_audit_rejects_gdrive_config_key_for_api_runtime(monkeypatch) -> None:
+    monkeypatch.setenv("GDRIVE_SOURCE", "wrong-source")
+
+    with pytest.raises(ValueError, match="GDRIVE_SOURCE"):
+        get_api_settings()
+
+
+def test_global_env_audit_rejects_restore_config_key_for_mcp_runtime(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+        }
+    )
+    monkeypatch.setenv("RESTORE_PG_IMAGE", "postgres:16")
+
+    with pytest.raises(ValueError, match="RESTORE_PG_IMAGE"):
+        get_mcp_settings()
+
+
 def test_fails_when_config_py_missing_required_key(runtime_config) -> None:
     cfg = runtime_config()
     missing_required = {k: v for k, v in cfg.items() if k != "GEOFENCE_SUBJECT_TEMPLATE"}
@@ -123,6 +169,139 @@ def test_fails_when_config_py_missing_required_key(runtime_config) -> None:
 
     with pytest.raises(ValueError, match="app/config/config.py is missing required keys"):
         get_api_settings()
+
+
+def test_api_settings_ignore_restore_only_config_keys(runtime_config) -> None:
+    cfg = runtime_config()
+    trimmed = {
+        key: value
+        for key, value in cfg.items()
+        if not key.startswith("RESTORE_") and "_RESTORE_" not in key
+    }
+    module = types.ModuleType("tests.runtime_config")
+    module.CONFIG = trimmed
+    sys.modules["tests.runtime_config"] = module
+
+    settings = get_api_settings()
+
+    assert settings.app_name == trimmed["APP_NAME"]
+
+
+def test_mcp_settings_ignore_api_only_config_keys(runtime_config) -> None:
+    cfg = runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+        }
+    )
+    trimmed = {
+        key: value
+        for key, value in cfg.items()
+        if key
+        not in {
+            "APP_NAME",
+            "LOCATION_DB_PATH",
+            "GEOFENCE_MAPPING_PATH",
+            "DELL_TAILSCALE_IP",
+            "GEOFENCE_SUBJECT_TEMPLATE",
+            "GEOFENCE_EMAIL_TEMPLATE",
+            "GEOFENCE_WHATSAPP_TEMPLATE",
+            "GEOFENCE_UPDATES_RECIPIENT",
+            "GEOFENCE_SENDER_NAME",
+        }
+    }
+    module = types.ModuleType("tests.runtime_config")
+    module.CONFIG = trimmed
+    sys.modules["tests.runtime_config"] = module
+
+    settings = get_mcp_settings()
+
+    assert settings.mcp_token == "test-mcp-token"
+
+
+def test_backup_gdrive_settings_ignore_restore_only_config_keys(runtime_config) -> None:
+    cfg = runtime_config(
+        {
+            "NTFY_ENABLED": False,
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+        }
+    )
+    trimmed = {
+        key: value
+        for key, value in cfg.items()
+        if not key.startswith("RESTORE_") and "_RESTORE_" not in key
+    }
+    module = types.ModuleType("tests.runtime_config")
+    module.CONFIG = trimmed
+    sys.modules["tests.runtime_config"] = module
+
+    settings = get_backup_gdrive_settings()
+
+    assert settings.gdrive_source == trimmed["GDRIVE_SOURCE"]
+
+
+def test_restore_db_test_settings_require_restore_only_config_keys(runtime_config, monkeypatch) -> None:
+    cfg = runtime_config(
+        {
+            "NTFY_ENABLED": False,
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+        }
+    )
+    missing_restore = {k: v for k, v in cfg.items() if k != "RESTORE_PG_IMAGE"}
+    module = types.ModuleType("tests.runtime_config")
+    module.CONFIG = missing_restore
+    sys.modules["tests.runtime_config"] = module
+    monkeypatch.setenv("AWS_ACCESS_KEY", "ak")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "sk")
+    monkeypatch.setenv("RESTORE_PG_PASSWORD", "postgres")
+
+    with pytest.raises(ValueError, match="RESTORE_PG_IMAGE"):
+        get_restore_db_test_settings()
+
+
+def test_backup_gdrive_settings_require_gdrive_config_keys(runtime_config) -> None:
+    cfg = runtime_config(
+        {
+            "NTFY_ENABLED": False,
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+        }
+    )
+    missing_gdrive = {k: v for k, v in cfg.items() if k != "GDRIVE_SOURCE"}
+    module = types.ModuleType("tests.runtime_config")
+    module.CONFIG = missing_gdrive
+    sys.modules["tests.runtime_config"] = module
+
+    with pytest.raises(ValueError, match="GDRIVE_SOURCE"):
+        get_backup_gdrive_settings()
+
+
+def test_shikari_settings_require_shikari_config_keys(runtime_config) -> None:
+    cfg = runtime_config()
+    missing_shikari = {k: v for k, v in cfg.items() if k != "SHIKARI_DEFAULT_THEME"}
+    module = types.ModuleType("tests.runtime_config")
+    module.CONFIG = missing_shikari
+    sys.modules["tests.runtime_config"] = module
+
+    with pytest.raises(ValueError, match="SHIKARI_DEFAULT_THEME"):
+        get_shikari_settings()
+
+
+def test_runtime_specific_config_keys_are_rejected_from_env(monkeypatch) -> None:
+    monkeypatch.setenv("RESTORE_PG_IMAGE", "postgres:16")
+
+    with pytest.raises(ValueError, match="app/config/config.py-owned keys"):
+        get_restore_db_test_settings()
 
 
 def test_fails_when_config_module_is_missing(monkeypatch) -> None:
@@ -158,3 +337,130 @@ def test_shikari_settings_loads_repo_values(runtime_config) -> None:
     assert settings.shikari_outputs_path == "data/shikari/outputs"
     assert settings.shikari_default_theme == "dark"
     assert settings.shikari_default_output_format == "png"
+
+
+def test_restore_db_test_settings_loads_repo_and_env_values(runtime_config, monkeypatch) -> None:
+    runtime_config(
+        {
+            "NTFY_ENABLED": False,
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "RESTORE_PG_IMAGE": "postgres:16",
+            "RESTORE_TIMEOUT_SECONDS": 90,
+            "RESTORE_TEMP_DIR": "data/restore-tests",
+            "VIDWIZ_RESTORE_TEST_QUERY": "SELECT 1",
+            "VIDWIZ_RESTORE_EXPECTED_OUTPUT": "1",
+            "TRACKCROW_RESTORE_TEST_QUERY": "SELECT 2",
+            "TRACKCROW_RESTORE_EXPECTED_OUTPUT": "2",
+            "SMASHDIARY_RESTORE_TEST_QUERY": "SELECT 3",
+            "SMASHDIARY_RESTORE_EXPECTED_OUTPUT": "3",
+        }
+    )
+    monkeypatch.setenv("AWS_ACCESS_KEY", "ak")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "sk")
+    monkeypatch.setenv("RESTORE_PG_PASSWORD", "postgres")
+
+    settings = get_restore_db_test_settings()
+
+    assert settings.restore_pg_image == "postgres:16"
+    assert settings.restore_timeout_seconds == 90
+    assert settings.restore_pg_password == "postgres"
+    assert settings.smashdiary_restore_expected_output == "3"
+
+
+def test_restore_db_settings_ignore_api_only_config_keys(runtime_config, monkeypatch) -> None:
+    cfg = runtime_config(
+        {
+            "NTFY_ENABLED": False,
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "RESTORE_PG_IMAGE": "postgres:16",
+            "RESTORE_TIMEOUT_SECONDS": 90,
+            "RESTORE_TEMP_DIR": "data/restore-tests",
+            "VIDWIZ_RESTORE_TEST_QUERY": "SELECT 1",
+            "VIDWIZ_RESTORE_EXPECTED_OUTPUT": "1",
+            "TRACKCROW_RESTORE_TEST_QUERY": "SELECT 2",
+            "TRACKCROW_RESTORE_EXPECTED_OUTPUT": "2",
+            "SMASHDIARY_RESTORE_TEST_QUERY": "SELECT 3",
+            "SMASHDIARY_RESTORE_EXPECTED_OUTPUT": "3",
+        }
+    )
+    trimmed = {
+        key: value
+        for key, value in cfg.items()
+        if key
+        not in {
+            "APP_NAME",
+            "LOCATION_DB_PATH",
+            "GEOFENCE_MAPPING_PATH",
+            "DELL_TAILSCALE_IP",
+            "GEOFENCE_SUBJECT_TEMPLATE",
+            "GEOFENCE_EMAIL_TEMPLATE",
+            "GEOFENCE_WHATSAPP_TEMPLATE",
+            "GEOFENCE_UPDATES_RECIPIENT",
+            "GEOFENCE_SENDER_NAME",
+        }
+    }
+    module = types.ModuleType("tests.runtime_config")
+    module.CONFIG = trimmed
+    sys.modules["tests.runtime_config"] = module
+    monkeypatch.setenv("AWS_ACCESS_KEY", "ak")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "sk")
+    monkeypatch.setenv("RESTORE_PG_PASSWORD", "postgres")
+
+    settings = get_restore_db_test_settings()
+
+    assert settings.restore_pg_image == "postgres:16"
+
+
+def test_backup_db_settings_still_requires_live_db_urls(runtime_config, monkeypatch) -> None:
+    runtime_config(
+        {
+            "NTFY_ENABLED": False,
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+        }
+    )
+    monkeypatch.setenv("AWS_ACCESS_KEY", "ak")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "sk")
+    monkeypatch.delenv("VIDWIZ_DB_URL", raising=False)
+    monkeypatch.delenv("TRACKCROW_DB_URL", raising=False)
+    monkeypatch.delenv("SMASHDIARY_DB_URL", raising=False)
+
+    with pytest.raises(ValueError, match="vidwiz_db_url|trackcrow_db_url|smashdiary_db_url"):
+        get_backup_db_settings()
+
+
+def test_backup_db_settings_ignore_restore_only_config_keys(runtime_config, monkeypatch) -> None:
+    cfg = runtime_config(
+        {
+            "NTFY_ENABLED": False,
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+        }
+    )
+    trimmed = {
+        key: value
+        for key, value in cfg.items()
+        if not key.startswith("RESTORE_") and "_RESTORE_" not in key
+    }
+    module = types.ModuleType("tests.runtime_config")
+    module.CONFIG = trimmed
+    sys.modules["tests.runtime_config"] = module
+    monkeypatch.setenv("AWS_ACCESS_KEY", "ak")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "sk")
+    monkeypatch.setenv("VIDWIZ_DB_URL", "postgres://vidwiz")
+    monkeypatch.setenv("TRACKCROW_DB_URL", "postgres://trackcrow")
+    monkeypatch.setenv("SMASHDIARY_DB_URL", "postgres://smashdiary")
+
+    settings = get_backup_db_settings()
+
+    assert settings.vidwiz_db_url == "postgres://vidwiz"

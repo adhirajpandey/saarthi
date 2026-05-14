@@ -22,6 +22,7 @@ dependencies = [
 [project.scripts]
 backup-dbs = "scripts.backup_dbs.main:main"
 backup-gdrive = "scripts.backup_gdrive.main:main"
+restore-dbs-test = "scripts.restore_dbs_test.main:main"
 schedule-scripts = "scripts.schedule_scripts.main:main"
 shikari-visualize = "scripts.shikari_visualize.main:main"
 

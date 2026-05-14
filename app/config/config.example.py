@@ -54,6 +54,21 @@ BACKUP_DB_CONFIG = {
     "SMASHDIARY_DUMP_FILENAME": "smashdiary_backup",
 }
 
+RESTORE_DB_TEST_CONFIG = {
+    "RESTORE_PG_IMAGE": "postgres:15",
+    "RESTORE_TIMEOUT_SECONDS": 60,
+    "RESTORE_TEMP_DIR": "data/restore-db-tests",
+    "VIDWIZ_RESTORE_TEST_QUERY": "SELECT * FROM videos WHERE video_id = 'RU7M2RwW42U'",
+    "VIDWIZ_RESTORE_EXPECTED_OUTPUT": "I Let My Viewers Try to Hack Me",
+    "TRACKCROW_RESTORE_TEST_QUERY": (
+        'SELECT * FROM "Transaction" WHERE uuid = '
+        "'00049fa6-9673-446c-b961-2146b9ac0c61'"
+    ),
+    "TRACKCROW_RESTORE_EXPECTED_OUTPUT": "Push Medical Store",
+    "SMASHDIARY_RESTORE_TEST_QUERY": "SELECT 1",
+    "SMASHDIARY_RESTORE_EXPECTED_OUTPUT": "1",
+}
+
 GDRIVE_CONFIG = {
     "GDRIVE_SOURCE": "personal-drive",
     "GDRIVE_DESTINATION": "dwaar-s3:dwaar/backups/gdrive",
@@ -75,6 +90,7 @@ CONFIG = {
     **GEOFENCE_CONFIG,
     **NTFY_CONFIG,
     **BACKUP_DB_CONFIG,
+    **RESTORE_DB_TEST_CONFIG,
     **GDRIVE_CONFIG,
     **SHIKARI_CONFIG,
 }

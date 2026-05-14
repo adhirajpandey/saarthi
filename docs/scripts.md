@@ -8,6 +8,7 @@ Scripts are exposed via `pyproject.toml`:
 
 - `backup-dbs` -> `scripts.backup_dbs.main:main`
 - `backup-gdrive` -> `scripts.backup_gdrive.main:main`
+- `restore-dbs-test` -> `scripts.restore_dbs_test.main:main`
 - `schedule-scripts` -> `scripts.schedule_scripts.main:main`
 - `shikari-visualize` -> `scripts.shikari_visualize.main:main`
 
@@ -138,6 +139,77 @@ Remarks:
 - Script processes all folders and computes final success at the end.
 - WhatsApp summary is intentionally concise compared to full ntfy/body output.
 
+### `restore-dbs-test`
+
+Short description:
+Verifies the latest S3 database backups by restoring them into disposable PostgreSQL containers and running configured test queries.
+
+ASCII flow:
+
+```text
+Load RestoreDbTestSettings
+  -> build restore target map
+  -> create per-run temp workspace under RESTORE_TEMP_DIR
+  -> for each DB:
+       locate latest S3 backup key
+       download dump into run workspace
+       start disposable Postgres container
+       restore dump
+       run verification query
+  -> teardown run workspace + containers
+  -> dispatch ntfy/WhatsApp summary
+  -> exit 0 or 1
+```
+
+Expected input:
+
+Configuration (`app/config/config.py`):
+
+- `BACKUP_BUCKET`
+- `VIDWIZ_S3_PREFIX`
+- `TRACKCROW_S3_PREFIX`
+- `SMASHDIARY_S3_PREFIX`
+- `VIDWIZ_DUMP_FILENAME`
+- `TRACKCROW_DUMP_FILENAME`
+- `SMASHDIARY_DUMP_FILENAME`
+- `RESTORE_PG_IMAGE`
+- `RESTORE_TIMEOUT_SECONDS`
+- `RESTORE_TEMP_DIR`
+- `VIDWIZ_RESTORE_TEST_QUERY`
+- `VIDWIZ_RESTORE_EXPECTED_OUTPUT`
+- `TRACKCROW_RESTORE_TEST_QUERY`
+- `TRACKCROW_RESTORE_EXPECTED_OUTPUT`
+- `SMASHDIARY_RESTORE_TEST_QUERY`
+- `SMASHDIARY_RESTORE_EXPECTED_OUTPUT`
+- notification toggles and shared runtime values
+
+Secrets / connections (`.env`):
+
+- `AWS_ACCESS_KEY`
+- `AWS_SECRET_ACCESS_KEY`
+- `RESTORE_PG_PASSWORD`
+- ntfy credentials when ntfy enabled
+
+System prerequisites:
+
+- Docker available on PATH
+- access to the configured PostgreSQL image in `RESTORE_PG_IMAGE`
+- network access to S3
+
+Expected output:
+
+- Exit code `0` when all restore verification checks pass.
+- Exit code `1` when any restore step, verification query, or setup step fails.
+- Log output written to configured log destination.
+- Temporary restore artifacts and disposable containers are cleaned up in teardown.
+
+Remarks:
+
+- If one DB fails, the script continues processing remaining targets, then returns failure overall.
+- `RESTORE_TEMP_DIR` is a parent workspace, not the directory deleted directly.
+- Each run creates its own disposable child directory under `RESTORE_TEMP_DIR` and teardown removes only that run directory.
+- Top-level failures also attempt notification dispatch when settings are available.
+
 ### `schedule-scripts`
 
 Short description:
@@ -241,6 +313,7 @@ Remarks:
 
 - `uv run backup-dbs`
 - `uv run backup-gdrive`
+- `uv run restore-dbs-test`
 - `sudo env "PATH=$PATH" uv run schedule-scripts`
 - `uv run shikari-visualize --list`
 - `uv run shikari-visualize 2026-03-13-22:02:58 --output html png`
