@@ -121,3 +121,28 @@ def test_mcp_auth_rejects_invalid_token(monkeypatch, runtime_config) -> None:
     token = asyncio.run(server.build_mcp_auth(settings).verify_token("invalid-token"))
 
     assert token is None
+
+
+def test_search_personal_transactions_delegates_to_service(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
+            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "search_trackcrow_transactions",
+        lambda **kwargs: {"success": True, "count": 0, "filters": kwargs, "transactions": []},
+    )
+
+    result = server.search_personal_transactions(keyword="groceries", limit=5)
+
+    assert result["success"] is True
+    assert result["filters"]["keyword"] == "groceries"
+    assert result["filters"]["limit"] == 5

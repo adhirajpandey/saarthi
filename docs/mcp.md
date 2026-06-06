@@ -82,11 +82,83 @@ Remarks:
 - The MCP server defines the tool boundary; actual sending is performed by
   `shared.notifications.whatsapp`.
 
+### `search_transactions`
+
+Short description:
+Searches Trackcrow transactions for the configured MCP user and returns
+structured rows for agents.
+
+Expected input:
+
+```json
+{
+  "recipient": "medical store",
+  "category": "Health",
+  "keyword": "syrup",
+  "start_date": "2026-01-01",
+  "end_date": "2026-01-31",
+  "limit": 10
+}
+```
+
+Expected output:
+
+Success:
+
+```json
+{
+  "success": true,
+  "count": 1,
+  "filters": {
+    "recipient": "medical store",
+    "category": "Health",
+    "keyword": "syrup",
+    "start_date": "2026-01-01",
+    "end_date": "2026-01-31",
+    "limit": 10
+  },
+  "transactions": [
+    {
+      "id": 41,
+      "timestamp": "2026-01-01T12:30:00Z",
+      "amount": 120.5,
+      "recipient": "Push Medical Store",
+      "recipient_name": "Push Medical Store",
+      "category": "Health",
+      "subcategory": "Medicine",
+      "type": "UPI",
+      "remarks": "cough syrup",
+      "location": "Bangalore"
+    }
+  ]
+}
+```
+
+Failure:
+
+```json
+{
+  "success": false,
+  "message": "Failed to search Trackcrow transactions"
+}
+```
+
+Remarks:
+
+- At least one filter is required.
+- `limit` defaults to `10` and is capped at `50`.
+- `start_date` and `end_date` accept ISO-8601 date or datetime strings.
+- Searches are always scoped to the configured `TRACKCROW_MCP_USER_UUID`.
+- This tool reads Trackcrow data directly from Postgres; it does not call a
+  Trackcrow HTTP API.
+
 ## Configuration
 
 Secrets / auth (`.env`):
 
 - `MCP_TOKEN`
+- `TRACKCROW_DB_URL`
+- `TRACKCROW_MCP_USER_UUID`
 
 Configuration (`app/config/config.py`):
 
@@ -101,6 +173,8 @@ Remarks:
 - `WHATSAPP_ENABLED` must be enabled for the MCP runtime.
 - `WHATSAPP_TARGET_PERSONAL` is required because MCP messages are sent to the
   personal target, not the geofence family target.
+- `TRACKCROW_MCP_USER_UUID` fixes the Trackcrow user scope for transaction
+  searches.
 - The SSH private key is mounted into the `saarthi-mcp` container by
   `docker-compose.yml`.
 

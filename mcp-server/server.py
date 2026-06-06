@@ -14,6 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from shared.logging import setup_logging  # noqa: E402
 from shared.notifications.whatsapp import send_whatsapp_message as send_whatsapp_transport  # noqa: E402
 from shared.settings import McpSettings, get_mcp_settings  # noqa: E402
+from app.services.trackcrow_transactions import search_trackcrow_transactions  # noqa: E402
 
 
 def build_mcp_auth(settings: McpSettings) -> MultiAuth:
@@ -52,6 +53,48 @@ def send_personal_whatsapp_message(message: str) -> dict[str, bool | str]:
 def send_whatsapp_message_tool(message: str) -> dict[str, bool | str]:
     """Send a WhatsApp message to the configured personal target."""
     return send_personal_whatsapp_message(message)
+
+
+def search_personal_transactions(
+    recipient: str | None = None,
+    category: str | None = None,
+    keyword: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = 10,
+) -> dict[str, object]:
+    """Search Trackcrow transactions for the configured MCP user."""
+    settings = get_mcp_settings()
+    setup_logging(settings.logging_settings())
+    return search_trackcrow_transactions(
+        settings=settings,
+        recipient=recipient,
+        category=category,
+        keyword=keyword,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+    )
+
+
+@mcp.tool(name="search_transactions")
+def search_transactions_tool(
+    recipient: str | None = None,
+    category: str | None = None,
+    keyword: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = 10,
+) -> dict[str, object]:
+    """Search Trackcrow transactions for the configured MCP user."""
+    return search_personal_transactions(
+        recipient=recipient,
+        category=category,
+        keyword=keyword,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+    )
 
 
 if __name__ == "__main__":

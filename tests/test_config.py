@@ -102,6 +102,36 @@ def test_mcp_settings_requires_mcp_token(monkeypatch, runtime_config) -> None:
         get_mcp_settings()
 
 
+def test_mcp_settings_requires_trackcrow_user_uuid(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+        }
+    )
+    monkeypatch.delenv("TRACKCROW_MCP_USER_UUID", raising=False)
+
+    with pytest.raises(ValueError, match="trackcrow_mcp_user_uuid"):
+        get_mcp_settings()
+
+
+def test_mcp_settings_requires_trackcrow_db_url(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+        }
+    )
+    monkeypatch.delenv("TRACKCROW_DB_URL", raising=False)
+
+    with pytest.raises(ValueError, match="trackcrow_db_url"):
+        get_mcp_settings()
+
+
 def test_email_enabled_requires_smtp_host_and_port(monkeypatch, runtime_config) -> None:
     runtime_config({"EMAIL_ENABLED": True, "WHATSAPP_ENABLED": False})
 

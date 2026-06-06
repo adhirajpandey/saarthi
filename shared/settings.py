@@ -1,4 +1,4 @@
-"""Typed runtime settings for API and scripts."""
+"""Typed runtime settings for API, MCP, and scripts."""
 
 import importlib
 import os
@@ -23,6 +23,7 @@ ENV_OWNED_KEYS = frozenset(
         "VIDWIZ_DB_URL",
         "TRACKCROW_DB_URL",
         "SMASHDIARY_DB_URL",
+        "TRACKCROW_MCP_USER_UUID",
         "RESTORE_PG_PASSWORD",
         "NTFY_BASE_URL",
         "NTFY_TOKEN",
@@ -391,6 +392,8 @@ class McpSettings(RuntimeSettings):
     """Settings required by the MCP runtime."""
 
     mcp_token: str
+    trackcrow_db_url: str
+    trackcrow_mcp_user_uuid: str
 
     @model_validator(mode="after")
     def _validate_mcp_whatsapp_config(self) -> "McpSettings":
@@ -399,6 +402,10 @@ class McpSettings(RuntimeSettings):
         self._validate_whatsapp_transport()
         if not self.whatsapp_target_personal:
             raise ValueError("WHATSAPP_TARGET_PERSONAL is required for the MCP server")
+        if not self.trackcrow_db_url:
+            raise ValueError("TRACKCROW_DB_URL is required for the MCP server")
+        if not self.trackcrow_mcp_user_uuid:
+            raise ValueError("TRACKCROW_MCP_USER_UUID is required for the MCP server")
         return self
 
     def whatsapp_settings_for_mcp(self) -> WhatsAppSettings:
