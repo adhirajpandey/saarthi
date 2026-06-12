@@ -152,11 +152,166 @@ Remarks:
 - This tool reads Trackcrow data directly from Postgres; it does not call a
   Trackcrow HTTP API.
 
+### `list_cloudflare_zones`
+
+Short description:
+Lists Cloudflare zones visible to the configured API token and returns
+normalized rows for agents.
+
+Expected input:
+
+```json
+{
+  "name": "adhirajpandey.tech",
+  "status": "active",
+  "page": 1,
+  "per_page": 10
+}
+```
+
+Expected output:
+
+Success:
+
+```json
+{
+  "success": true,
+  "count": 1,
+  "filters": {
+    "name": "adhirajpandey.tech",
+    "status": "active",
+    "page": 1,
+    "per_page": 10
+  },
+  "zones": [
+    {
+      "id": "8ed154052fec209b922b5f9877d4c6c5",
+      "name": "adhirajpandey.tech",
+      "status": "active",
+      "paused": false,
+      "type": "full",
+      "created_on": "2026-01-01T00:00:00Z",
+      "modified_on": "2026-01-02T00:00:00Z",
+      "name_servers": ["kenneth.ns.cloudflare.com", "molly.ns.cloudflare.com"]
+    }
+  ]
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- `page` defaults to `1`.
+- `per_page` defaults to `20` and is capped at `100`.
+
+### `search_cloudflare_dns_records`
+
+Short description:
+Lists DNS records from a Cloudflare zone and returns normalized rows for
+agents.
+
+Expected input:
+
+```json
+{
+  "zone_name": "adhirajpandey.tech",
+  "type": "CNAME",
+  "proxied": true,
+  "page": 1,
+  "per_page": 20
+}
+```
+
+Expected output:
+
+Success:
+
+```json
+{
+  "success": true,
+  "count": 1,
+  "filters": {
+    "zone_id": "8ed154052fec209b922b5f9877d4c6c5",
+    "zone_name": "adhirajpandey.tech",
+    "type": "CNAME",
+    "name": null,
+    "content": null,
+    "proxied": true,
+    "page": 1,
+    "per_page": 20
+  },
+  "records": [
+    {
+      "id": "0cbc6033384a922aba0c768da8390e81",
+      "zone_id": "8ed154052fec209b922b5f9877d4c6c5",
+      "zone_name": "adhirajpandey.tech",
+      "name": "saarthi.adhirajpandey.tech",
+      "type": "CNAME",
+      "content": "fc13605b-9729-4162-bd26-679a6fd134ff.cfargotunnel.com",
+      "proxied": true,
+      "ttl": 1,
+      "comment": null,
+      "created_on": "2026-01-01T00:00:00Z",
+      "modified_on": "2026-01-02T00:00:00Z"
+    }
+  ]
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- Exactly one of `zone_id` or `zone_name` is required.
+- `zone_name` is resolved to a zone ID before DNS record lookup.
+
+### `get_cloudflare_dns_record`
+
+Short description:
+Fetches one DNS record from a Cloudflare zone by record ID.
+
+Expected input:
+
+```json
+{
+  "zone_name": "adhirajpandey.tech",
+  "record_id": "0cbc6033384a922aba0c768da8390e81"
+}
+```
+
+Expected output:
+
+Success:
+
+```json
+{
+  "success": true,
+  "record": {
+    "id": "0cbc6033384a922aba0c768da8390e81",
+    "zone_id": "8ed154052fec209b922b5f9877d4c6c5",
+    "zone_name": "adhirajpandey.tech",
+    "name": "saarthi.adhirajpandey.tech",
+    "type": "CNAME",
+    "content": "fc13605b-9729-4162-bd26-679a6fd134ff.cfargotunnel.com",
+    "proxied": true,
+    "ttl": 1,
+    "comment": null,
+    "created_on": "2026-01-01T00:00:00Z",
+    "modified_on": "2026-01-02T00:00:00Z"
+  }
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- Exactly one of `zone_id` or `zone_name` is required.
+
 ## Configuration
 
 Secrets / auth (`.env`):
 
 - `MCP_TOKEN`
+- `CLOUDFLARE_API_TOKEN`
 - `TRACKCROW_DB_URL`
 - `TRACKCROW_MCP_USER_UUID`
 
@@ -173,6 +328,7 @@ Remarks:
 - `WHATSAPP_ENABLED` must be enabled for the MCP runtime.
 - `WHATSAPP_TARGET_PERSONAL` is required because MCP messages are sent to the
   personal target, not the geofence family target.
+- `CLOUDFLARE_API_TOKEN` is required for the Cloudflare MCP tools.
 - `TRACKCROW_MCP_USER_UUID` fixes the Trackcrow user scope for transaction
   searches.
 - The SSH private key is mounted into the `saarthi-mcp` container by

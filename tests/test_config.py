@@ -10,6 +10,7 @@ from shared.settings import (
     get_backup_db_settings,
     get_backup_gdrive_settings,
     get_api_settings,
+    get_cloudflare_settings,
     get_mcp_settings,
     get_restore_db_test_settings,
     get_shikari_settings,
@@ -130,6 +131,13 @@ def test_mcp_settings_requires_trackcrow_db_url(monkeypatch, runtime_config) -> 
 
     with pytest.raises(ValueError, match="trackcrow_db_url"):
         get_mcp_settings()
+
+
+def test_cloudflare_settings_requires_api_token(monkeypatch) -> None:
+    monkeypatch.delenv("CLOUDFLARE_API_TOKEN", raising=False)
+
+    with pytest.raises(ValueError, match="cloudflare_api_token"):
+        get_cloudflare_settings()
 
 
 def test_email_enabled_requires_smtp_host_and_port(monkeypatch, runtime_config) -> None:

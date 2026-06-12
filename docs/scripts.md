@@ -8,6 +8,8 @@ Scripts are exposed via `pyproject.toml`:
 
 - `backup-dbs` -> `scripts.backup_dbs.main:main`
 - `backup-gdrive` -> `scripts.backup_gdrive.main:main`
+- `cloudflare-zones` -> `scripts.cloudflare_zones.main:main`
+- `cloudflare-dns` -> `scripts.cloudflare_dns.main:main`
 - `restore-dbs-test` -> `scripts.restore_dbs_test.main:main`
 - `schedule-scripts` -> `scripts.schedule_scripts.main:main`
 - `shikari-visualize` -> `scripts.shikari_visualize.main:main`
@@ -210,6 +212,117 @@ Remarks:
 - Each run creates its own disposable child directory under `RESTORE_TEMP_DIR` and teardown removes only that run directory.
 - Top-level failures also attempt notification dispatch when settings are available.
 
+### `cloudflare-zones`
+
+Short description:
+Lists Cloudflare zones visible to the configured API token.
+
+ASCII flow:
+
+```text
+Load CloudflareSettings
+  -> validate CLI filters
+  -> call Cloudflare zones API
+  -> normalize zone payloads
+  -> print table or JSON
+  -> exit 0 or 1
+```
+
+Expected input:
+
+Secrets / auth (`.env`):
+
+- `CLOUDFLARE_API_TOKEN`
+
+CLI options:
+
+- `list`
+- `--name`
+- `--status`
+- `--page`
+- `--per-page`
+- `--json`
+
+System prerequisites:
+
+- network access to the Cloudflare API
+- token with zone read access
+
+Expected output:
+
+- Exit code `0` when the zone query succeeds.
+- Exit code `1` when validation, auth, network, or Cloudflare API calls fail.
+- Human-readable zone summary by default.
+- Structured JSON payload with `success`, `count`, `filters`, and `zones` when `--json` is passed.
+
+Remarks:
+
+- This script is read-only.
+- Results are normalized before display; raw Cloudflare payloads are not printed by default.
+
+### `cloudflare-dns`
+
+Short description:
+Lists or fetches DNS records from a Cloudflare zone using the configured API token.
+
+ASCII flow:
+
+```text
+Load CloudflareSettings
+  -> validate CLI filters
+  -> resolve zone_name -> zone_id when needed
+  -> call Cloudflare DNS records API
+  -> normalize record payloads
+  -> print table/detail or JSON
+  -> exit 0 or 1
+```
+
+Expected input:
+
+Secrets / auth (`.env`):
+
+- `CLOUDFLARE_API_TOKEN`
+
+CLI subcommands:
+
+- `list --zone-id <id>` or `list --zone-name <name>`
+- `get --zone-id <id> --record-id <id>`
+- `get --zone-name <name> --record-id <id>`
+
+Optional `list` filters:
+
+- `--type`
+- `--name`
+- `--content`
+- `--proxied`
+- `--not-proxied`
+- `--page`
+- `--per-page`
+- `--json`
+
+Optional `get` flags:
+
+- `--json`
+
+System prerequisites:
+
+- network access to the Cloudflare API
+- token with DNS read access for the target zone
+
+Expected output:
+
+- Exit code `0` when the DNS query succeeds.
+- Exit code `1` when validation, auth, network, or Cloudflare API calls fail.
+- Human-readable record list or record detail by default.
+- Structured JSON payload with `success`, `count`, `filters`, and `records` for `list --json`.
+- Structured JSON payload with `success` and `record` for `get --json`.
+
+Remarks:
+
+- Exactly one of `--zone-id` or `--zone-name` is required per request.
+- `--zone-name` is resolved to a zone ID before DNS record queries are made.
+- This script is read-only.
+
 ### `schedule-scripts`
 
 Short description:
@@ -313,6 +426,8 @@ Remarks:
 
 - `uv run backup-dbs`
 - `uv run backup-gdrive`
+- `uv run cloudflare-zones list`
+- `uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied`
 - `uv run restore-dbs-test`
 - `sudo env "PATH=$PATH" uv run schedule-scripts`
 - `uv run shikari-visualize --list`

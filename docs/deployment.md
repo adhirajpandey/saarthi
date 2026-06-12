@@ -21,7 +21,7 @@ cp .env.example .env
 2. Fill values:
 
 - `app/config/config.py`: non-secret settings
-- `.env`: secrets (`ADMIN_TOKEN`, `MCP_TOKEN`, SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as needed)
+- `.env`: secrets (`ADMIN_TOKEN`, `MCP_TOKEN`, `CLOUDFLARE_API_TOKEN`, SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as needed)
 
 3. Start API and MCP:
 
@@ -58,6 +58,8 @@ docker compose logs saarthi-mcp
 codex mcp get saarthi
 systemctl status saarthi-backup-dbs.timer
 systemctl status saarthi-backup-gdrive.timer
+uv run cloudflare-zones list
+uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied
 uv run shikari-visualize --list
 ```
 
@@ -76,6 +78,10 @@ docker compose restart saarthi-mcp
 uv run backup-dbs
 uv run backup-gdrive
 uv run restore-dbs-test
+
+# Manual Cloudflare reads
+uv run cloudflare-zones list
+uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied
 
 # Manual Shikari output generation
 uv run shikari-visualize --list

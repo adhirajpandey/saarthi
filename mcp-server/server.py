@@ -13,8 +13,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from shared.logging import setup_logging  # noqa: E402
 from shared.notifications.whatsapp import send_whatsapp_message as send_whatsapp_transport  # noqa: E402
-from shared.settings import McpSettings, get_mcp_settings  # noqa: E402
+from shared.settings import McpSettings, get_cloudflare_settings, get_mcp_settings  # noqa: E402
 from app.services.trackcrow_transactions import search_trackcrow_transactions  # noqa: E402
+from app.services.cloudflare import get_dns_record, list_dns_records, list_zones  # noqa: E402
 
 
 def build_mcp_auth(settings: McpSettings) -> MultiAuth:
@@ -94,6 +95,120 @@ def search_transactions_tool(
         start_date=start_date,
         end_date=end_date,
         limit=limit,
+    )
+
+
+def list_personal_cloudflare_zones(
+    name: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict[str, object]:
+    """List Cloudflare zones visible to the configured token."""
+    settings = get_cloudflare_settings()
+    setup_logging(settings.logging_settings())
+    return list_zones(
+        settings=settings,
+        name=name,
+        status=status,
+        page=page,
+        per_page=per_page,
+    )
+
+
+@mcp.tool(name="list_cloudflare_zones")
+def list_cloudflare_zones_tool(
+    name: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict[str, object]:
+    """List Cloudflare zones visible to the configured token."""
+    return list_personal_cloudflare_zones(
+        name=name,
+        status=status,
+        page=page,
+        per_page=per_page,
+    )
+
+
+def search_personal_cloudflare_dns_records(
+    zone_id: str | None = None,
+    zone_name: str | None = None,
+    type: str | None = None,
+    name: str | None = None,
+    content: str | None = None,
+    proxied: bool | None = None,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict[str, object]:
+    """List DNS records from a Cloudflare zone."""
+    settings = get_cloudflare_settings()
+    setup_logging(settings.logging_settings())
+    return list_dns_records(
+        settings=settings,
+        zone_id=zone_id,
+        zone_name=zone_name,
+        type=type,
+        name=name,
+        content=content,
+        proxied=proxied,
+        page=page,
+        per_page=per_page,
+    )
+
+
+@mcp.tool(name="search_cloudflare_dns_records")
+def search_cloudflare_dns_records_tool(
+    zone_id: str | None = None,
+    zone_name: str | None = None,
+    type: str | None = None,
+    name: str | None = None,
+    content: str | None = None,
+    proxied: bool | None = None,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict[str, object]:
+    """List DNS records from a Cloudflare zone."""
+    return search_personal_cloudflare_dns_records(
+        zone_id=zone_id,
+        zone_name=zone_name,
+        type=type,
+        name=name,
+        content=content,
+        proxied=proxied,
+        page=page,
+        per_page=per_page,
+    )
+
+
+def get_personal_cloudflare_dns_record(
+    record_id: str,
+    zone_id: str | None = None,
+    zone_name: str | None = None,
+) -> dict[str, object]:
+    """Get one DNS record from a Cloudflare zone."""
+    settings = get_cloudflare_settings()
+    setup_logging(settings.logging_settings())
+    return get_dns_record(
+        settings=settings,
+        record_id=record_id,
+        zone_id=zone_id,
+        zone_name=zone_name,
+    )
+
+
+@mcp.tool(name="get_cloudflare_dns_record")
+def get_cloudflare_dns_record_tool(
+    record_id: str,
+    zone_id: str | None = None,
+    zone_name: str | None = None,
+) -> dict[str, object]:
+    """Get one DNS record from a Cloudflare zone."""
+    return get_personal_cloudflare_dns_record(
+        record_id=record_id,
+        zone_id=zone_id,
+        zone_name=zone_name,
     )
 
 

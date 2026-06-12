@@ -87,6 +87,7 @@ def runtime_config(
     env_vars = {
         "ADMIN_TOKEN": "test-admin-token",
         "MCP_TOKEN": "test-mcp-token",
+        "CLOUDFLARE_API_TOKEN": "test-cloudflare-token",
         "TRACKCROW_DB_URL": "postgres://trackcrow",
         "TRACKCROW_MCP_USER_UUID": "trackcrow-user-uuid",
         "SMTP_EMAIL": "smtp@example.com",

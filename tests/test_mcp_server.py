@@ -146,3 +146,85 @@ def test_search_personal_transactions_delegates_to_service(monkeypatch, runtime_
     assert result["success"] is True
     assert result["filters"]["keyword"] == "groceries"
     assert result["filters"]["limit"] == 5
+
+
+def test_list_personal_cloudflare_zones_delegates_to_service(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
+            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "list_zones",
+        lambda **kwargs: {"success": True, "count": 1, "filters": kwargs, "zones": []},
+    )
+
+    result = server.list_personal_cloudflare_zones(name="example.com", per_page=5)
+
+    assert result["success"] is True
+    assert result["filters"]["name"] == "example.com"
+    assert result["filters"]["per_page"] == 5
+
+
+def test_search_personal_cloudflare_dns_records_delegates_to_service(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
+            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "list_dns_records",
+        lambda **kwargs: {"success": True, "count": 1, "filters": kwargs, "records": []},
+    )
+
+    result = server.search_personal_cloudflare_dns_records(zone_name="example.com", type="A")
+
+    assert result["success"] is True
+    assert result["filters"]["zone_name"] == "example.com"
+    assert result["filters"]["type"] == "A"
+
+
+def test_get_personal_cloudflare_dns_record_delegates_to_service(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
+            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "get_dns_record",
+        lambda **kwargs: {"success": True, "record": kwargs},
+    )
+
+    result = server.get_personal_cloudflare_dns_record(
+        zone_id="zone-1",
+        record_id="record-1",
+    )
+
+    assert result["success"] is True
+    assert result["record"]["zone_id"] == "zone-1"
+    assert result["record"]["record_id"] == "record-1"

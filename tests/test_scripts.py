@@ -1,11 +1,15 @@
 """Tests for script configuration behavior."""
 
 import copy
+import contextlib
+import io
 import re
 import subprocess
 from pathlib import Path
 import runpy
 
+from scripts.cloudflare_dns import main as cloudflare_dns_main
+from scripts.cloudflare_zones import main as cloudflare_zones_main
 from scripts.backup_dbs import main as backup_dbs_main
 from scripts.backup_gdrive import main as backup_gdrive_main
 from scripts.restore_dbs_test import main as restore_dbs_test_main
@@ -162,6 +166,41 @@ def test_build_db_map_uses_settings_values() -> None:
     assert db_map["trackcrow"]["filename"] == "trackcrow-custom"
     assert db_map["smashdiary"]["s3_prefix"] == "db/smashdiary"
     assert db_map["smashdiary"]["filename"] == "smashdiary-custom"
+
+
+def test_cloudflare_zones_main_prints_json(monkeypatch, runtime_config) -> None:
+    runtime_config()
+    monkeypatch.setattr("scripts.cloudflare_zones.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.cloudflare_zones.main.list_zones",
+        lambda **_kwargs: {
+            "success": True,
+            "count": 1,
+            "filters": {"page": 1, "per_page": 20},
+            "zones": [{"id": "zone-1", "name": "example.com"}],
+        },
+    )
+    monkeypatch.setattr("sys.argv", ["cloudflare-zones", "list", "--json"])
+
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+        result = cloudflare_zones_main.main()
+
+    assert result == 0
+    assert '"name": "example.com"' in stdout.getvalue()
+
+
+def test_cloudflare_dns_main_returns_1_on_validation_error(monkeypatch, runtime_config) -> None:
+    runtime_config()
+    monkeypatch.setattr("scripts.cloudflare_dns.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr("sys.argv", ["cloudflare-dns", "list", "--zone-id", "z1", "--zone-name", "example.com"])
+
+    stderr = io.StringIO()
+    with contextlib.redirect_stderr(stderr):
+        result = cloudflare_dns_main.main()
+
+    assert result == 1
+    assert "exactly one of zone_id or zone_name" in stderr.getvalue()
 
 
 def test_build_restore_db_map_uses_inherited_and_restore_values() -> None:

@@ -14,6 +14,7 @@ ENV_OWNED_KEYS = frozenset(
     {
         "ADMIN_TOKEN",
         "MCP_TOKEN",
+        "CLOUDFLARE_API_TOKEN",
         "SMTP_EMAIL",
         "SMTP_APP_PASSWORD",
         "SMTP_HOST",
@@ -412,6 +413,12 @@ class McpSettings(RuntimeSettings):
         return self._build_whatsapp_settings(self.whatsapp_target_personal)
 
 
+class CloudflareSettings(RuntimeSettings):
+    """Settings required by Cloudflare scripts and MCP tools."""
+
+    cloudflare_api_token: str
+
+
 class BackupArtifactSettings(NtfyRuntimeSettings):
     """Shared settings for DB backup artifacts stored in S3."""
 
@@ -519,6 +526,11 @@ def get_api_settings() -> ApiSettings:
 def get_mcp_settings() -> McpSettings:
     """Return MCP server settings."""
     return McpSettings.model_validate(_build_payload(MCP_RUNTIME_CONFIG_KEYS))
+
+
+def get_cloudflare_settings() -> CloudflareSettings:
+    """Return Cloudflare integration settings."""
+    return CloudflareSettings.model_validate(_build_payload(COMMON_CONFIG_KEYS))
 
 
 def get_backup_db_settings() -> BackupDbSettings:

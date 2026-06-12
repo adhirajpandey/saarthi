@@ -33,8 +33,10 @@ All surfaces reuse shared modules for settings, logging, and notification transp
       +---------v----------+     +--------v---------+        +---------v----------------+
       | FastAPI Runtime    |     | FastMCP Runtime  |        | Operational Script CLIs   |
       | app/main.py        |     | mcp-server       |        | backup-dbs / backup-gdrive|
-      | routers + services |     | authenticated    |        | / restore-dbs-test /     |
-      |                    |     | tool access      |        | schedule-scripts /       |
+      | routers + services |     | authenticated    |        | / cloudflare-zones /     |
+      |                    |     | tool access      |        | cloudflare-dns /         |
+      |                    |     |                  |        | restore-dbs-test /       |
+      |                    |     |                  |        | schedule-scripts /       |
       |                    |     |                  |        | shikari-visualize        |
       +---------+----------+     +--------+---------+        +---------+----------------+
                 |                         |                            |
@@ -94,6 +96,13 @@ Current tool surface:
 
 - `send_whatsapp_message(message)`: sends a WhatsApp message to
   `WHATSAPP_TARGET_PERSONAL` using the shared SSH WhatsApp transport.
+- `search_transactions(...)`: reads Trackcrow transactions for the configured
+  MCP user.
+- `list_cloudflare_zones(...)`: lists zones visible to the configured
+  Cloudflare token.
+- `search_cloudflare_dns_records(...)`: lists DNS records from a Cloudflare
+  zone.
+- `get_cloudflare_dns_record(...)`: fetches one DNS record by record ID.
 
 Detailed MCP contracts are documented in `mcp.md`.
 
@@ -136,6 +145,27 @@ Flow:
 5. Download, restore into disposable PostgreSQL containers, and run verification queries.
 6. Remove the run workspace and containers.
 7. Send status notifications.
+
+### `cloudflare-zones`
+
+Flow:
+
+1. Load typed Cloudflare settings.
+2. Validate CLI filters.
+3. Call the Cloudflare zones API.
+4. Normalize zone payloads.
+5. Print human-readable or JSON output.
+
+### `cloudflare-dns`
+
+Flow:
+
+1. Load typed Cloudflare settings.
+2. Validate CLI filters.
+3. Resolve `zone_name` to `zone_id` when required.
+4. Call the Cloudflare DNS records API.
+5. Normalize record payloads.
+6. Print human-readable or JSON output.
 
 ### `schedule-scripts`
 
@@ -185,6 +215,7 @@ GDrive backup, and Shikari runtimes.
 - `LOCATION_DB_PATH`: SQLite location history
 - `GEOFENCE_MAPPING_PATH`: geofence definitions
 - `MCP_TOKEN`: bearer token required by the MCP server
+- `CLOUDFLARE_API_TOKEN`: API token used by Cloudflare scripts and MCP tools
 - `scripts/schedule_scripts/config.json`: scheduler input
 - `data/shikari/sessions`: merged Shikari + Saarthi sensor sessions
 - `data/shikari/outputs`: generated visualization artifacts
