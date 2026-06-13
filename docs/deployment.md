@@ -21,7 +21,10 @@ cp .env.example .env
 2. Fill values:
 
 - `app/config/config.py`: non-secret settings
-- `.env`: secrets (`ADMIN_TOKEN`, `MCP_TOKEN`, `CLOUDFLARE_API_TOKEN`, SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as needed)
+- `.env`: secrets (`ADMIN_TOKEN`, `MCP_TOKEN`, `CLOUDFLARE_API_TOKEN`,
+  `GOOGLE_TASKS_CLIENT_ID`, `GOOGLE_TASKS_CLIENT_SECRET`,
+  `GOOGLE_TASKS_TOKEN_PATH`, SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as
+  needed)
 
 3. Start API and MCP:
 
@@ -49,6 +52,17 @@ sudo env "PATH=$PATH" uv run schedule-scripts
 mkdir -p data/shikari/sessions data/shikari/outputs
 ```
 
+6. Authorize Google Tasks for MCP reads:
+
+```bash
+uv run google-tasks-auth --headless
+```
+
+This writes authorized-user token JSON to `GOOGLE_TASKS_TOKEN_PATH`. For a
+headless host, open the printed Google login URL on another machine, complete
+sign-in, copy the final `http://127.0.0.1:1/...` redirect URL from the browser
+address bar, and paste it back into the terminal prompt.
+
 ## Verify
 
 ```bash
@@ -60,6 +74,7 @@ systemctl status saarthi-backup-dbs.timer
 systemctl status saarthi-backup-gdrive.timer
 uv run cloudflare-zones list
 uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied
+uv run google-tasks-auth --headless
 uv run shikari-visualize --list
 ```
 
@@ -82,6 +97,9 @@ uv run restore-dbs-test
 # Manual Cloudflare reads
 uv run cloudflare-zones list
 uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied
+
+# Google Tasks auth bootstrap
+uv run google-tasks-auth --headless
 
 # Manual Shikari output generation
 uv run shikari-visualize --list

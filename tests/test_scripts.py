@@ -10,6 +10,7 @@ import runpy
 
 from scripts.cloudflare_dns import main as cloudflare_dns_main
 from scripts.cloudflare_zones import main as cloudflare_zones_main
+from scripts.google_tasks_auth import main as google_tasks_auth_main
 from scripts.backup_dbs import main as backup_dbs_main
 from scripts.backup_gdrive import main as backup_gdrive_main
 from scripts.restore_dbs_test import main as restore_dbs_test_main
@@ -39,6 +40,8 @@ from shared.settings import (
 
 _EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "app" / "config" / "config.example.py"
 _BASE_CONFIG = runpy.run_path(str(_EXAMPLE_CONFIG_PATH))["CONFIG"]
+_HERMES_BIN = "/home/pookie/.local/bin/hermes"
+_HERMES_DM_TARGET = "whatsapp:166601898885178@lid"
 
 
 def _runtime_kwargs(**overrides):
@@ -67,8 +70,8 @@ def _backup_db_settings(**overrides) -> BackupDbSettings:
         "ntfy_enabled": False,
         "whatsapp_enabled": True,
         "whatsapp_ssh_host": "pookie",
-        "whatsapp_remote_script_path": "/remote/send.py",
-        "whatsapp_target_personal": "1203@s.whatsapp.net",
+        "whatsapp_remote_script_path": _HERMES_BIN,
+        "whatsapp_target_personal": _HERMES_DM_TARGET,
         "backup_bucket": "my-bucket",
         "vidwiz_s3_prefix": "db/vidwiz",
         "trackcrow_s3_prefix": "db/trackcrow",
@@ -93,8 +96,8 @@ def _backup_gdrive_settings(**overrides) -> BackupGdriveSettings:
         "ntfy_enabled": False,
         "whatsapp_enabled": True,
         "whatsapp_ssh_host": "pookie",
-        "whatsapp_remote_script_path": "/remote/send.py",
-        "whatsapp_target_personal": "1203@s.whatsapp.net",
+        "whatsapp_remote_script_path": _HERMES_BIN,
+        "whatsapp_target_personal": _HERMES_DM_TARGET,
     }
     defaults.update(overrides)
     return BackupGdriveSettings(
@@ -110,8 +113,8 @@ def _restore_db_test_settings(**overrides) -> RestoreDbTestSettings:
         "ntfy_enabled": False,
         "whatsapp_enabled": True,
         "whatsapp_ssh_host": "pookie",
-        "whatsapp_remote_script_path": "/remote/send.py",
-        "whatsapp_target_personal": "1203@s.whatsapp.net",
+        "whatsapp_remote_script_path": _HERMES_BIN,
+        "whatsapp_target_personal": _HERMES_DM_TARGET,
         "backup_bucket": "my-bucket",
         "vidwiz_s3_prefix": "db/vidwiz",
         "trackcrow_s3_prefix": "db/trackcrow",
@@ -201,6 +204,60 @@ def test_cloudflare_dns_main_returns_1_on_validation_error(monkeypatch, runtime_
 
     assert result == 1
     assert "exactly one of zone_id or zone_name" in stderr.getvalue()
+
+
+def test_google_tasks_auth_main_prints_success_message(
+    monkeypatch, runtime_config, test_workspace: Path
+) -> None:
+    runtime_config()
+    token_path = test_workspace / "google-token.json"
+    monkeypatch.setenv("GOOGLE_TASKS_TOKEN_PATH", str(token_path))
+    monkeypatch.setattr("scripts.google_tasks_auth.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.google_tasks_auth.main.run_google_tasks_oauth_bootstrap",
+        lambda **_kwargs: token_path,
+    )
+    monkeypatch.setattr("sys.argv", ["google-tasks-auth"])
+
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+        result = google_tasks_auth_main.main()
+
+    assert result == 0
+    assert str(token_path) in stdout.getvalue()
+
+
+def test_google_tasks_auth_main_returns_1_on_failure(monkeypatch, runtime_config) -> None:
+    runtime_config()
+    monkeypatch.setattr("scripts.google_tasks_auth.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.google_tasks_auth.main.run_google_tasks_oauth_bootstrap",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    monkeypatch.setattr("sys.argv", ["google-tasks-auth"])
+
+    stderr = io.StringIO()
+    with contextlib.redirect_stderr(stderr):
+        result = google_tasks_auth_main.main()
+
+    assert result == 1
+    assert "Failed to authorize Google Tasks" in stderr.getvalue()
+
+
+def test_google_tasks_auth_main_supports_headless_flag(monkeypatch, runtime_config) -> None:
+    runtime_config()
+    monkeypatch.setattr("scripts.google_tasks_auth.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.google_tasks_auth.main.run_google_tasks_oauth_bootstrap",
+        lambda **kwargs: kwargs["settings"].token_path() if kwargs["headless"] else None,
+    )
+    monkeypatch.setattr("sys.argv", ["google-tasks-auth", "--headless"])
+
+    stdout = io.StringIO()
+    with contextlib.redirect_stdout(stdout):
+        result = google_tasks_auth_main.main()
+
+    assert result == 0
 
 
 def test_build_restore_db_map_uses_inherited_and_restore_values() -> None:

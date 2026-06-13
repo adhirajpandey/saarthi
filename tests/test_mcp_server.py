@@ -7,6 +7,9 @@ from types import ModuleType
 
 import pytest
 
+_HERMES_BIN = "/home/pookie/.local/bin/hermes"
+_HERMES_DM_TARGET = "whatsapp:166601898885178@lid"
+
 
 def _load_mcp_server() -> ModuleType:
     server_path = Path(__file__).resolve().parents[1] / "mcp-server" / "server.py"
@@ -24,8 +27,8 @@ def test_send_personal_whatsapp_message_uses_personal_target(monkeypatch, runtim
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
-            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -42,7 +45,7 @@ def test_send_personal_whatsapp_message_uses_personal_target(monkeypatch, runtim
 
     assert result == {"success": True, "message": "WhatsApp message sent"}
     assert captured["message"] == " hello "
-    assert captured["whatsapp_settings"].target == "1203@s.whatsapp.net"
+    assert captured["whatsapp_settings"].target == _HERMES_DM_TARGET
 
 
 def test_send_personal_whatsapp_message_rejects_empty_message(monkeypatch, runtime_config) -> None:
@@ -50,8 +53,8 @@ def test_send_personal_whatsapp_message_rejects_empty_message(monkeypatch, runti
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
-            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -73,8 +76,8 @@ def test_send_personal_whatsapp_message_reports_transport_failure(
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
-            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -91,8 +94,8 @@ def test_mcp_auth_accepts_configured_token(monkeypatch, runtime_config) -> None:
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
-            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     monkeypatch.setenv("MCP_TOKEN", "valid-token")
@@ -110,8 +113,8 @@ def test_mcp_auth_rejects_invalid_token(monkeypatch, runtime_config) -> None:
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
-            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     monkeypatch.setenv("MCP_TOKEN", "valid-token")
@@ -128,8 +131,8 @@ def test_search_personal_transactions_delegates_to_service(monkeypatch, runtime_
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
-            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -153,8 +156,8 @@ def test_list_personal_cloudflare_zones_delegates_to_service(monkeypatch, runtim
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
-            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -180,8 +183,8 @@ def test_search_personal_cloudflare_dns_records_delegates_to_service(
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
-            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -207,8 +210,8 @@ def test_get_personal_cloudflare_dns_record_delegates_to_service(
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/remote/send.py",
-            "WHATSAPP_TARGET_PERSONAL": "1203@s.whatsapp.net",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -228,3 +231,77 @@ def test_get_personal_cloudflare_dns_record_delegates_to_service(
     assert result["success"] is True
     assert result["record"]["zone_id"] == "zone-1"
     assert result["record"]["record_id"] == "record-1"
+
+
+def test_list_personal_google_tasklists_delegates_to_service(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "list_tasklists",
+        lambda **kwargs: {"success": True, "count": 1, "filters": kwargs, "tasklists": []},
+    )
+
+    result = server.list_personal_google_tasklists(max_results=5)
+
+    assert result["success"] is True
+    assert result["filters"]["max_results"] == 5
+
+
+def test_list_personal_google_tasks_delegates_to_service(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "list_tasks",
+        lambda **kwargs: {"success": True, "count": 1, "filters": kwargs, "tasks": []},
+    )
+
+    result = server.list_personal_google_tasks(tasklist_title="Personal", max_results=5)
+
+    assert result["success"] is True
+    assert result["filters"]["tasklist_title"] == "Personal"
+    assert result["filters"]["max_results"] == 5
+
+
+def test_get_personal_google_task_delegates_to_service(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "get_task",
+        lambda **kwargs: {"success": True, "task": kwargs},
+    )
+
+    result = server.get_personal_google_task(task_id="task-1", tasklist_id="list-1")
+
+    assert result["success"] is True
+    assert result["task"]["task_id"] == "task-1"
+    assert result["task"]["tasklist_id"] == "list-1"

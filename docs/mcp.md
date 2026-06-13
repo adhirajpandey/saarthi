@@ -306,12 +306,179 @@ Remarks:
 - This tool is read-only.
 - Exactly one of `zone_id` or `zone_name` is required.
 
+### `list_google_tasklists`
+
+Short description:
+Lists Google task lists for the configured personal account and returns
+normalized rows for agents.
+
+Expected input:
+
+```json
+{
+  "page_token": null,
+  "max_results": 10
+}
+```
+
+Expected output:
+
+Success:
+
+```json
+{
+  "success": true,
+  "count": 1,
+  "filters": {
+    "page_token": null,
+    "max_results": 10
+  },
+  "next_page_token": null,
+  "tasklists": [
+    {
+      "id": "MTUyMjg3MTU1OTQ5ODAxNzE1MDU6MDow",
+      "title": "My Tasks",
+      "updated": "2026-06-11T21:02:33.729Z",
+      "self_link": "https://www.googleapis.com/tasks/v1/users/@me/lists/MTUyMjg3MTU1OTQ5ODAxNzE1MDU6MDow"
+    }
+  ]
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- `max_results` defaults to `100` and is capped at `100`.
+- This tool reads task lists for the single Google account authorized through
+  `google-tasks-auth`.
+
+### `list_google_tasks`
+
+Short description:
+Lists tasks from one Google task list and returns normalized rows for agents.
+
+Expected input:
+
+```json
+{
+  "tasklist_title": "My Tasks",
+  "page_token": null,
+  "max_results": 20,
+  "show_completed": true,
+  "show_hidden": false,
+  "show_deleted": false,
+  "show_assigned": false
+}
+```
+
+Expected output:
+
+Success:
+
+```json
+{
+  "success": true,
+  "count": 1,
+  "filters": {
+    "tasklist_id": "MTUyMjg3MTU1OTQ5ODAxNzE1MDU6MDow",
+    "tasklist_title": "My Tasks",
+    "page_token": null,
+    "max_results": 20,
+    "show_completed": true,
+    "show_hidden": false,
+    "show_deleted": false,
+    "show_assigned": false
+  },
+  "next_page_token": null,
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Buy milk",
+      "status": "needsAction",
+      "notes": "2 liters",
+      "due": "2026-06-14T00:00:00.000Z",
+      "completed": null,
+      "updated": "2026-06-13T00:00:00.000Z",
+      "deleted": false,
+      "hidden": false,
+      "parent": null,
+      "position": "00000000000000000001",
+      "web_view_link": "https://tasks.google.com/task/...",
+      "self_link": "https://www.googleapis.com/tasks/v1/lists/.../tasks/task-1",
+      "links": [],
+      "assignment_info": null
+    }
+  ]
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- Exactly one of `tasklist_id` or `tasklist_title` is required.
+- `tasklist_title` is resolved to a single task list before task lookup.
+- Title-based task list resolution only searches the first `100` Google task
+  lists returned by the API.
+- `show_assigned` defaults to `false`; assigned tasks are not returned unless
+  explicitly requested.
+
+### `get_google_task`
+
+Short description:
+Fetches one Google task by ID from one Google task list.
+
+Expected input:
+
+```json
+{
+  "tasklist_title": "My Tasks",
+  "task_id": "task-1"
+}
+```
+
+Expected output:
+
+Success:
+
+```json
+{
+  "success": true,
+  "task": {
+    "id": "task-1",
+    "title": "Buy milk",
+    "status": "needsAction",
+    "notes": "2 liters",
+    "due": "2026-06-14T00:00:00.000Z",
+    "completed": null,
+    "updated": "2026-06-13T00:00:00.000Z",
+    "deleted": false,
+    "hidden": false,
+    "parent": null,
+    "position": "00000000000000000001",
+    "web_view_link": "https://tasks.google.com/task/...",
+    "self_link": "https://www.googleapis.com/tasks/v1/lists/.../tasks/task-1",
+    "links": [],
+    "assignment_info": null
+  }
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- Exactly one of `tasklist_id` or `tasklist_title` is required.
+- Title-based task list resolution only searches the first `100` Google task
+  lists returned by the API.
+
 ## Configuration
 
 Secrets / auth (`.env`):
 
 - `MCP_TOKEN`
 - `CLOUDFLARE_API_TOKEN`
+- `GOOGLE_TASKS_CLIENT_ID`
+- `GOOGLE_TASKS_CLIENT_SECRET`
+- `GOOGLE_TASKS_TOKEN_PATH`
 - `TRACKCROW_DB_URL`
 - `TRACKCROW_MCP_USER_UUID`
 
@@ -329,6 +496,11 @@ Remarks:
 - `WHATSAPP_TARGET_PERSONAL` is required because MCP messages are sent to the
   personal target, not the geofence family target.
 - `CLOUDFLARE_API_TOKEN` is required for the Cloudflare MCP tools.
+- `GOOGLE_TASKS_CLIENT_ID` and `GOOGLE_TASKS_CLIENT_SECRET` must reference a
+  Google OAuth Desktop app client with the Google Tasks API enabled.
+- `GOOGLE_TASKS_TOKEN_PATH` must point to an authorized-user token JSON file
+  created by `uv run google-tasks-auth` or
+  `uv run google-tasks-auth --headless`.
 - `TRACKCROW_MCP_USER_UUID` fixes the Trackcrow user scope for transaction
   searches.
 - The SSH private key is mounted into the `saarthi-mcp` container by
@@ -339,6 +511,7 @@ Remarks:
 ```bash
 docker compose logs saarthi-mcp
 codex mcp get saarthi
+uv run google-tasks-auth --headless
 ```
 
 ## Runtime Boundaries

@@ -15,6 +15,9 @@ ENV_OWNED_KEYS = frozenset(
         "ADMIN_TOKEN",
         "MCP_TOKEN",
         "CLOUDFLARE_API_TOKEN",
+        "GOOGLE_TASKS_CLIENT_ID",
+        "GOOGLE_TASKS_CLIENT_SECRET",
+        "GOOGLE_TASKS_TOKEN_PATH",
         "SMTP_EMAIL",
         "SMTP_APP_PASSWORD",
         "SMTP_HOST",
@@ -419,6 +422,17 @@ class CloudflareSettings(RuntimeSettings):
     cloudflare_api_token: str
 
 
+class GoogleTasksSettings(RuntimeSettings):
+    """Settings required by Google Tasks scripts and MCP tools."""
+
+    google_tasks_client_id: str
+    google_tasks_client_secret: str
+    google_tasks_token_path: str
+
+    def token_path(self) -> Path:
+        return Path(self.google_tasks_token_path)
+
+
 class BackupArtifactSettings(NtfyRuntimeSettings):
     """Shared settings for DB backup artifacts stored in S3."""
 
@@ -531,6 +545,11 @@ def get_mcp_settings() -> McpSettings:
 def get_cloudflare_settings() -> CloudflareSettings:
     """Return Cloudflare integration settings."""
     return CloudflareSettings.model_validate(_build_payload(COMMON_CONFIG_KEYS))
+
+
+def get_google_tasks_settings() -> GoogleTasksSettings:
+    """Return Google Tasks integration settings."""
+    return GoogleTasksSettings.model_validate(_build_payload(COMMON_CONFIG_KEYS))
 
 
 def get_backup_db_settings() -> BackupDbSettings:

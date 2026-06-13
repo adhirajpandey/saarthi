@@ -35,6 +35,7 @@ All surfaces reuse shared modules for settings, logging, and notification transp
       | app/main.py        |     | mcp-server       |        | backup-dbs / backup-gdrive|
       | routers + services |     | authenticated    |        | / cloudflare-zones /     |
       |                    |     | tool access      |        | cloudflare-dns /         |
+      |                    |     |                  |        | google-tasks-auth /      |
       |                    |     |                  |        | restore-dbs-test /       |
       |                    |     |                  |        | schedule-scripts /       |
       |                    |     |                  |        | shikari-visualize        |
@@ -103,6 +104,11 @@ Current tool surface:
 - `search_cloudflare_dns_records(...)`: lists DNS records from a Cloudflare
   zone.
 - `get_cloudflare_dns_record(...)`: fetches one DNS record by record ID.
+- `list_google_tasklists(...)`: lists Google Tasks task lists for the
+  configured personal account.
+- `list_google_tasks(...)`: lists tasks from one Google task list.
+- `get_google_task(...)`: fetches one Google task by ID from one Google task
+  list.
 
 Detailed MCP contracts are documented in `mcp.md`.
 
@@ -167,6 +173,25 @@ Flow:
 5. Normalize record payloads.
 6. Print human-readable or JSON output.
 
+### `google-tasks-auth`
+
+Flow:
+
+1. Load typed Google Tasks settings.
+2. Start Google OAuth for the configured Desktop app client.
+3. Complete either local-browser or headless pasted-redirect auth flow.
+4. Write authorized-user token JSON to `GOOGLE_TASKS_TOKEN_PATH`.
+
+### Google Tasks MCP tools
+
+Flow:
+
+1. Load typed Google Tasks settings.
+2. Load authorized-user credentials from `GOOGLE_TASKS_TOKEN_PATH`.
+3. Refresh access tokens when needed using the stored refresh token.
+4. Call the Google Tasks API.
+5. Normalize task list or task payloads for MCP consumers.
+
 ### `schedule-scripts`
 
 Flow:
@@ -216,6 +241,11 @@ GDrive backup, and Shikari runtimes.
 - `GEOFENCE_MAPPING_PATH`: geofence definitions
 - `MCP_TOKEN`: bearer token required by the MCP server
 - `CLOUDFLARE_API_TOKEN`: API token used by Cloudflare scripts and MCP tools
+- `GOOGLE_TASKS_CLIENT_ID`: OAuth client ID for Google Tasks personal auth
+- `GOOGLE_TASKS_CLIENT_SECRET`: OAuth client secret for Google Tasks personal
+  auth
+- `GOOGLE_TASKS_TOKEN_PATH`: authorized-user token JSON written by
+  `google-tasks-auth` and used by Google Tasks MCP tools
 - `scripts/schedule_scripts/config.json`: scheduler input
 - `data/shikari/sessions`: merged Shikari + Saarthi sensor sessions
 - `data/shikari/outputs`: generated visualization artifacts

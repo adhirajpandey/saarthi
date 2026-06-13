@@ -11,10 +11,15 @@ from shared.settings import (
     get_backup_gdrive_settings,
     get_api_settings,
     get_cloudflare_settings,
+    get_google_tasks_settings,
     get_mcp_settings,
     get_restore_db_test_settings,
     get_shikari_settings,
 )
+
+_HERMES_BIN = "/home/pookie/.local/bin/hermes"
+_HERMES_DM_TARGET = "whatsapp:166601898885178@lid"
+_HERMES_GROUP_TARGET = "whatsapp:120363369409471870@g.us"
 
 
 def test_settings_getter_returns_fresh_values(monkeypatch) -> None:
@@ -59,8 +64,8 @@ def test_whatsapp_only_config_does_not_require_smtp(monkeypatch, runtime_config)
             "EMAIL_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_FAMILY": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_FAMILY": _HERMES_GROUP_TARGET,
         }
     )
 
@@ -79,7 +84,7 @@ def test_mcp_settings_requires_personal_whatsapp_target(runtime_config) -> None:
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": None,
         }
     )
@@ -93,8 +98,8 @@ def test_mcp_settings_requires_mcp_token(monkeypatch, runtime_config) -> None:
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     monkeypatch.delenv("MCP_TOKEN", raising=False)
@@ -108,8 +113,8 @@ def test_mcp_settings_requires_trackcrow_user_uuid(monkeypatch, runtime_config) 
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     monkeypatch.delenv("TRACKCROW_MCP_USER_UUID", raising=False)
@@ -123,8 +128,8 @@ def test_mcp_settings_requires_trackcrow_db_url(monkeypatch, runtime_config) -> 
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     monkeypatch.delenv("TRACKCROW_DB_URL", raising=False)
@@ -138,6 +143,33 @@ def test_cloudflare_settings_requires_api_token(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="cloudflare_api_token"):
         get_cloudflare_settings()
+
+
+def test_google_tasks_settings_require_client_id(monkeypatch) -> None:
+    monkeypatch.delenv("GOOGLE_TASKS_CLIENT_ID", raising=False)
+    monkeypatch.setenv("GOOGLE_TASKS_CLIENT_SECRET", "client-secret")
+    monkeypatch.setenv("GOOGLE_TASKS_TOKEN_PATH", "/tmp/google-tasks-token.json")
+
+    with pytest.raises(ValueError, match="google_tasks_client_id"):
+        get_google_tasks_settings()
+
+
+def test_google_tasks_settings_require_client_secret(monkeypatch) -> None:
+    monkeypatch.setenv("GOOGLE_TASKS_CLIENT_ID", "client-id")
+    monkeypatch.delenv("GOOGLE_TASKS_CLIENT_SECRET", raising=False)
+    monkeypatch.setenv("GOOGLE_TASKS_TOKEN_PATH", "/tmp/google-tasks-token.json")
+
+    with pytest.raises(ValueError, match="google_tasks_client_secret"):
+        get_google_tasks_settings()
+
+
+def test_google_tasks_settings_require_token_path(monkeypatch) -> None:
+    monkeypatch.setenv("GOOGLE_TASKS_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GOOGLE_TASKS_CLIENT_SECRET", "client-secret")
+    monkeypatch.delenv("GOOGLE_TASKS_TOKEN_PATH", raising=False)
+
+    with pytest.raises(ValueError, match="google_tasks_token_path"):
+        get_google_tasks_settings()
 
 
 def test_email_enabled_requires_smtp_host_and_port(monkeypatch, runtime_config) -> None:
@@ -164,8 +196,8 @@ def test_global_env_audit_rejects_api_config_key_for_mcp_runtime(monkeypatch, ru
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     monkeypatch.setenv("APP_NAME", "wrong-source")
@@ -188,8 +220,8 @@ def test_global_env_audit_rejects_restore_config_key_for_mcp_runtime(
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     monkeypatch.setenv("RESTORE_PG_IMAGE", "postgres:16")
@@ -230,8 +262,8 @@ def test_mcp_settings_ignore_api_only_config_keys(runtime_config) -> None:
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     trimmed = {
@@ -265,8 +297,8 @@ def test_backup_gdrive_settings_ignore_restore_only_config_keys(runtime_config) 
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     trimmed = {
@@ -289,8 +321,8 @@ def test_restore_db_test_settings_require_restore_only_config_keys(runtime_confi
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     missing_restore = {k: v for k, v in cfg.items() if k != "RESTORE_PG_IMAGE"}
@@ -311,8 +343,8 @@ def test_backup_gdrive_settings_require_gdrive_config_keys(runtime_config) -> No
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     missing_gdrive = {k: v for k, v in cfg.items() if k != "GDRIVE_SOURCE"}
@@ -383,8 +415,8 @@ def test_restore_db_test_settings_loads_repo_and_env_values(runtime_config, monk
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
             "RESTORE_PG_IMAGE": "postgres:16",
             "RESTORE_TIMEOUT_SECONDS": 90,
             "RESTORE_TEMP_DIR": "data/restore-tests",
@@ -414,8 +446,8 @@ def test_restore_db_settings_ignore_api_only_config_keys(runtime_config, monkeyp
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
             "RESTORE_PG_IMAGE": "postgres:16",
             "RESTORE_TIMEOUT_SECONDS": 90,
             "RESTORE_TEMP_DIR": "data/restore-tests",
@@ -461,8 +493,8 @@ def test_backup_db_settings_still_requires_live_db_urls(runtime_config, monkeypa
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     monkeypatch.setenv("AWS_ACCESS_KEY", "ak")
@@ -481,8 +513,8 @@ def test_backup_db_settings_ignore_restore_only_config_keys(runtime_config, monk
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     trimmed = {

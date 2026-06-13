@@ -10,6 +10,7 @@ Scripts are exposed via `pyproject.toml`:
 - `backup-gdrive` -> `scripts.backup_gdrive.main:main`
 - `cloudflare-zones` -> `scripts.cloudflare_zones.main:main`
 - `cloudflare-dns` -> `scripts.cloudflare_dns.main:main`
+- `google-tasks-auth` -> `scripts.google_tasks_auth.main:main`
 - `restore-dbs-test` -> `scripts.restore_dbs_test.main:main`
 - `schedule-scripts` -> `scripts.schedule_scripts.main:main`
 - `shikari-visualize` -> `scripts.shikari_visualize.main:main`
@@ -323,6 +324,54 @@ Remarks:
 - `--zone-name` is resolved to a zone ID before DNS record queries are made.
 - This script is read-only.
 
+### `google-tasks-auth`
+
+Short description:
+Authorizes Saarthi against a personal Google account for read-only Google Tasks
+access and writes authorized-user token JSON to the configured token path.
+
+ASCII flow:
+
+```text
+Load GoogleTasksSettings
+  -> start Google OAuth Desktop app flow
+  -> complete browser or headless pasted-redirect auth
+  -> write token JSON to GOOGLE_TASKS_TOKEN_PATH
+  -> exit 0 or 1
+```
+
+Expected input:
+
+Secrets / auth (`.env`):
+
+- `GOOGLE_TASKS_CLIENT_ID`
+- `GOOGLE_TASKS_CLIENT_SECRET`
+- `GOOGLE_TASKS_TOKEN_PATH`
+
+CLI options:
+
+- `--headless`
+
+System prerequisites:
+
+- network access to Google OAuth and Google Tasks endpoints
+- a Google Cloud project with the Google Tasks API enabled
+- an OAuth Desktop app client configured for the target Google account
+
+Expected output:
+
+- Exit code `0` when auth succeeds and the token file is written.
+- Exit code `1` when validation, OAuth, network, or token-file writes fail.
+- Success message with the written token path on stdout.
+
+Remarks:
+
+- Default mode opens a local browser callback flow.
+- `--headless` prints a Google login URL, then prompts for the pasted redirect
+  URL from another machine's browser.
+- The written token file includes refresh token state and is reused by the
+  Google Tasks MCP tools.
+
 ### `schedule-scripts`
 
 Short description:
@@ -428,6 +477,7 @@ Remarks:
 - `uv run backup-gdrive`
 - `uv run cloudflare-zones list`
 - `uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied`
+- `uv run google-tasks-auth --headless`
 - `uv run restore-dbs-test`
 - `sudo env "PATH=$PATH" uv run schedule-scripts`
 - `uv run shikari-visualize --list`
