@@ -13,15 +13,17 @@ def send_whatsapp_message(
     message: str,
     whatsapp_settings: WhatsAppSettings,
 ) -> bool:
-    """Send a WhatsApp message by running a remote script via SSH."""
+    """Send a WhatsApp message by running Hermes on a remote host over SSH."""
     remote_command = " ".join(
-        [
-            "python3",
-            shlex.quote(whatsapp_settings.remote_script_path),
-            "--message",
-            shlex.quote(message),
-            "--target",
-            shlex.quote(whatsapp_settings.target),
+        shlex.quote(arg)
+        for arg in [
+            whatsapp_settings.remote_script_path,
+            "send",
+            "--to",
+            whatsapp_settings.target,
+            "--file",
+            "-",
+            "--quiet",
         ]
     )
     command = [
@@ -39,6 +41,7 @@ def send_whatsapp_message(
             command,
             check=False,
             capture_output=True,
+            input=message,
             text=True,
             timeout=whatsapp_settings.timeout_seconds,
         )
