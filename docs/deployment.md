@@ -21,6 +21,9 @@ cp .env.example .env
 2. Fill values:
 
 - `app/config/config.py`: non-secret settings
+- If enabling `WHATSAPP_ENABLED`, set `WHATSAPP_REMOTE_SCRIPT_PATH` explicitly to
+  the correct binary path on that host. The example config leaves it unset on
+  purpose.
 - `.env`: secrets (`ADMIN_TOKEN`, `MCP_TOKEN`, `CLOUDFLARE_API_TOKEN`,
   `GOOGLE_TASKS_CLIENT_ID`, `GOOGLE_TASKS_CLIENT_SECRET`,
   `GOOGLE_TASKS_TOKEN_PATH`, SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as
