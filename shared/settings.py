@@ -60,7 +60,8 @@ API_CONFIG_KEYS = frozenset(
         "DELL_TAILSCALE_IP",
         "GEOFENCE_SUBJECT_TEMPLATE",
         "GEOFENCE_EMAIL_TEMPLATE",
-        "GEOFENCE_WHATSAPP_TEMPLATE",
+        "GEOFENCE_WHATSAPP_ENTERED_TEMPLATE",
+        "GEOFENCE_WHATSAPP_EXITED_TEMPLATE",
         "GEOFENCE_UPDATES_RECIPIENT",
         "GEOFENCE_SENDER_NAME",
     }
@@ -347,7 +348,8 @@ class ApiSettings(RuntimeSettings):
     admin_token: str
     geofence_subject_template: str
     geofence_email_template: str
-    geofence_whatsapp_template: str
+    geofence_whatsapp_entered_template: str
+    geofence_whatsapp_exited_template: str
     geofence_updates_recipient: str
     geofence_sender_name: str | None
     smtp_email: str | None = None

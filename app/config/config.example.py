@@ -35,7 +35,8 @@ WHATSAPP_CONFIG = {
 GEOFENCE_CONFIG = {
     "GEOFENCE_SUBJECT_TEMPLATE": "Parivaar Location Update: {area}",
     "GEOFENCE_EMAIL_TEMPLATE": "Namaste,\n\nAdhiraj ne {area} area me {event} kiya hai.\n\nDhanyavaad,\nSaarthi",
-    "GEOFENCE_WHATSAPP_TEMPLATE": "Location update: Adhiraj ne {area} area me {event} kiya hai.",
+    "GEOFENCE_WHATSAPP_ENTERED_TEMPLATE": "Location update: Adhiraj {area} me aa gaye hain.",
+    "GEOFENCE_WHATSAPP_EXITED_TEMPLATE": "Location update: Adhiraj {area} se nikal gaye hain.",
     "GEOFENCE_UPDATES_RECIPIENT": "alerts@example.com",
     "GEOFENCE_SENDER_NAME": "Saarthi",
 }

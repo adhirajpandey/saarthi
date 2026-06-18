@@ -277,7 +277,8 @@ def test_mcp_settings_ignore_api_only_config_keys(runtime_config) -> None:
             "DELL_TAILSCALE_IP",
             "GEOFENCE_SUBJECT_TEMPLATE",
             "GEOFENCE_EMAIL_TEMPLATE",
-            "GEOFENCE_WHATSAPP_TEMPLATE",
+            "GEOFENCE_WHATSAPP_ENTERED_TEMPLATE",
+            "GEOFENCE_WHATSAPP_EXITED_TEMPLATE",
             "GEOFENCE_UPDATES_RECIPIENT",
             "GEOFENCE_SENDER_NAME",
         }
@@ -470,7 +471,8 @@ def test_restore_db_settings_ignore_api_only_config_keys(runtime_config, monkeyp
             "DELL_TAILSCALE_IP",
             "GEOFENCE_SUBJECT_TEMPLATE",
             "GEOFENCE_EMAIL_TEMPLATE",
-            "GEOFENCE_WHATSAPP_TEMPLATE",
+            "GEOFENCE_WHATSAPP_ENTERED_TEMPLATE",
+            "GEOFENCE_WHATSAPP_EXITED_TEMPLATE",
             "GEOFENCE_UPDATES_RECIPIENT",
             "GEOFENCE_SENDER_NAME",
         }

@@ -11,7 +11,8 @@ class DummySettings:
     whatsapp_enabled = False
     geofence_subject_template = "Area update: {area}"
     geofence_email_template = "Area={area}; Event={event}"
-    geofence_whatsapp_template = "WA Area={area}; Event={event}"
+    geofence_whatsapp_entered_template = "WA entered {area}"
+    geofence_whatsapp_exited_template = "WA exited {area}"
     geofence_updates_recipient = "alerts@example.com"
     geofence_sender_name = "Saarthi"
 
@@ -62,7 +63,7 @@ def test_send_geofence_notification_template_error_whatsapp() -> None:
     settings = DummySettings()
     settings.email_enabled = False
     settings.whatsapp_enabled = True
-    settings.geofence_whatsapp_template = "WA Area={missing}"
+    settings.geofence_whatsapp_entered_template = "WA Area={missing}"
     settings.whatsapp_settings_for_geofence = lambda: object()
 
     result = asyncio.run(
@@ -80,7 +81,7 @@ def test_send_geofence_notification_template_error_whatsapp() -> None:
 def test_send_geofence_notification_ignores_disabled_whatsapp_template(monkeypatch) -> None:
     settings = DummySettings()
     settings.whatsapp_enabled = False
-    settings.geofence_whatsapp_template = "WA Area={missing}"
+    settings.geofence_whatsapp_entered_template = "WA Area={missing}"
 
     monkeypatch.setattr("app.services.geofence.send_email", lambda **_: True)
 
@@ -100,9 +101,13 @@ def test_send_geofence_notification_any_success_with_whatsapp(monkeypatch) -> No
     settings = DummySettings()
     settings.whatsapp_enabled = True
     settings.whatsapp_settings_for_geofence = lambda: object()
+    sent_messages: list[str] = []
 
     monkeypatch.setattr("app.services.geofence.send_email", lambda **_: False)
-    monkeypatch.setattr("app.services.geofence.send_whatsapp_message", lambda **_: True)
+    monkeypatch.setattr(
+        "app.services.geofence.send_whatsapp_message",
+        lambda **kwargs: sent_messages.append(kwargs["message"]) or True,
+    )
 
     result = asyncio.run(
         send_geofence_notification(
@@ -114,6 +119,31 @@ def test_send_geofence_notification_any_success_with_whatsapp(monkeypatch) -> No
 
     assert result.success is True
     assert "Office" in result.message
+    assert sent_messages == ["WA exited Office"]
+
+
+def test_send_geofence_notification_uses_entered_whatsapp_template(monkeypatch) -> None:
+    settings = DummySettings()
+    settings.email_enabled = False
+    settings.whatsapp_enabled = True
+    settings.whatsapp_settings_for_geofence = lambda: object()
+    sent_messages: list[str] = []
+
+    monkeypatch.setattr(
+        "app.services.geofence.send_whatsapp_message",
+        lambda **kwargs: sent_messages.append(kwargs["message"]) or True,
+    )
+
+    result = asyncio.run(
+        send_geofence_notification(
+            settings=settings,  # type: ignore[arg-type]
+            area="Office",
+            event="entered",
+        )
+    )
+
+    assert result.success is True
+    assert sent_messages == ["WA entered Office"]
 
 
 def test_send_geofence_notification_all_fail(monkeypatch) -> None:

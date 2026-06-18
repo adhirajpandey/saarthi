@@ -19,6 +19,14 @@ class NotificationResult:
 logger = logging.getLogger(__name__)
 
 
+def _select_whatsapp_template(settings: ApiSettings, event: str) -> str:
+    if event == "entered":
+        return settings.geofence_whatsapp_entered_template
+    if event == "exited":
+        return settings.geofence_whatsapp_exited_template
+    raise ValueError(f"Unsupported geofence event for WhatsApp template: {event}")
+
+
 async def send_geofence_notification(
     settings: ApiSettings,
     area: str,
@@ -52,7 +60,7 @@ async def send_geofence_notification(
 
     if settings.whatsapp_enabled:
         try:
-            whatsapp_body = settings.geofence_whatsapp_template.format(area=area, event=event)
+            whatsapp_body = _select_whatsapp_template(settings, event).format(area=area)
         except (KeyError, ValueError) as exc:
             logger.error("Invalid geofence WhatsApp template configuration: %s", exc)
             channel_results["whatsapp"] = False
