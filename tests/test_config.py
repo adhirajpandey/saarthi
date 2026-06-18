@@ -49,7 +49,7 @@ def test_fails_when_whatsapp_enabled_without_required_values(runtime_config) -> 
             "EMAIL_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": None,
-            "WHATSAPP_REMOTE_SCRIPT_PATH": None,
+            "WHATSAPP_HERMES_COMMAND_PATH": None,
             "WHATSAPP_TARGET_FAMILY": None,
         }
     )
@@ -64,7 +64,7 @@ def test_whatsapp_only_config_does_not_require_smtp(monkeypatch, runtime_config)
             "EMAIL_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_FAMILY": _HERMES_GROUP_TARGET,
         }
     )
@@ -84,7 +84,7 @@ def test_mcp_settings_requires_personal_whatsapp_target(runtime_config) -> None:
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": None,
         }
     )
@@ -98,7 +98,7 @@ def test_mcp_settings_requires_mcp_token(monkeypatch, runtime_config) -> None:
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -113,7 +113,7 @@ def test_mcp_settings_requires_trackcrow_user_uuid(monkeypatch, runtime_config) 
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -128,7 +128,7 @@ def test_mcp_settings_requires_trackcrow_db_url(monkeypatch, runtime_config) -> 
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -196,7 +196,7 @@ def test_global_env_audit_rejects_api_config_key_for_mcp_runtime(monkeypatch, ru
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -220,7 +220,7 @@ def test_global_env_audit_rejects_restore_config_key_for_mcp_runtime(
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -262,7 +262,7 @@ def test_mcp_settings_ignore_api_only_config_keys(runtime_config) -> None:
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -297,7 +297,7 @@ def test_backup_gdrive_settings_ignore_restore_only_config_keys(runtime_config) 
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -321,7 +321,7 @@ def test_restore_db_test_settings_require_restore_only_config_keys(runtime_confi
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -343,7 +343,7 @@ def test_backup_gdrive_settings_require_gdrive_config_keys(runtime_config) -> No
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -415,7 +415,7 @@ def test_restore_db_test_settings_loads_repo_and_env_values(runtime_config, monk
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
             "RESTORE_PG_IMAGE": "postgres:16",
             "RESTORE_TIMEOUT_SECONDS": 90,
@@ -446,7 +446,7 @@ def test_restore_db_settings_ignore_api_only_config_keys(runtime_config, monkeyp
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
             "RESTORE_PG_IMAGE": "postgres:16",
             "RESTORE_TIMEOUT_SECONDS": 90,
@@ -493,7 +493,7 @@ def test_backup_db_settings_still_requires_live_db_urls(runtime_config, monkeypa
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -513,7 +513,7 @@ def test_backup_db_settings_ignore_restore_only_config_keys(runtime_config, monk
             "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )

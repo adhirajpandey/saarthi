@@ -11,14 +11,17 @@ from app.services.trackcrow_transactions import (
 )
 from shared.settings import get_mcp_settings
 
+_HERMES_BIN = "/home/pookie/.local/bin/hermes"
+_HERMES_DM_TARGET = "whatsapp:166601898885178@lid"
+
 
 def _build_settings(runtime_config):
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": "/opt/send_whatsapp.sh",
-            "WHATSAPP_TARGET_PERSONAL": "+911234567890",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
     return get_mcp_settings()

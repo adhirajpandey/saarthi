@@ -27,7 +27,7 @@ def test_send_personal_whatsapp_message_uses_personal_target(monkeypatch, runtim
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -53,7 +53,7 @@ def test_send_personal_whatsapp_message_rejects_empty_message(monkeypatch, runti
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -76,7 +76,7 @@ def test_send_personal_whatsapp_message_reports_transport_failure(
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -94,7 +94,7 @@ def test_mcp_auth_accepts_configured_token(monkeypatch, runtime_config) -> None:
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -113,7 +113,7 @@ def test_mcp_auth_rejects_invalid_token(monkeypatch, runtime_config) -> None:
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -131,7 +131,7 @@ def test_search_personal_transactions_delegates_to_service(monkeypatch, runtime_
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -156,7 +156,7 @@ def test_list_personal_cloudflare_zones_delegates_to_service(monkeypatch, runtim
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -183,7 +183,7 @@ def test_search_personal_cloudflare_dns_records_delegates_to_service(
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -210,7 +210,7 @@ def test_get_personal_cloudflare_dns_record_delegates_to_service(
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -238,7 +238,7 @@ def test_list_personal_google_tasklists_delegates_to_service(monkeypatch, runtim
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -262,7 +262,7 @@ def test_list_personal_google_tasks_delegates_to_service(monkeypatch, runtime_co
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
@@ -287,7 +287,7 @@ def test_get_personal_google_task_delegates_to_service(monkeypatch, runtime_conf
         {
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_REMOTE_SCRIPT_PATH": _HERMES_BIN,
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )

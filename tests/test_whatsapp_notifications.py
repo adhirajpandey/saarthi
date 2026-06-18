@@ -19,7 +19,7 @@ def test_send_whatsapp_message_success(monkeypatch) -> None:
         message="hello",
         whatsapp_settings=WhatsAppSettings(
             ssh_host="pookie",
-            remote_script_path=_HERMES_BIN,
+            hermes_command_path=_HERMES_BIN,
             target=_HERMES_DM_TARGET,
             timeout_seconds=5,
         ),
@@ -38,7 +38,7 @@ def test_send_whatsapp_message_non_zero_exit(monkeypatch) -> None:
         message="hello",
         whatsapp_settings=WhatsAppSettings(
             ssh_host="pookie",
-            remote_script_path=_HERMES_BIN,
+            hermes_command_path=_HERMES_BIN,
             target=_HERMES_DM_TARGET,
             timeout_seconds=5,
         ),
@@ -57,7 +57,7 @@ def test_send_whatsapp_message_timeout(monkeypatch) -> None:
         message="hello",
         whatsapp_settings=WhatsAppSettings(
             ssh_host="pookie",
-            remote_script_path=_HERMES_BIN,
+            hermes_command_path=_HERMES_BIN,
             target=_HERMES_DM_TARGET,
             timeout_seconds=5,
         ),
@@ -80,7 +80,7 @@ def test_send_whatsapp_message_streams_message_to_remote_hermes(monkeypatch) -> 
         message="DB Backup Success (SUCCESS)\nBackup complete for vidwiz",
         whatsapp_settings=WhatsAppSettings(
             ssh_host="pookie",
-            remote_script_path=_HERMES_BIN,
+            hermes_command_path=_HERMES_BIN,
             target="whatsapp:120363369409471870@g.us",
             timeout_seconds=5,
         ),
@@ -113,7 +113,7 @@ def test_send_whatsapp_message_quotes_remote_hermes_args(monkeypatch) -> None:
         message="hello",
         whatsapp_settings=WhatsAppSettings(
             ssh_host="pookie",
-            remote_script_path="/home/pookie/bin/hermes cli",
+            hermes_command_path="/home/pookie/bin/hermes cli",
             target="whatsapp:team chat;ops@g.us",
             timeout_seconds=5,
         ),

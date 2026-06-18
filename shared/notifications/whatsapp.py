@@ -17,7 +17,7 @@ def send_whatsapp_message(
     remote_command = " ".join(
         shlex.quote(arg)
         for arg in [
-            whatsapp_settings.remote_script_path,
+            whatsapp_settings.hermes_command_path,
             "send",
             "--to",
             whatsapp_settings.target,

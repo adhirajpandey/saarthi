@@ -44,7 +44,7 @@ COMMON_CONFIG_KEYS = frozenset(
         "NTFY_ENABLED",
         "WHATSAPP_ENABLED",
         "WHATSAPP_SSH_HOST",
-        "WHATSAPP_REMOTE_SCRIPT_PATH",
+        "WHATSAPP_HERMES_COMMAND_PATH",
         "WHATSAPP_TARGET_FAMILY",
         "WHATSAPP_TARGET_PERSONAL",
         "WHATSAPP_TIMEOUT_SECONDS",
@@ -249,7 +249,7 @@ class WhatsAppSettings(BaseModel):
     """WhatsApp sender configuration."""
 
     ssh_host: str
-    remote_script_path: str
+    hermes_command_path: str
     target: str
     timeout_seconds: int
 
@@ -265,7 +265,7 @@ class RuntimeSettings(BaseModel):
     ntfy_enabled: bool
     whatsapp_enabled: bool
     whatsapp_ssh_host: str | None = None
-    whatsapp_remote_script_path: str | None = None
+    whatsapp_hermes_command_path: str | None = None
     whatsapp_target_family: str | None = None
     whatsapp_target_personal: str | None = None
     whatsapp_timeout_seconds: int
@@ -282,17 +282,17 @@ class RuntimeSettings(BaseModel):
         if self.whatsapp_enabled:
             if not self.whatsapp_ssh_host:
                 raise ValueError("WHATSAPP_SSH_HOST is required when WHATSAPP_ENABLED is true")
-            if not self.whatsapp_remote_script_path:
+            if not self.whatsapp_hermes_command_path:
                 raise ValueError(
-                    "WHATSAPP_REMOTE_SCRIPT_PATH is required when WHATSAPP_ENABLED is true"
+                    "WHATSAPP_HERMES_COMMAND_PATH is required when WHATSAPP_ENABLED is true"
                 )
 
     def _build_whatsapp_settings(self, target: str | None) -> WhatsAppSettings:
-        if not self.whatsapp_ssh_host or not self.whatsapp_remote_script_path or not target:
+        if not self.whatsapp_ssh_host or not self.whatsapp_hermes_command_path or not target:
             raise ValueError("WhatsApp settings are not configured")
         return WhatsAppSettings(
             ssh_host=self.whatsapp_ssh_host,
-            remote_script_path=self.whatsapp_remote_script_path,
+            hermes_command_path=self.whatsapp_hermes_command_path,
             target=target,
             timeout_seconds=self.whatsapp_timeout_seconds,
         )
