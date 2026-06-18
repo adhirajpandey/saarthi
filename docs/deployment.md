@@ -24,6 +24,10 @@ cp .env.example .env
 - If enabling `WHATSAPP_ENABLED`, set `WHATSAPP_HERMES_COMMAND_PATH` explicitly to
   the correct binary path on that host. The example config leaves it unset on
   purpose.
+- For geofence WhatsApp notifications, set both
+  `GEOFENCE_WHATSAPP_ENTERED_TEMPLATE` and
+  `GEOFENCE_WHATSAPP_EXITED_TEMPLATE`. These replace the older single-template
+  approach and allow natural phrasing per event.
 - `.env`: secrets (`ADMIN_TOKEN`, `MCP_TOKEN`, `CLOUDFLARE_API_TOKEN`,
   `GOOGLE_TASKS_CLIENT_ID`, `GOOGLE_TASKS_CLIENT_SECRET`,
   `GOOGLE_TASKS_TOKEN_PATH`, SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as

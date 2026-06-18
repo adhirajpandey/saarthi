@@ -152,6 +152,10 @@ Failure (`500`):
 Remarks:
 
 - Notification service treats dispatch as success when at least one enabled channel succeeds.
+- Email templates continue to format from `{area}` and `{event}`.
+- WhatsApp geofence messages use event-specific config templates:
+  `GEOFENCE_WHATSAPP_ENTERED_TEMPLATE` for `entered` and
+  `GEOFENCE_WHATSAPP_EXITED_TEMPLATE` for `exited`.
 
 ### `POST /me/location`
 

@@ -239,6 +239,10 @@ GDrive backup, and Shikari runtimes.
 
 - `LOCATION_DB_PATH`: SQLite location history
 - `GEOFENCE_MAPPING_PATH`: geofence definitions
+- `GEOFENCE_SUBJECT_TEMPLATE`: geofence email subject format
+- `GEOFENCE_EMAIL_TEMPLATE`: geofence email body format using `{area}` and `{event}`
+- `GEOFENCE_WHATSAPP_ENTERED_TEMPLATE`: geofence WhatsApp body for `entered` events
+- `GEOFENCE_WHATSAPP_EXITED_TEMPLATE`: geofence WhatsApp body for `exited` events
 - `MCP_TOKEN`: bearer token required by the MCP server
 - `CLOUDFLARE_API_TOKEN`: API token used by Cloudflare scripts and MCP tools
 - `GOOGLE_TASKS_CLIENT_ID`: OAuth client ID for Google Tasks personal auth
