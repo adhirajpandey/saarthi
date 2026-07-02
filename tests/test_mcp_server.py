@@ -463,3 +463,66 @@ def test_list_work_item_projects_delegates_to_service(monkeypatch, runtime_confi
     assert result["success"] is True
     assert result["count"] == 2
     assert result["projects"][0]["name"] == "Habitat"
+
+
+def test_create_personal_work_item_delegates_to_service(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "create_notion_work_item",
+        lambda **kwargs: {"success": True, "page": kwargs},
+    )
+
+    result = server.create_personal_work_item(
+        name="Ship Notion writes",
+        project="Habitat",
+        status="Pending",
+        priority="High",
+        category="Backend",
+        description="MCP write path",
+    )
+
+    assert result["success"] is True
+    assert result["page"]["name"] == "Ship Notion writes"
+    assert result["page"]["project"] == "Habitat"
+    assert result["page"]["description"] == "MCP write path"
+
+
+def test_update_personal_work_item_delegates_to_service(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "update_notion_work_item",
+        lambda **kwargs: {"success": True, "page": kwargs},
+    )
+
+    result = server.update_personal_work_item(
+        page_id="33333333-3333-3333-3333-333333333333",
+        status="In Progress",
+        description="Updated copy",
+    )
+
+    assert result["success"] is True
+    assert result["page"]["page_id"] == "33333333-3333-3333-3333-333333333333"
+    assert result["page"]["status"] == "In Progress"
+    assert result["page"]["description"] == "Updated copy"

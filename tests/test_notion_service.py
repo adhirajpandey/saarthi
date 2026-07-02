@@ -7,10 +7,12 @@ import pytest
 from app.services.notion.client import (
     NOTION_VERSION,
     NotionApiError,
+    create_work_item,
     get_database_schema,
     list_work_item_projects,
     parse_database_id,
     query_database,
+    update_work_item,
 )
 from shared.settings import get_notion_settings
 
@@ -278,6 +280,280 @@ def test_query_database_rejects_project_filter_for_links(runtime_config) -> None
 
     with pytest.raises(ValueError, match="only supported for work_items"):
         query_database(settings=settings, database_key="links", project="Habitat")
+
+
+def test_create_work_item_posts_expected_properties(monkeypatch, runtime_config) -> None:
+    runtime_config()
+    settings = get_notion_settings()
+    calls: list[dict[str, object]] = []
+
+    def _fake_request(**kwargs):
+        calls.append(kwargs)
+        if kwargs["url"].endswith("/databases/22222222-2222-2222-2222-222222222222"):
+            return _FakeResponse(
+                {
+                    "object": "database",
+                    "id": "22222222-2222-2222-2222-222222222222",
+                    "data_sources": [{"id": "work-data-source"}],
+                }
+            )
+        if kwargs["url"].endswith("/data_sources/work-data-source"):
+            return _FakeResponse(
+                {
+                    "object": "data_source",
+                    "id": "work-data-source",
+                    "properties": {
+                        "Name": {"id": "title", "type": "title"},
+                        "Project": {"id": "project", "type": "select"},
+                        "Status": {"id": "status", "type": "select"},
+                        "Priority": {"id": "priority", "type": "select"},
+                        "Category": {"id": "category", "type": "select"},
+                        "Description": {"id": "description", "type": "rich_text"},
+                    },
+                }
+            )
+        return _FakeResponse(
+            {
+                "id": "page-1",
+                "url": "https://notion.so/page-1",
+                "created_time": "2026-07-01T00:00:00.000Z",
+                "last_edited_time": "2026-07-02T00:00:00.000Z",
+                "archived": False,
+                "in_trash": False,
+                "properties": {
+                    "Name": {
+                        "id": "title",
+                        "type": "title",
+                        "title": [{"plain_text": "Ship Notion writes"}],
+                    },
+                    "Project": {
+                        "id": "project",
+                        "type": "select",
+                        "select": {"name": "Habitat"},
+                    },
+                    "Status": {
+                        "id": "status",
+                        "type": "status",
+                        "status": {"name": "Pending"},
+                    },
+                    "Priority": {
+                        "id": "priority",
+                        "type": "select",
+                        "select": {"name": "High"},
+                    },
+                    "Category": {
+                        "id": "category",
+                        "type": "select",
+                        "select": {"name": "Backend"},
+                    },
+                    "Description": {
+                        "id": "description",
+                        "type": "rich_text",
+                        "rich_text": [{"plain_text": "MCP write path"}],
+                    },
+                },
+            }
+        )
+
+    monkeypatch.setattr("app.services.notion.client.requests.request", _fake_request)
+
+    result = create_work_item(
+        settings=settings,
+        name="Ship Notion writes",
+        project="habitat",
+        status="Pending",
+        priority="High",
+        category="Backend",
+        description="MCP write path",
+    )
+
+    assert result["success"] is True
+    assert result["page"]["properties"]["Name"]["value"] == "Ship Notion writes"
+    assert result["page"]["properties"]["Project"]["value"] == "Habitat"
+    assert calls[2]["method"] == "POST"
+    assert calls[2]["url"].endswith("/pages")
+    assert calls[2]["json"] == {
+        "parent": {"data_source_id": "work-data-source"},
+        "properties": {
+            "Name": {
+                "title": [
+                    {
+                        "type": "text",
+                        "text": {"content": "Ship Notion writes"},
+                    }
+                ]
+            },
+            "Project": {"select": {"name": "Habitat"}},
+            "Status": {"select": {"name": "Pending"}},
+            "Priority": {"select": {"name": "High"}},
+            "Category": {"select": {"name": "Backend"}},
+            "Description": {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {"content": "MCP write path"},
+                    }
+                ]
+            },
+        },
+    }
+
+
+def test_update_work_item_patches_only_provided_fields(monkeypatch, runtime_config) -> None:
+    runtime_config()
+    settings = get_notion_settings()
+    calls: list[dict[str, object]] = []
+
+    def _fake_request(**kwargs):
+        calls.append(kwargs)
+        if kwargs["url"].endswith("/databases/22222222-2222-2222-2222-222222222222"):
+            return _FakeResponse(
+                {
+                    "object": "database",
+                    "id": "22222222-2222-2222-2222-222222222222",
+                    "data_sources": [{"id": "work-data-source"}],
+                }
+            )
+        if kwargs["url"].endswith("/data_sources/work-data-source"):
+            return _FakeResponse(
+                {
+                    "object": "data_source",
+                    "id": "work-data-source",
+                    "properties": {
+                        "Name": {"id": "title", "type": "title"},
+                        "Project": {"id": "project", "type": "select"},
+                        "Status": {"id": "status", "type": "select"},
+                        "Priority": {"id": "priority", "type": "select"},
+                        "Category": {"id": "category", "type": "select"},
+                        "Description": {"id": "description", "type": "rich_text"},
+                    },
+                }
+            )
+        return _FakeResponse(
+            {
+                "id": "33333333-3333-3333-3333-333333333333",
+                "url": "https://notion.so/page-1",
+                "created_time": "2026-07-01T00:00:00.000Z",
+                "last_edited_time": "2026-07-02T00:00:00.000Z",
+                "archived": False,
+                "in_trash": False,
+                "properties": {
+                    "Name": {
+                        "id": "title",
+                        "type": "title",
+                        "title": [{"plain_text": "Ship Notion writes"}],
+                    },
+                    "Status": {
+                        "id": "status",
+                        "type": "status",
+                        "status": {"name": "In Progress"},
+                    },
+                    "Description": {
+                        "id": "description",
+                        "type": "rich_text",
+                        "rich_text": [{"plain_text": "Updated copy"}],
+                    },
+                },
+            }
+        )
+
+    monkeypatch.setattr("app.services.notion.client.requests.request", _fake_request)
+
+    result = update_work_item(
+        settings=settings,
+        page_id="33333333-3333-3333-3333-333333333333",
+        status="In Progress",
+        description="Updated copy",
+    )
+
+    assert result["success"] is True
+    assert result["page"]["properties"]["Status"]["value"] == "In Progress"
+    assert calls[2]["method"] == "PATCH"
+    assert calls[2]["url"].endswith("/pages/33333333-3333-3333-3333-333333333333")
+    assert calls[2]["json"] == {
+        "properties": {
+            "Status": {"select": {"name": "In Progress"}},
+            "Description": {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {"content": "Updated copy"},
+                    }
+                ]
+            },
+        }
+    }
+
+
+def test_update_work_item_rejects_invalid_page_id(runtime_config) -> None:
+    runtime_config()
+    settings = get_notion_settings()
+
+    with pytest.raises(ValueError, match="page_id must be a valid Notion page ID"):
+        update_work_item(settings=settings, page_id="invalid-page-id", status="Done")
+
+
+def test_update_work_item_requires_at_least_one_field(runtime_config) -> None:
+    runtime_config()
+    settings = get_notion_settings()
+
+    with pytest.raises(ValueError, match="at least one field must be provided"):
+        update_work_item(
+            settings=settings,
+            page_id="33333333-3333-3333-3333-333333333333",
+        )
+
+
+def test_create_work_item_surfaces_notion_api_errors(monkeypatch, runtime_config) -> None:
+    runtime_config()
+    settings = get_notion_settings()
+    calls = {"count": 0}
+
+    def _fake_request(**kwargs):
+        calls["count"] += 1
+        if kwargs["url"].endswith("/databases/22222222-2222-2222-2222-222222222222"):
+            return _FakeResponse(
+                {
+                    "object": "database",
+                    "id": "22222222-2222-2222-2222-222222222222",
+                    "data_sources": [{"id": "work-data-source"}],
+                }
+            )
+        if kwargs["url"].endswith("/data_sources/work-data-source"):
+            return _FakeResponse(
+                {
+                    "object": "data_source",
+                    "id": "work-data-source",
+                    "properties": {
+                        "Name": {"id": "title", "type": "title"},
+                        "Project": {"id": "project", "type": "select"},
+                        "Status": {"id": "status", "type": "select"},
+                        "Priority": {"id": "priority", "type": "select"},
+                        "Category": {"id": "category", "type": "select"},
+                        "Description": {"id": "description", "type": "rich_text"},
+                    },
+                }
+            )
+        return _FakeResponse(
+            {
+                "object": "error",
+                "code": "validation_error",
+                "message": "Status is invalid.",
+            },
+            status_code=400,
+        )
+
+    monkeypatch.setattr("app.services.notion.client.requests.request", _fake_request)
+
+    with pytest.raises(NotionApiError, match="validation_error: Status is invalid"):
+        create_work_item(
+            settings=settings,
+            name="Ship Notion writes",
+            project="Habitat",
+            status="Nope",
+        )
+
+    assert calls["count"] == 3
 
 
 def test_list_work_item_projects_returns_projects_with_counts(

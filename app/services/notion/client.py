@@ -1,4 +1,4 @@
-"""Read-only Notion database helpers for MCP tools."""
+"""Notion database helpers for MCP tools."""
 
 from __future__ import annotations
 
@@ -91,6 +91,79 @@ class QueryFilters(DatabaseSelector):
         return self
 
 
+class WorkItemCreateInput(BaseModel):
+    """Validated payload for creating a work item."""
+
+    name: str
+    project: str
+    status: str | None = None
+    priority: str | None = None
+    category: str | None = None
+    description: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, value: object) -> object:
+        if not isinstance(value, Mapping):
+            return value
+        payload = dict(value)
+        for field in ("name", "project", "status", "priority", "category", "description"):
+            field_value = payload.get(field)
+            if isinstance(field_value, str):
+                payload[field] = field_value.strip() or None
+        return payload
+
+    @model_validator(mode="after")
+    def _validate_fields(self) -> "WorkItemCreateInput":
+        if not self.name:
+            raise ValueError("name must not be empty")
+        self.project = _normalize_work_item_project(self.project)
+        return self
+
+
+class WorkItemUpdateInput(BaseModel):
+    """Validated payload for updating a work item."""
+
+    page_id: str
+    name: str | None = None
+    project: str | None = None
+    status: str | None = None
+    priority: str | None = None
+    category: str | None = None
+    description: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, value: object) -> object:
+        if not isinstance(value, Mapping):
+            return value
+        payload = dict(value)
+        for field in ("page_id", "name", "project", "status", "priority", "category", "description"):
+            field_value = payload.get(field)
+            if isinstance(field_value, str):
+                payload[field] = field_value.strip() or None
+        return payload
+
+    @model_validator(mode="after")
+    def _validate_fields(self) -> "WorkItemUpdateInput":
+        self.page_id = parse_page_id(self.page_id)
+        if self.project:
+            self.project = _normalize_work_item_project(self.project)
+        if not any(
+            value is not None
+            for value in (
+                self.name,
+                self.project,
+                self.status,
+                self.priority,
+                self.category,
+                self.description,
+            )
+        ):
+            raise ValueError("at least one field must be provided")
+        return self
+
+
 def _build_headers(settings: NotionSettings) -> dict[str, str]:
     return {
         "Authorization": f"Bearer {settings.notion_api_key}",
@@ -157,6 +230,16 @@ def parse_database_id(value: str) -> str:
             return _format_database_id(compact_match.group(1))
 
     raise ValueError("Notion database URL or ID did not include a 32-character database ID")
+
+
+def parse_page_id(value: str) -> str:
+    """Validate and normalize a Notion page ID."""
+    candidate = value.strip()
+    if _UUID_RE.fullmatch(candidate):
+        return candidate.lower()
+    if _COMPACT_ID_RE.fullmatch(candidate):
+        return _format_database_id(candidate)
+    raise ValueError("page_id must be a valid Notion page ID")
 
 
 def _database_url_for_key(settings: NotionSettings, database_key: str) -> str:
@@ -256,6 +339,96 @@ def _normalize_page(page: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _normalize_work_item_project(value: str | None) -> str:
+    if not value:
+        raise ValueError("project must be one of: Vidwiz, Trackcrow, Habitat")
+    project_names = {
+        "vidwiz": "Vidwiz",
+        "trackcrow": "Trackcrow",
+        "habitat": "Habitat",
+    }
+    normalized_value = value.lower()
+    if normalized_value not in project_names:
+        raise ValueError("project must be one of: Vidwiz, Trackcrow, Habitat")
+    return project_names[normalized_value]
+
+
+def _build_title_property(value: str) -> dict[str, Any]:
+    return {
+        "title": [
+            {
+                "type": "text",
+                "text": {"content": value},
+            }
+        ]
+    }
+
+
+def _build_rich_text_property(value: str) -> dict[str, Any]:
+    return {
+        "rich_text": [
+            {
+                "type": "text",
+                "text": {"content": value},
+            }
+        ]
+    }
+
+
+def _build_select_property(value: str) -> dict[str, Any]:
+    return {"select": {"name": value}}
+
+
+def _build_status_property(value: str) -> dict[str, Any]:
+    return {"status": {"name": value}}
+
+
+def _build_property_value(property_type: str, value: str) -> dict[str, Any]:
+    if property_type == "title":
+        return _build_title_property(value)
+    if property_type == "rich_text":
+        return _build_rich_text_property(value)
+    if property_type == "select":
+        return _build_select_property(value)
+    if property_type == "status":
+        return _build_status_property(value)
+    raise NotionApiError(f"Unsupported Notion property type for writes: {property_type}")
+
+
+def _build_work_item_properties(
+    schema_properties: Mapping[str, Any],
+    *,
+    name: str | None = None,
+    project: str | None = None,
+    status: str | None = None,
+    priority: str | None = None,
+    category: str | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    field_values = {
+        "Name": name,
+        "Project": project,
+        "Status": status,
+        "Priority": priority,
+        "Category": category,
+        "Description": description,
+    }
+    properties: dict[str, Any] = {}
+    for property_name, value in field_values.items():
+        if value is None:
+            continue
+        property_schema = schema_properties.get(property_name)
+        if not isinstance(property_schema, Mapping):
+            raise NotionApiError(f"Notion data source is missing expected property: {property_name}")
+        property_type = property_schema.get("type")
+        if not isinstance(property_type, str) or not property_type:
+            raise NotionApiError(
+                f"Notion data source property has invalid type metadata: {property_name}"
+            )
+        properties[property_name] = _build_property_value(property_type, value)
+    return properties
+
+
 def _resolve_data_source(
     settings: NotionSettings,
     *,
@@ -277,6 +450,18 @@ def _resolve_data_source(
     if not isinstance(data_source_id, str) or not data_source_id:
         raise NotionApiError(f"Notion data source ID missing for database {database_id}")
     return data_source
+
+
+def _get_data_source_properties(
+    settings: NotionSettings,
+    *,
+    data_source_id: str,
+) -> Mapping[str, Any]:
+    schema = _request_json(settings, method="GET", path=f"/data_sources/{data_source_id}")
+    properties = schema.get("properties")
+    if not isinstance(properties, Mapping):
+        raise NotionApiError("Notion data source response did not include properties")
+    return properties
 
 
 def _query_data_source(
@@ -437,4 +622,111 @@ def list_work_item_projects(
         "success": True,
         "count": len(projects),
         "projects": projects,
+    }
+
+
+def create_work_item(
+    *,
+    settings: NotionSettings,
+    name: str,
+    project: str,
+    status: str | None = None,
+    priority: str | None = None,
+    category: str | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Create one page in the configured Notion work items data source."""
+    try:
+        payload = WorkItemCreateInput.model_validate(
+            {
+                "name": name,
+                "project": project,
+                "status": status,
+                "priority": priority,
+                "category": category,
+                "description": description,
+            }
+        )
+    except ValidationError as exc:
+        message = exc.errors()[0]["msg"] if exc.errors() else "invalid work item create payload"
+        raise ValueError(message) from exc
+
+    database_id = _resolve_database_id(settings, "work_items")
+    data_source = _resolve_data_source(settings, database_id=database_id)
+    data_source_id = data_source["id"]
+    schema_properties = _get_data_source_properties(settings, data_source_id=data_source_id)
+    page = _request_json(
+        settings,
+        method="POST",
+        path="/pages",
+        json_body={
+            "parent": {"data_source_id": data_source_id},
+            "properties": _build_work_item_properties(
+                schema_properties,
+                name=payload.name,
+                project=payload.project,
+                status=payload.status,
+                priority=payload.priority,
+                category=payload.category,
+                description=payload.description,
+            ),
+        },
+    )
+    return {
+        "success": True,
+        "page": _normalize_page(page),
+    }
+
+
+def update_work_item(
+    *,
+    settings: NotionSettings,
+    page_id: str,
+    name: str | None = None,
+    project: str | None = None,
+    status: str | None = None,
+    priority: str | None = None,
+    category: str | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Patch properties on one existing Notion work item page."""
+    try:
+        payload = WorkItemUpdateInput.model_validate(
+            {
+                "page_id": page_id,
+                "name": name,
+                "project": project,
+                "status": status,
+                "priority": priority,
+                "category": category,
+                "description": description,
+            }
+        )
+    except ValidationError as exc:
+        message = exc.errors()[0]["msg"] if exc.errors() else "invalid work item update payload"
+        raise ValueError(message) from exc
+
+    database_id = _resolve_database_id(settings, "work_items")
+    data_source = _resolve_data_source(settings, database_id=database_id)
+    data_source_id = data_source["id"]
+    schema_properties = _get_data_source_properties(settings, data_source_id=data_source_id)
+    page = _request_json(
+        settings,
+        method="PATCH",
+        path=f"/pages/{payload.page_id}",
+        json_body={
+            "properties": _build_work_item_properties(
+                schema_properties,
+                name=payload.name,
+                project=payload.project,
+                status=payload.status,
+                priority=payload.priority,
+                category=payload.category,
+                description=payload.description,
+            )
+        },
+    )
+    return {
+        "success": True,
+        "page": _normalize_page(page),
     }

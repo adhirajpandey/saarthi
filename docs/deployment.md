@@ -34,7 +34,8 @@ cp .env.example .env
   `NOTION_LINKS_DATABASE_URL`, `NOTION_WORK_ITEMS_DATABASE_URL`,
   SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as needed)
 - Share the Notion integration tied to `NOTION_API_KEY` with both configured
-  databases.
+  databases, with read access for the saved links database and read/write
+  access for the combined work items database.
 - `NOTION_WORK_ITEMS_DATABASE_URL` should point to the combined work items
   database that uses a `Project` select with `Vidwiz`, `Trackcrow`, and
   `Habitat`.
@@ -103,6 +104,8 @@ For Notion MCP verification, confirm these tool calls succeed from the client:
 - `get_work_items_database_schema()`
 - `list_work_items(project="all", page_size=5)`
 - `list_work_item_projects()`
+- `create_work_item(name="Saarthi MCP verification item", project="Habitat")`
+- `update_work_item(page_id="<page_id from create_work_item>", status="Completed")`
 
 ## Common Ops
 

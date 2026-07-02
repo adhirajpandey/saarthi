@@ -689,6 +689,9 @@ Remarks:
   `database_key="work_items"`.
 - The combined work items database is expected to use a `Project` select with
   `Vidwiz`, `Trackcrow`, and `Habitat`.
+- The returned schema is also used by the work-item write tools to serialize
+  typed fields to the actual Notion property types configured in the live data
+  source.
 
 ### `list_work_items`
 
@@ -749,6 +752,116 @@ Remarks:
   `database_key="work_items"`.
 - `project` accepts `Vidwiz`, `Trackcrow`, `Habitat`, or `all`.
 - Omitting `project`, or passing `all`, returns work items across all projects.
+
+### `create_work_item`
+
+Short description:
+Creates one work item in the combined Notion work items database.
+
+Expected input:
+
+```json
+{
+  "name": "Add notion integration",
+  "project": "Habitat",
+  "status": "Pending",
+  "priority": "High",
+  "category": "Backend",
+  "description": "Wire Saarthi MCP tools to Notion work items"
+}
+```
+
+Expected output:
+
+```json
+{
+  "success": true,
+  "page": {
+    "page_id": "391fad61-8b95-8139-9948-d93d9bc737ee",
+    "url": "https://www.notion.so/...",
+    "created_time": "2026-07-03T00:00:00.000Z",
+    "last_edited_time": "2026-07-03T00:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "properties": {
+      "Name": { "type": "title", "value": "Add notion integration" },
+      "Project": { "type": "select", "value": "Habitat" },
+      "Status": { "type": "select", "value": "Pending" },
+      "Priority": { "type": "select", "value": "High" },
+      "Category": { "type": "select", "value": "Backend" },
+      "Description": {
+        "type": "rich_text",
+        "value": "Wire Saarthi MCP tools to Notion work items"
+      }
+    }
+  }
+}
+```
+
+Remarks:
+
+- This tool is write-capable.
+- `name` and `project` are required.
+- `status`, `priority`, `category`, and `description` are optional.
+- `project` accepts `Vidwiz`, `Trackcrow`, or `Habitat`; project names are
+  normalized case-insensitively.
+- Only the supported work-item fields are exposed through this MCP contract:
+  `Name`, `Project`, `Status`, `Priority`, `Category`, and `Description`.
+- The tool creates a page under the configured `work_items` data source.
+- Property serialization is schema-driven; Saarthi maps typed inputs to the
+  actual Notion property types exposed by the live data-source schema.
+
+### `update_work_item`
+
+Short description:
+Updates one work item in the combined Notion work items database by page ID.
+
+Expected input:
+
+```json
+{
+  "page_id": "391fad61-8b95-8139-9948-d93d9bc737ee",
+  "status": "Completed",
+  "description": "Marked complete from the Saarthi MCP client"
+}
+```
+
+Expected output:
+
+```json
+{
+  "success": true,
+  "page": {
+    "page_id": "391fad61-8b95-8139-9948-d93d9bc737ee",
+    "url": "https://www.notion.so/...",
+    "created_time": "2026-07-03T00:00:00.000Z",
+    "last_edited_time": "2026-07-03T00:05:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "properties": {
+      "Name": { "type": "title", "value": "Add notion integration" },
+      "Project": { "type": "select", "value": "Habitat" },
+      "Status": { "type": "select", "value": "Completed" },
+      "Description": {
+        "type": "rich_text",
+        "value": "Marked complete from the Saarthi MCP client"
+      }
+    }
+  }
+}
+```
+
+Remarks:
+
+- This tool is write-capable.
+- `page_id` is required and must be a valid Notion page ID.
+- At least one of `name`, `project`, `status`, `priority`, `category`, or
+  `description` must be provided.
+- Only the provided fields are patched.
+- `project` accepts `Vidwiz`, `Trackcrow`, or `Habitat`; project names are
+  normalized case-insensitively.
+- Property serialization is schema-driven; for example, Saarthi does not assume
+  the `Status` field uses the Notion `status` property type.
 
 ### `list_work_item_projects`
 
@@ -815,8 +928,9 @@ Remarks:
 - `GOOGLE_TASKS_TOKEN_PATH` must point to an authorized-user token JSON file
   created by `uv run google-tasks-auth` or
   `uv run google-tasks-auth --headless`.
-- `NOTION_API_KEY` must belong to a Notion integration with read access to the
-  configured databases.
+- `NOTION_API_KEY` must belong to a Notion integration with read/write access
+  to the configured `work_items` database and read access to any databases used
+  by read-only tools.
 - `NOTION_LINKS_DATABASE_URL` must reference the saved links database.
 - `NOTION_WORK_ITEMS_DATABASE_URL` must reference the combined work items
   database.
@@ -842,6 +956,8 @@ list_saved_links(page_size=5)
 get_work_items_database_schema()
 list_work_items(project="all", page_size=5)
 list_work_item_projects()
+create_work_item(name="Saarthi MCP verification item", project="Habitat")
+update_work_item(page_id="<page_id from create_work_item>", status="Completed")
 ```
 
 ## Runtime Boundaries

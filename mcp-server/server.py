@@ -24,9 +24,11 @@ from app.services.trackcrow_transactions import search_trackcrow_transactions  #
 from app.services.cloudflare import get_dns_record, list_dns_records, list_zones  # noqa: E402
 from app.services.google_tasks import get_task, list_tasklists, list_tasks  # noqa: E402
 from app.services.notion import (  # noqa: E402
+    create_work_item as create_notion_work_item,
     get_database_schema as get_notion_database_schema,
     list_work_item_projects as list_notion_work_item_projects,
     query_database as query_notion_database,
+    update_work_item as update_notion_work_item,
 )
 
 
@@ -455,6 +457,94 @@ def list_work_item_projects() -> dict[str, object]:
 def list_work_item_projects_tool() -> dict[str, object]:
     """List project names that currently have Notion work items, with item counts."""
     return list_work_item_projects()
+
+
+def create_personal_work_item(
+    name: str,
+    project: str,
+    status: str | None = None,
+    priority: str | None = None,
+    category: str | None = None,
+    description: str | None = None,
+) -> dict[str, object]:
+    """Create one Notion work item in the configured combined database."""
+    settings = get_notion_settings()
+    setup_logging(settings.logging_settings())
+    return create_notion_work_item(
+        settings=settings,
+        name=name,
+        project=project,
+        status=status,
+        priority=priority,
+        category=category,
+        description=description,
+    )
+
+
+@mcp.tool(name="create_work_item")
+def create_work_item_tool(
+    name: str,
+    project: str,
+    status: str | None = None,
+    priority: str | None = None,
+    category: str | None = None,
+    description: str | None = None,
+) -> dict[str, object]:
+    """Create one Notion work item in the configured combined database."""
+    return create_personal_work_item(
+        name=name,
+        project=project,
+        status=status,
+        priority=priority,
+        category=category,
+        description=description,
+    )
+
+
+def update_personal_work_item(
+    page_id: str,
+    name: str | None = None,
+    project: str | None = None,
+    status: str | None = None,
+    priority: str | None = None,
+    category: str | None = None,
+    description: str | None = None,
+) -> dict[str, object]:
+    """Update one Notion work item by page ID."""
+    settings = get_notion_settings()
+    setup_logging(settings.logging_settings())
+    return update_notion_work_item(
+        settings=settings,
+        page_id=page_id,
+        name=name,
+        project=project,
+        status=status,
+        priority=priority,
+        category=category,
+        description=description,
+    )
+
+
+@mcp.tool(name="update_work_item")
+def update_work_item_tool(
+    page_id: str,
+    name: str | None = None,
+    project: str | None = None,
+    status: str | None = None,
+    priority: str | None = None,
+    category: str | None = None,
+    description: str | None = None,
+) -> dict[str, object]:
+    """Update one Notion work item by page ID."""
+    return update_personal_work_item(
+        page_id=page_id,
+        name=name,
+        project=project,
+        status=status,
+        priority=priority,
+        category=category,
+        description=description,
+    )
 
 
 if __name__ == "__main__":

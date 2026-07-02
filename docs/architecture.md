@@ -122,6 +122,9 @@ Current tool surface:
   by project.
 - `list_work_item_projects()`: lists project names that currently have work
   items, with counts.
+- `create_work_item(...)`: creates a work item in the combined Notion work
+  items database.
+- `update_work_item(...)`: updates a work item by Notion `page_id`.
 
 Detailed MCP contracts are documented in `mcp.md`.
 
@@ -138,16 +141,24 @@ Flow:
 1. Load typed Notion settings.
 2. Resolve the configured Notion database URL to a database ID.
 3. Fetch the single data source attached to that database.
-4. Read schema metadata or query rows from the Notion Data Sources API.
-5. Normalize page properties into agent-friendly MCP payloads.
+4. Read schema metadata or query rows from the Notion Data Sources API for
+   read-only tools.
+5. Fetch the live data-source schema for work-item write tools.
+6. Serialize typed work-item fields to the actual Notion property types exposed
+   by that schema, then create or patch the page.
+7. Normalize page properties into agent-friendly MCP payloads.
 
 Current Notion scope:
 
-- `links`: saved links database
-- `work_items`: combined work items database
+- `links`: saved links database, read-only
+- `work_items`: combined work items database, read/write through MCP
 
 Work items now live in one combined Notion database with a `Project` select
 property. Current project options are `Vidwiz`, `Trackcrow`, and `Habitat`.
+Current typed work-item write fields are `Name`, `Project`, `Status`,
+`Priority`, `Category`, and `Description`.
+The write path is schema-driven and does not assume any one fixed Notion
+property subtype for fields such as `Status`.
 
 ## Script Runtime
 
