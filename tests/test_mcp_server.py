@@ -305,3 +305,161 @@ def test_get_personal_google_task_delegates_to_service(monkeypatch, runtime_conf
     assert result["success"] is True
     assert result["task"]["task_id"] == "task-1"
     assert result["task"]["tasklist_id"] == "list-1"
+
+
+def test_get_personal_notion_database_schema_delegates_to_service(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "get_notion_database_schema",
+        lambda **kwargs: {"success": True, "schema": kwargs},
+    )
+
+    result = server.get_personal_notion_database_schema(database_key="links")
+
+    assert result["success"] is True
+    assert result["schema"]["database_key"] == "links"
+
+
+def test_query_personal_notion_database_delegates_to_service(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "query_notion_database",
+        lambda **kwargs: {"success": True, "filters": kwargs, "pages": []},
+    )
+
+    result = server.query_personal_notion_database(
+        database_key="work_items",
+        start_cursor="cursor-1",
+        page_size=5,
+        project="Habitat",
+    )
+
+    assert result["success"] is True
+    assert result["filters"]["database_key"] == "work_items"
+    assert result["filters"]["start_cursor"] == "cursor-1"
+    assert result["filters"]["page_size"] == 5
+    assert result["filters"]["project"] == "Habitat"
+
+
+def test_notion_links_aliases_use_links_database_key(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "get_notion_database_schema",
+        lambda **kwargs: {"success": True, "schema": kwargs},
+    )
+    monkeypatch.setattr(
+        server,
+        "query_notion_database",
+        lambda **kwargs: {"success": True, "filters": kwargs, "pages": []},
+    )
+
+    schema_result = server.get_links_database_schema()
+    list_result = server.list_saved_links(page_size=5)
+
+    assert schema_result["schema"]["database_key"] == "links"
+    assert list_result["filters"]["database_key"] == "links"
+    assert list_result["filters"]["page_size"] == 5
+
+
+def test_notion_work_items_aliases_use_work_items_database_key(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "get_notion_database_schema",
+        lambda **kwargs: {"success": True, "schema": kwargs},
+    )
+    monkeypatch.setattr(
+        server,
+        "query_notion_database",
+        lambda **kwargs: {"success": True, "filters": kwargs, "pages": []},
+    )
+
+    schema_result = server.get_work_items_database_schema()
+    list_result = server.list_work_items(page_size=10, project="Trackcrow")
+
+    assert schema_result["schema"]["database_key"] == "work_items"
+    assert list_result["filters"]["database_key"] == "work_items"
+    assert list_result["filters"]["page_size"] == 10
+    assert list_result["filters"]["project"] == "Trackcrow"
+
+
+def test_list_work_item_projects_delegates_to_service(monkeypatch, runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "list_notion_work_item_projects",
+        lambda **kwargs: {
+            "success": True,
+            "count": 2,
+            "projects": [
+                {"name": "Habitat", "work_item_count": 3},
+                {"name": "Vidwiz", "work_item_count": 7},
+            ],
+            "filters": kwargs,
+        },
+    )
+
+    result = server.list_work_item_projects()
+
+    assert result["success"] is True
+    assert result["count"] == 2
+    assert result["projects"][0]["name"] == "Habitat"

@@ -470,6 +470,317 @@ Remarks:
 - Title-based task list resolution only searches the first `100` Google task
   lists returned by the API.
 
+### `get_notion_database_schema`
+
+Short description:
+Returns schema metadata for one configured Notion database.
+
+Expected input:
+
+```json
+{
+  "database_key": "work_items"
+}
+```
+
+Expected output:
+
+Success:
+
+```json
+{
+  "success": true,
+  "database_key": "work_items",
+  "database_id": "391fad61-8b95-8066-a51f-d4ba580730da",
+  "data_source_id": "391fad61-8b95-80f6-a358-000c9bc03d00",
+  "properties": {
+    "Name": { "id": "title", "name": "Name", "type": "title" },
+    "Project": { "id": "...", "name": "Project", "type": "select" }
+  }
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- `database_key` must be `links` or `work_items`.
+- The MCP response returns the resolved Notion `database_id` and `data_source_id`
+  so agents can reason about the backing resource shape.
+
+### `query_notion_database`
+
+Short description:
+Queries rows from one configured Notion database and returns normalized pages.
+
+Expected input:
+
+```json
+{
+  "database_key": "work_items",
+  "page_size": 25,
+  "project": "Habitat",
+  "start_cursor": null
+}
+```
+
+Expected output:
+
+Success:
+
+```json
+{
+  "success": true,
+  "count": 1,
+  "filters": {
+    "database_key": "work_items",
+    "database_id": "391fad61-8b95-8066-a51f-d4ba580730da",
+    "data_source_id": "391fad61-8b95-80f6-a358-000c9bc03d00",
+    "start_cursor": null,
+    "page_size": 25,
+    "project": "Habitat"
+  },
+  "has_more": false,
+  "next_cursor": null,
+  "pages": [
+    {
+      "page_id": "391fad61-8b95-81e6-8b8c-000b12345678",
+      "url": "https://www.notion.so/...",
+      "created_time": "2026-07-02T00:00:00.000Z",
+      "last_edited_time": "2026-07-02T00:00:00.000Z",
+      "archived": false,
+      "in_trash": false,
+      "properties": {
+        "Name": { "type": "title", "value": "Fix webhook retry handling" },
+        "Project": { "type": "select", "value": "Habitat" },
+        "Status": { "type": "select", "value": "Pending" }
+      }
+    }
+  ]
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- `database_key` must be `links` or `work_items`.
+- `page_size` defaults to `25` and is capped at `100`.
+- `project` is only valid when `database_key` is `work_items`.
+- Accepted `project` values are `Vidwiz`, `Trackcrow`, `Habitat`, and `all`.
+- Omitting `project`, or passing `all`, returns work items across all projects.
+- Each normalized property includes `id`, `type`, `value`, and the original
+  `raw` Notion property object.
+
+### `get_links_database_schema`
+
+Short description:
+Returns schema metadata for the saved links Notion database.
+
+Expected input:
+
+```json
+{}
+```
+
+Expected output:
+
+```json
+{
+  "success": true,
+  "database_key": "links",
+  "database_id": "384fad61-8b95-8012-acc3-edaacf69eeed",
+  "data_source_id": "384fad61-8b95-8170-8541-000bae41081a",
+  "properties": {
+    "Description": { "id": "...", "name": "Description", "type": "rich_text" },
+    "Link": { "id": "...", "name": "Link", "type": "url" }
+  }
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- This is a convenience wrapper around `get_notion_database_schema` for
+  `database_key="links"`.
+
+### `list_saved_links`
+
+Short description:
+Lists saved links from the configured Notion links database.
+
+Expected input:
+
+```json
+{
+  "page_size": 25,
+  "start_cursor": null
+}
+```
+
+Expected output:
+
+```json
+{
+  "success": true,
+  "count": 1,
+  "filters": {
+    "database_key": "links",
+    "database_id": "384fad61-8b95-8012-acc3-edaacf69eeed",
+    "data_source_id": "384fad61-8b95-8170-8541-000bae41081a",
+    "start_cursor": null,
+    "page_size": 25,
+    "project": "all"
+  },
+  "has_more": false,
+  "next_cursor": null,
+  "pages": [
+    {
+      "page_id": "384fad61-8b95-80d3-b4f5-000b12345678",
+      "url": "https://www.notion.so/...",
+      "properties": {
+        "Description": { "type": "rich_text", "value": "Interesting article" },
+        "Link": { "type": "url", "value": "https://example.com/article" },
+        "Link Type": { "type": "select", "value": "Article" }
+      }
+    }
+  ]
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- This is a convenience wrapper around `query_notion_database` for
+  `database_key="links"`.
+
+### `get_work_items_database_schema`
+
+Short description:
+Returns schema metadata for the combined work items Notion database.
+
+Expected input:
+
+```json
+{}
+```
+
+Expected output:
+
+```json
+{
+  "success": true,
+  "database_key": "work_items",
+  "database_id": "391fad61-8b95-8066-a51f-d4ba580730da",
+  "data_source_id": "391fad61-8b95-80f6-a358-000c9bc03d00",
+  "properties": {
+    "Name": { "id": "title", "name": "Name", "type": "title" },
+    "Project": { "id": "...", "name": "Project", "type": "select" },
+    "Description": { "id": "...", "name": "Description", "type": "rich_text" },
+    "Status": { "id": "...", "name": "Status", "type": "select" },
+    "Priority": { "id": "...", "name": "Priority", "type": "select" },
+    "Category": { "id": "...", "name": "Category", "type": "select" }
+  }
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- This is a convenience wrapper around `get_notion_database_schema` for
+  `database_key="work_items"`.
+- The combined work items database is expected to use a `Project` select with
+  `Vidwiz`, `Trackcrow`, and `Habitat`.
+
+### `list_work_items`
+
+Short description:
+Lists work items from the combined Notion work items database.
+
+Expected input:
+
+```json
+{
+  "page_size": 25,
+  "project": "all",
+  "start_cursor": null
+}
+```
+
+Expected output:
+
+```json
+{
+  "success": true,
+  "count": 2,
+  "filters": {
+    "database_key": "work_items",
+    "database_id": "391fad61-8b95-8066-a51f-d4ba580730da",
+    "data_source_id": "391fad61-8b95-80f6-a358-000c9bc03d00",
+    "start_cursor": null,
+    "page_size": 25,
+    "project": "all"
+  },
+  "has_more": false,
+  "next_cursor": null,
+  "pages": [
+    {
+      "page_id": "391fad61-8b95-81e6-8b8c-000b12345678",
+      "url": "https://www.notion.so/...",
+      "properties": {
+        "Name": { "type": "title", "value": "Fix webhook retry handling" },
+        "Project": { "type": "select", "value": "Habitat" }
+      }
+    },
+    {
+      "page_id": "391fad61-8b95-81d5-9f11-000b87654321",
+      "url": "https://www.notion.so/...",
+      "properties": {
+        "Name": { "type": "title", "value": "Refine editor onboarding copy" },
+        "Project": { "type": "select", "value": "Vidwiz" }
+      }
+    }
+  ]
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- This is a convenience wrapper around `query_notion_database` for
+  `database_key="work_items"`.
+- `project` accepts `Vidwiz`, `Trackcrow`, `Habitat`, or `all`.
+- Omitting `project`, or passing `all`, returns work items across all projects.
+
+### `list_work_item_projects`
+
+Short description:
+Lists project names that currently have work items, with per-project counts.
+
+Expected input:
+
+```json
+{}
+```
+
+Expected output:
+
+```json
+{
+  "success": true,
+  "count": 3,
+  "projects": [
+    { "name": "Habitat", "work_item_count": 59 },
+    { "name": "Trackcrow", "work_item_count": 12 },
+    { "name": "Vidwiz", "work_item_count": 75 }
+  ]
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- Only projects that currently have at least one work item are returned.
+- The list is sorted by project name.
+
 ## Configuration
 
 Secrets / auth (`.env`):
@@ -479,6 +790,9 @@ Secrets / auth (`.env`):
 - `GOOGLE_TASKS_CLIENT_ID`
 - `GOOGLE_TASKS_CLIENT_SECRET`
 - `GOOGLE_TASKS_TOKEN_PATH`
+- `NOTION_API_KEY`
+- `NOTION_LINKS_DATABASE_URL`
+- `NOTION_WORK_ITEMS_DATABASE_URL`
 - `TRACKCROW_DB_URL`
 - `TRACKCROW_MCP_USER_UUID`
 
@@ -501,6 +815,12 @@ Remarks:
 - `GOOGLE_TASKS_TOKEN_PATH` must point to an authorized-user token JSON file
   created by `uv run google-tasks-auth` or
   `uv run google-tasks-auth --headless`.
+- `NOTION_API_KEY` must belong to a Notion integration with read access to the
+  configured databases.
+- `NOTION_LINKS_DATABASE_URL` must reference the saved links database.
+- `NOTION_WORK_ITEMS_DATABASE_URL` must reference the combined work items
+  database.
+- The Notion integration must be shared with both configured Notion databases.
 - `TRACKCROW_MCP_USER_UUID` fixes the Trackcrow user scope for transaction
   searches.
 - The SSH private key is mounted into the `saarthi-mcp` container by
@@ -512,6 +832,16 @@ Remarks:
 docker compose logs saarthi-mcp
 codex mcp get saarthi
 uv run google-tasks-auth --headless
+```
+
+Useful Notion verification calls after deploy:
+
+```text
+get_links_database_schema()
+list_saved_links(page_size=5)
+get_work_items_database_schema()
+list_work_items(project="all", page_size=5)
+list_work_item_projects()
 ```
 
 ## Runtime Boundaries

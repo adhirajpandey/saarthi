@@ -18,10 +18,16 @@ from shared.settings import (  # noqa: E402
     get_cloudflare_settings,
     get_google_tasks_settings,
     get_mcp_settings,
+    get_notion_settings,
 )
 from app.services.trackcrow_transactions import search_trackcrow_transactions  # noqa: E402
 from app.services.cloudflare import get_dns_record, list_dns_records, list_zones  # noqa: E402
 from app.services.google_tasks import get_task, list_tasklists, list_tasks  # noqa: E402
+from app.services.notion import (  # noqa: E402
+    get_database_schema as get_notion_database_schema,
+    list_work_item_projects as list_notion_work_item_projects,
+    query_database as query_notion_database,
+)
 
 
 def build_mcp_auth(settings: McpSettings) -> MultiAuth:
@@ -322,6 +328,133 @@ def get_google_task_tool(
         tasklist_id=tasklist_id,
         tasklist_title=tasklist_title,
     )
+
+
+def get_personal_notion_database_schema(database_key: str) -> dict[str, object]:
+    """Get schema metadata for a configured Notion database. Use database_key: links or work_items."""
+    settings = get_notion_settings()
+    setup_logging(settings.logging_settings())
+    return get_notion_database_schema(settings=settings, database_key=database_key)
+
+
+@mcp.tool(name="get_notion_database_schema")
+def get_notion_database_schema_tool(database_key: str) -> dict[str, object]:
+    """Get schema metadata for a configured Notion database. Use database_key: links or work_items."""
+    return get_personal_notion_database_schema(database_key=database_key)
+
+
+def query_personal_notion_database(
+    database_key: str,
+    start_cursor: str | None = None,
+    page_size: int = 25,
+    project: str | None = None,
+) -> dict[str, object]:
+    """Query rows from a configured Notion database. Use project only with work_items; use all or omit it for every project."""
+    settings = get_notion_settings()
+    setup_logging(settings.logging_settings())
+    return query_notion_database(
+        settings=settings,
+        database_key=database_key,
+        start_cursor=start_cursor,
+        page_size=page_size,
+        project=project,
+    )
+
+
+@mcp.tool(name="query_notion_database")
+def query_notion_database_tool(
+    database_key: str,
+    start_cursor: str | None = None,
+    page_size: int = 25,
+    project: str | None = None,
+) -> dict[str, object]:
+    """Query rows from a configured Notion database. Use project only with work_items; use all or omit it for every project."""
+    return query_personal_notion_database(
+        database_key=database_key,
+        start_cursor=start_cursor,
+        page_size=page_size,
+        project=project,
+    )
+
+
+def get_links_database_schema() -> dict[str, object]:
+    """Get schema metadata for the saved links Notion database."""
+    return get_personal_notion_database_schema(database_key="links")
+
+
+@mcp.tool(name="get_links_database_schema")
+def get_links_database_schema_tool() -> dict[str, object]:
+    """Get schema metadata for the saved links Notion database."""
+    return get_links_database_schema()
+
+
+def list_saved_links(
+    start_cursor: str | None = None,
+    page_size: int = 25,
+) -> dict[str, object]:
+    """List saved links from Notion with pagination."""
+    return query_personal_notion_database(
+        database_key="links",
+        start_cursor=start_cursor,
+        page_size=page_size,
+    )
+
+
+@mcp.tool(name="list_saved_links")
+def list_saved_links_tool(
+    start_cursor: str | None = None,
+    page_size: int = 25,
+) -> dict[str, object]:
+    """List saved links from Notion with pagination."""
+    return list_saved_links(start_cursor=start_cursor, page_size=page_size)
+
+
+def get_work_items_database_schema() -> dict[str, object]:
+    """Get schema metadata for the combined work items Notion database."""
+    return get_personal_notion_database_schema(database_key="work_items")
+
+
+@mcp.tool(name="get_work_items_database_schema")
+def get_work_items_database_schema_tool() -> dict[str, object]:
+    """Get schema metadata for the combined work items Notion database."""
+    return get_work_items_database_schema()
+
+
+def list_work_items(
+    start_cursor: str | None = None,
+    page_size: int = 25,
+    project: str | None = None,
+) -> dict[str, object]:
+    """List Notion work items. Filter by project with Vidwiz, Trackcrow, or Habitat; use all for every project."""
+    return query_personal_notion_database(
+        database_key="work_items",
+        start_cursor=start_cursor,
+        page_size=page_size,
+        project=project,
+    )
+
+
+@mcp.tool(name="list_work_items")
+def list_work_items_tool(
+    start_cursor: str | None = None,
+    page_size: int = 25,
+    project: str | None = None,
+) -> dict[str, object]:
+    """List Notion work items. Filter by project with Vidwiz, Trackcrow, or Habitat; use all for every project."""
+    return list_work_items(start_cursor=start_cursor, page_size=page_size, project=project)
+
+
+def list_work_item_projects() -> dict[str, object]:
+    """List project names that currently have Notion work items, with item counts."""
+    settings = get_notion_settings()
+    setup_logging(settings.logging_settings())
+    return list_notion_work_item_projects(settings=settings)
+
+
+@mcp.tool(name="list_work_item_projects")
+def list_work_item_projects_tool() -> dict[str, object]:
+    """List project names that currently have Notion work items, with item counts."""
+    return list_work_item_projects()
 
 
 if __name__ == "__main__":

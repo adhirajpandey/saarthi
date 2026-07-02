@@ -10,6 +10,7 @@ Saarthi is a practical workspace for building and operating useful software, not
 
 - FastAPI endpoints for health checks (including host tool availability diagnostics), protected operations, and geofence/location-driven flows.
 - FastMCP server for authenticated local tool access, starting with WhatsApp message dispatch.
+- FastMCP Notion reads for saved links and combined work items, including project-aware work item listing.
 - Geofence transition handling with event-triggered notifications.
 - Operational automation for database backups, Google Drive sync, and scheduler setup.
 - Shikari sensor-session visualization CLI for ride dashboards.

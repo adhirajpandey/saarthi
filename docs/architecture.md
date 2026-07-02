@@ -109,6 +109,19 @@ Current tool surface:
 - `list_google_tasks(...)`: lists tasks from one Google task list.
 - `get_google_task(...)`: fetches one Google task by ID from one Google task
   list.
+- `get_notion_database_schema(database_key)`: returns schema metadata for the
+  configured Notion `links` or `work_items` database.
+- `query_notion_database(...)`: queries rows from the configured Notion
+  `links` or `work_items` database.
+- `get_links_database_schema()`: returns schema metadata for the saved links
+  Notion database.
+- `list_saved_links(...)`: lists saved links from Notion.
+- `get_work_items_database_schema()`: returns schema metadata for the combined
+  work items Notion database.
+- `list_work_items(...)`: lists combined Notion work items, optionally filtered
+  by project.
+- `list_work_item_projects()`: lists project names that currently have work
+  items, with counts.
 
 Detailed MCP contracts are documented in `mcp.md`.
 
@@ -117,6 +130,24 @@ Deployment defaults:
 - Docker service: `saarthi-mcp`
 - URL: `http://localhost:8001/mcp`
 - Auth: `Authorization: Bearer <MCP_TOKEN>`
+
+### Notion MCP tools
+
+Flow:
+
+1. Load typed Notion settings.
+2. Resolve the configured Notion database URL to a database ID.
+3. Fetch the single data source attached to that database.
+4. Read schema metadata or query rows from the Notion Data Sources API.
+5. Normalize page properties into agent-friendly MCP payloads.
+
+Current Notion scope:
+
+- `links`: saved links database
+- `work_items`: combined work items database
+
+Work items now live in one combined Notion database with a `Project` select
+property. Current project options are `Vidwiz`, `Trackcrow`, and `Habitat`.
 
 ## Script Runtime
 
@@ -250,6 +281,10 @@ GDrive backup, and Shikari runtimes.
   auth
 - `GOOGLE_TASKS_TOKEN_PATH`: authorized-user token JSON written by
   `google-tasks-auth` and used by Google Tasks MCP tools
+- `NOTION_API_KEY`: integration token used by the Notion MCP tools
+- `NOTION_LINKS_DATABASE_URL`: saved links Notion database URL or ID
+- `NOTION_WORK_ITEMS_DATABASE_URL`: combined work items Notion database URL or
+  ID
 - `scripts/schedule_scripts/config.json`: scheduler input
 - `data/shikari/sessions`: merged Shikari + Saarthi sensor sessions
 - `data/shikari/outputs`: generated visualization artifacts

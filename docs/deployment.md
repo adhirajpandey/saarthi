@@ -30,8 +30,14 @@ cp .env.example .env
   approach and allow natural phrasing per event.
 - `.env`: secrets (`ADMIN_TOKEN`, `MCP_TOKEN`, `CLOUDFLARE_API_TOKEN`,
   `GOOGLE_TASKS_CLIENT_ID`, `GOOGLE_TASKS_CLIENT_SECRET`,
-  `GOOGLE_TASKS_TOKEN_PATH`, SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as
-  needed)
+  `GOOGLE_TASKS_TOKEN_PATH`, `NOTION_API_KEY`,
+  `NOTION_LINKS_DATABASE_URL`, `NOTION_WORK_ITEMS_DATABASE_URL`,
+  SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as needed)
+- Share the Notion integration tied to `NOTION_API_KEY` with both configured
+  databases.
+- `NOTION_WORK_ITEMS_DATABASE_URL` should point to the combined work items
+  database that uses a `Project` select with `Vidwiz`, `Trackcrow`, and
+  `Habitat`.
 
 3. Start API and MCP:
 
@@ -84,6 +90,14 @@ uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied
 uv run google-tasks-auth --headless
 uv run shikari-visualize --list
 ```
+
+For Notion MCP verification, confirm these tool calls succeed from the client:
+
+- `get_links_database_schema()`
+- `list_saved_links(page_size=5)`
+- `get_work_items_database_schema()`
+- `list_work_items(project="all", page_size=5)`
+- `list_work_item_projects()`
 
 ## Common Ops
 

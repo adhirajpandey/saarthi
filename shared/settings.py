@@ -18,6 +18,9 @@ ENV_OWNED_KEYS = frozenset(
         "GOOGLE_TASKS_CLIENT_ID",
         "GOOGLE_TASKS_CLIENT_SECRET",
         "GOOGLE_TASKS_TOKEN_PATH",
+        "NOTION_API_KEY",
+        "NOTION_LINKS_DATABASE_URL",
+        "NOTION_WORK_ITEMS_DATABASE_URL",
         "SMTP_EMAIL",
         "SMTP_APP_PASSWORD",
         "SMTP_HOST",
@@ -435,6 +438,14 @@ class GoogleTasksSettings(RuntimeSettings):
         return Path(self.google_tasks_token_path)
 
 
+class NotionSettings(RuntimeSettings):
+    """Settings required by Notion MCP tools."""
+
+    notion_api_key: str
+    notion_links_database_url: str
+    notion_work_items_database_url: str
+
+
 class BackupArtifactSettings(NtfyRuntimeSettings):
     """Shared settings for DB backup artifacts stored in S3."""
 
@@ -552,6 +563,11 @@ def get_cloudflare_settings() -> CloudflareSettings:
 def get_google_tasks_settings() -> GoogleTasksSettings:
     """Return Google Tasks integration settings."""
     return GoogleTasksSettings.model_validate(_build_payload(COMMON_CONFIG_KEYS))
+
+
+def get_notion_settings() -> NotionSettings:
+    """Return Notion integration settings."""
+    return NotionSettings.model_validate(_build_payload(COMMON_CONFIG_KEYS))
 
 
 def get_backup_db_settings() -> BackupDbSettings:

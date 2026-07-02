@@ -13,6 +13,7 @@ from shared.settings import (
     get_cloudflare_settings,
     get_google_tasks_settings,
     get_mcp_settings,
+    get_notion_settings,
     get_restore_db_test_settings,
     get_shikari_settings,
 )
@@ -170,6 +171,33 @@ def test_google_tasks_settings_require_token_path(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="google_tasks_token_path"):
         get_google_tasks_settings()
+
+
+def test_notion_settings_require_api_key(monkeypatch) -> None:
+    monkeypatch.delenv("NOTION_API_KEY", raising=False)
+    monkeypatch.setenv("NOTION_LINKS_DATABASE_URL", "https://notion.so/links")
+    monkeypatch.setenv("NOTION_WORK_ITEMS_DATABASE_URL", "https://notion.so/work")
+
+    with pytest.raises(ValueError, match="notion_api_key"):
+        get_notion_settings()
+
+
+def test_notion_settings_require_links_database_url(monkeypatch) -> None:
+    monkeypatch.setenv("NOTION_API_KEY", "secret")
+    monkeypatch.delenv("NOTION_LINKS_DATABASE_URL", raising=False)
+    monkeypatch.setenv("NOTION_WORK_ITEMS_DATABASE_URL", "https://notion.so/work")
+
+    with pytest.raises(ValueError, match="notion_links_database_url"):
+        get_notion_settings()
+
+
+def test_notion_settings_require_work_items_database_url(monkeypatch) -> None:
+    monkeypatch.setenv("NOTION_API_KEY", "secret")
+    monkeypatch.setenv("NOTION_LINKS_DATABASE_URL", "https://notion.so/links")
+    monkeypatch.delenv("NOTION_WORK_ITEMS_DATABASE_URL", raising=False)
+
+    with pytest.raises(ValueError, match="notion_work_items_database_url"):
+        get_notion_settings()
 
 
 def test_email_enabled_requires_smtp_host_and_port(monkeypatch, runtime_config) -> None:
