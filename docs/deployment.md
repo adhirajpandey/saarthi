@@ -76,6 +76,11 @@ headless host, open the printed Google login URL on another machine, complete
 sign-in, copy the final `http://127.0.0.1:1/...` redirect URL from the browser
 address bar, and paste it back into the terminal prompt.
 
+The current `docker-compose.yml` mounts `/home/adhiraj/.config/saarthi` into
+`saarthi-mcp` as read-only so a host token file at
+`/home/adhiraj/.config/saarthi/google-tasks-token.json` is visible inside the
+MCP container.
+
 ## Verify
 
 ```bash
