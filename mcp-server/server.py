@@ -24,10 +24,12 @@ from app.services.trackcrow_transactions import search_trackcrow_transactions  #
 from app.services.cloudflare import get_dns_record, list_dns_records, list_zones  # noqa: E402
 from app.services.google_tasks import get_task, list_tasklists, list_tasks  # noqa: E402
 from app.services.notion import (  # noqa: E402
+    create_greenhouse_experiment as create_notion_greenhouse_experiment,
     create_work_item as create_notion_work_item,
     get_database_schema as get_notion_database_schema,
     list_work_item_projects as list_notion_work_item_projects,
     query_database as query_notion_database,
+    update_greenhouse_experiment as update_notion_greenhouse_experiment,
     update_work_item as update_notion_work_item,
 )
 
@@ -333,7 +335,7 @@ def get_google_task_tool(
 
 
 def get_personal_notion_database_schema(database_key: str) -> dict[str, object]:
-    """Get schema metadata for a configured Notion database. Use database_key: links or work_items."""
+    """Get schema metadata for a configured Notion database."""
     settings = get_notion_settings()
     setup_logging(settings.logging_settings())
     return get_notion_database_schema(settings=settings, database_key=database_key)
@@ -341,7 +343,7 @@ def get_personal_notion_database_schema(database_key: str) -> dict[str, object]:
 
 @mcp.tool(name="get_notion_database_schema")
 def get_notion_database_schema_tool(database_key: str) -> dict[str, object]:
-    """Get schema metadata for a configured Notion database. Use database_key: links or work_items."""
+    """Get schema metadata for a configured Notion database."""
     return get_personal_notion_database_schema(database_key=database_key)
 
 
@@ -412,13 +414,13 @@ def list_saved_links_tool(
 
 
 def get_work_items_database_schema() -> dict[str, object]:
-    """Get schema metadata for the combined work items Notion database."""
+    """Get schema metadata for the work items Notion database."""
     return get_personal_notion_database_schema(database_key="work_items")
 
 
 @mcp.tool(name="get_work_items_database_schema")
 def get_work_items_database_schema_tool() -> dict[str, object]:
-    """Get schema metadata for the combined work items Notion database."""
+    """Get schema metadata for the work items Notion database."""
     return get_work_items_database_schema()
 
 
@@ -467,7 +469,7 @@ def create_personal_work_item(
     category: str | None = None,
     description: str | None = None,
 ) -> dict[str, object]:
-    """Create one Notion work item in the configured combined database."""
+    """Create one Notion work item in the configured work items database."""
     settings = get_notion_settings()
     setup_logging(settings.logging_settings())
     return create_notion_work_item(
@@ -490,7 +492,7 @@ def create_work_item_tool(
     category: str | None = None,
     description: str | None = None,
 ) -> dict[str, object]:
-    """Create one Notion work item in the configured combined database."""
+    """Create one Notion work item in the configured work items database."""
     return create_personal_work_item(
         name=name,
         project=project,
@@ -543,6 +545,110 @@ def update_work_item_tool(
         status=status,
         priority=priority,
         category=category,
+        description=description,
+    )
+
+
+def get_greenhouse_experiments_schema() -> dict[str, object]:
+    """Get schema metadata for the Greenhouse experiments Notion database."""
+    return get_personal_notion_database_schema(database_key="greenhouse_experiments")
+
+
+@mcp.tool(name="get_greenhouse_experiments_schema")
+def get_greenhouse_experiments_schema_tool() -> dict[str, object]:
+    """Get schema metadata for the Greenhouse experiments Notion database."""
+    return get_greenhouse_experiments_schema()
+
+
+def list_greenhouse_experiments(
+    start_cursor: str | None = None,
+    page_size: int = 25,
+) -> dict[str, object]:
+    """List Greenhouse experiments from Notion with pagination."""
+    return query_personal_notion_database(
+        database_key="greenhouse_experiments",
+        start_cursor=start_cursor,
+        page_size=page_size,
+    )
+
+
+@mcp.tool(name="list_greenhouse_experiments")
+def list_greenhouse_experiments_tool(
+    start_cursor: str | None = None,
+    page_size: int = 25,
+) -> dict[str, object]:
+    """List Greenhouse experiments from Notion with pagination."""
+    return list_greenhouse_experiments(start_cursor=start_cursor, page_size=page_size)
+
+
+def create_greenhouse_experiment(
+    name: str,
+    status: str | None = None,
+    priority: str | None = None,
+    description: str | None = None,
+) -> dict[str, object]:
+    """Create one Greenhouse experiment in the configured Notion database."""
+    settings = get_notion_settings()
+    setup_logging(settings.logging_settings())
+    return create_notion_greenhouse_experiment(
+        settings=settings,
+        name=name,
+        status=status,
+        priority=priority,
+        description=description,
+    )
+
+
+@mcp.tool(name="create_greenhouse_experiment")
+def create_greenhouse_experiment_tool(
+    name: str,
+    status: str | None = None,
+    priority: str | None = None,
+    description: str | None = None,
+) -> dict[str, object]:
+    """Create one Greenhouse experiment in the configured Notion database."""
+    return create_greenhouse_experiment(
+        name=name,
+        status=status,
+        priority=priority,
+        description=description,
+    )
+
+
+def update_greenhouse_experiment(
+    page_id: str,
+    name: str | None = None,
+    status: str | None = None,
+    priority: str | None = None,
+    description: str | None = None,
+) -> dict[str, object]:
+    """Update one Greenhouse experiment by Notion page ID."""
+    settings = get_notion_settings()
+    setup_logging(settings.logging_settings())
+    return update_notion_greenhouse_experiment(
+        settings=settings,
+        page_id=page_id,
+        name=name,
+        status=status,
+        priority=priority,
+        description=description,
+    )
+
+
+@mcp.tool(name="update_greenhouse_experiment")
+def update_greenhouse_experiment_tool(
+    page_id: str,
+    name: str | None = None,
+    status: str | None = None,
+    priority: str | None = None,
+    description: str | None = None,
+) -> dict[str, object]:
+    """Update one Greenhouse experiment by Notion page ID."""
+    return update_greenhouse_experiment(
+        page_id=page_id,
+        name=name,
+        status=status,
+        priority=priority,
         description=description,
     )
 

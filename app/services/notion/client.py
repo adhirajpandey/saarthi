@@ -46,8 +46,8 @@ class DatabaseSelector(BaseModel):
 
     @model_validator(mode="after")
     def _validate_database_key(self) -> "DatabaseSelector":
-        if self.database_key not in {"links", "work_items"}:
-            raise ValueError("database_key must be one of: links, work_items")
+        if self.database_key not in {"links", "work_items", "greenhouse_experiments"}:
+            raise ValueError("database_key must be one of: links, work_items, greenhouse_experiments")
         return self
 
 
@@ -164,6 +164,70 @@ class WorkItemUpdateInput(BaseModel):
         return self
 
 
+class GreenhouseExperimentCreateInput(BaseModel):
+    """Validated payload for creating a Greenhouse experiment."""
+
+    name: str
+    status: str | None = None
+    priority: str | None = None
+    description: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, value: object) -> object:
+        if not isinstance(value, Mapping):
+            return value
+        payload = dict(value)
+        for field in ("name", "status", "priority", "description"):
+            field_value = payload.get(field)
+            if isinstance(field_value, str):
+                payload[field] = field_value.strip() or None
+        return payload
+
+    @model_validator(mode="after")
+    def _validate_fields(self) -> "GreenhouseExperimentCreateInput":
+        if not self.name:
+            raise ValueError("name must not be empty")
+        return self
+
+
+class GreenhouseExperimentUpdateInput(BaseModel):
+    """Validated payload for updating a Greenhouse experiment."""
+
+    page_id: str
+    name: str | None = None
+    status: str | None = None
+    priority: str | None = None
+    description: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, value: object) -> object:
+        if not isinstance(value, Mapping):
+            return value
+        payload = dict(value)
+        for field in ("page_id", "name", "status", "priority", "description"):
+            field_value = payload.get(field)
+            if isinstance(field_value, str):
+                payload[field] = field_value.strip() or None
+        return payload
+
+    @model_validator(mode="after")
+    def _validate_fields(self) -> "GreenhouseExperimentUpdateInput":
+        self.page_id = parse_page_id(self.page_id)
+        if not any(
+            value is not None
+            for value in (
+                self.name,
+                self.status,
+                self.priority,
+                self.description,
+            )
+        ):
+            raise ValueError("at least one field must be provided")
+        return self
+
+
 def _build_headers(settings: NotionSettings) -> dict[str, str]:
     return {
         "Authorization": f"Bearer {settings.notion_api_key}",
@@ -247,7 +311,9 @@ def _database_url_for_key(settings: NotionSettings, database_key: str) -> str:
         return settings.notion_links_database_url
     if database_key == "work_items":
         return settings.notion_work_items_database_url
-    raise ValueError("database_key must be one of: links, work_items")
+    if database_key == "greenhouse_experiments":
+        return settings.notion_greenhouse_experiments_database_url
+    raise ValueError("database_key must be one of: links, work_items, greenhouse_experiments")
 
 
 def _resolve_database_id(settings: NotionSettings, database_key: str) -> str:
@@ -411,6 +477,36 @@ def _build_work_item_properties(
         "Status": status,
         "Priority": priority,
         "Category": category,
+        "Description": description,
+    }
+    properties: dict[str, Any] = {}
+    for property_name, value in field_values.items():
+        if value is None:
+            continue
+        property_schema = schema_properties.get(property_name)
+        if not isinstance(property_schema, Mapping):
+            raise NotionApiError(f"Notion data source is missing expected property: {property_name}")
+        property_type = property_schema.get("type")
+        if not isinstance(property_type, str) or not property_type:
+            raise NotionApiError(
+                f"Notion data source property has invalid type metadata: {property_name}"
+            )
+        properties[property_name] = _build_property_value(property_type, value)
+    return properties
+
+
+def _build_greenhouse_experiment_properties(
+    schema_properties: Mapping[str, Any],
+    *,
+    name: str | None = None,
+    status: str | None = None,
+    priority: str | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    field_values = {
+        "Name": name,
+        "Status": status,
+        "Priority": priority,
         "Description": description,
     }
     properties: dict[str, Any] = {}
@@ -609,9 +705,10 @@ def list_work_item_projects(
     pages = _query_all_data_source_pages(settings, data_source_id=data_source_id)
 
     project_counts: dict[str, int] = {}
+    known_projects = {"Vidwiz", "Trackcrow", "Habitat"}
     for page in pages:
         project_value = page["properties"].get("Project", {}).get("value")
-        if isinstance(project_value, str) and project_value:
+        if isinstance(project_value, str) and project_value in known_projects:
             project_counts[project_value] = project_counts.get(project_value, 0) + 1
 
     projects = [
@@ -722,6 +819,105 @@ def update_work_item(
                 status=payload.status,
                 priority=payload.priority,
                 category=payload.category,
+                description=payload.description,
+            )
+        },
+    )
+    return {
+        "success": True,
+        "page": _normalize_page(page),
+    }
+
+
+def create_greenhouse_experiment(
+    *,
+    settings: NotionSettings,
+    name: str,
+    status: str | None = None,
+    priority: str | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Create one page in the configured Greenhouse experiments data source."""
+    try:
+        payload = GreenhouseExperimentCreateInput.model_validate(
+            {
+                "name": name,
+                "status": status,
+                "priority": priority,
+                "description": description,
+            }
+        )
+    except ValidationError as exc:
+        message = (
+            exc.errors()[0]["msg"] if exc.errors() else "invalid Greenhouse experiment create payload"
+        )
+        raise ValueError(message) from exc
+
+    database_id = _resolve_database_id(settings, "greenhouse_experiments")
+    data_source = _resolve_data_source(settings, database_id=database_id)
+    data_source_id = data_source["id"]
+    schema_properties = _get_data_source_properties(settings, data_source_id=data_source_id)
+    page = _request_json(
+        settings,
+        method="POST",
+        path="/pages",
+        json_body={
+            "parent": {"data_source_id": data_source_id},
+            "properties": _build_greenhouse_experiment_properties(
+                schema_properties,
+                name=payload.name,
+                status=payload.status,
+                priority=payload.priority,
+                description=payload.description,
+            ),
+        },
+    )
+    return {
+        "success": True,
+        "page": _normalize_page(page),
+    }
+
+
+def update_greenhouse_experiment(
+    *,
+    settings: NotionSettings,
+    page_id: str,
+    name: str | None = None,
+    status: str | None = None,
+    priority: str | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Patch properties on one existing Greenhouse experiment page."""
+    try:
+        payload = GreenhouseExperimentUpdateInput.model_validate(
+            {
+                "page_id": page_id,
+                "name": name,
+                "status": status,
+                "priority": priority,
+                "description": description,
+            }
+        )
+    except ValidationError as exc:
+        message = (
+            exc.errors()[0]["msg"] if exc.errors() else "invalid Greenhouse experiment update payload"
+        )
+        raise ValueError(message) from exc
+
+    database_id = _resolve_database_id(settings, "greenhouse_experiments")
+    data_source = _resolve_data_source(settings, database_id=database_id)
+    data_source_id = data_source["id"]
+    schema_properties = _get_data_source_properties(settings, data_source_id=data_source_id)
+    page = _request_json(
+        settings,
+        method="PATCH",
+        path=f"/pages/{payload.page_id}",
+        json_body={
+            "properties": _build_greenhouse_experiment_properties(
+                schema_properties,
+                name=payload.name,
+                status=payload.status,
+                priority=payload.priority,
                 description=payload.description,
             )
         },

@@ -432,6 +432,39 @@ def test_notion_work_items_aliases_use_work_items_database_key(
     assert list_result["filters"]["project"] == "Trackcrow"
 
 
+def test_notion_greenhouse_experiment_aliases_use_greenhouse_database_key(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "get_notion_database_schema",
+        lambda **kwargs: {"success": True, "schema": kwargs},
+    )
+    monkeypatch.setattr(
+        server,
+        "query_notion_database",
+        lambda **kwargs: {"success": True, "filters": kwargs, "pages": []},
+    )
+
+    schema_result = server.get_greenhouse_experiments_schema()
+    list_result = server.list_greenhouse_experiments(page_size=10)
+
+    assert schema_result["schema"]["database_key"] == "greenhouse_experiments"
+    assert list_result["filters"]["database_key"] == "greenhouse_experiments"
+    assert list_result["filters"]["page_size"] == 10
+
+
 def test_list_work_item_projects_delegates_to_service(monkeypatch, runtime_config) -> None:
     runtime_config(
         {
@@ -526,3 +559,71 @@ def test_update_personal_work_item_delegates_to_service(monkeypatch, runtime_con
     assert result["page"]["page_id"] == "33333333-3333-3333-3333-333333333333"
     assert result["page"]["status"] == "In Progress"
     assert result["page"]["description"] == "Updated copy"
+
+
+def test_create_greenhouse_experiment_delegates_to_service(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "create_notion_greenhouse_experiment",
+        lambda **kwargs: {"success": True, "page": kwargs},
+    )
+
+    result = server.create_greenhouse_experiment(
+        name="Run capacity benchmark",
+        status="Pending",
+        priority="P2",
+        description="Measure the limit",
+    )
+
+    assert result["success"] is True
+    assert result["page"]["name"] == "Run capacity benchmark"
+    assert result["page"]["status"] == "Pending"
+    assert result["page"]["priority"] == "P2"
+    assert result["page"]["description"] == "Measure the limit"
+    assert "category" not in result["page"]
+
+
+def test_update_greenhouse_experiment_delegates_to_service(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+    server = _load_mcp_server()
+
+    monkeypatch.setattr(server, "setup_logging", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        server,
+        "update_notion_greenhouse_experiment",
+        lambda **kwargs: {"success": True, "page": kwargs},
+    )
+
+    result = server.update_greenhouse_experiment(
+        page_id="55555555-5555-5555-5555-555555555555",
+        status="Completed",
+        description="Observed result",
+    )
+
+    assert result["success"] is True
+    assert result["page"]["page_id"] == "55555555-5555-5555-5555-555555555555"
+    assert result["page"]["status"] == "Completed"
+    assert result["page"]["description"] == "Observed result"
+    assert "category" not in result["page"]

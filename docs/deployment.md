@@ -32,13 +32,16 @@ cp .env.example .env
   `GOOGLE_TASKS_CLIENT_ID`, `GOOGLE_TASKS_CLIENT_SECRET`,
   `GOOGLE_TASKS_TOKEN_PATH`, `NOTION_API_KEY`,
   `NOTION_LINKS_DATABASE_URL`, `NOTION_WORK_ITEMS_DATABASE_URL`,
+  `NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL`,
   SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as needed)
-- Share the Notion integration tied to `NOTION_API_KEY` with both configured
-  databases, with read access for the saved links database and read/write
-  access for the combined work items database.
-- `NOTION_WORK_ITEMS_DATABASE_URL` should point to the combined work items
+- Share the Notion integration tied to `NOTION_API_KEY` with all configured
+  Notion databases, with read access for the saved links database and
+  read/write access for the work items and Greenhouse experiments databases.
+- `NOTION_WORK_ITEMS_DATABASE_URL` should point to the work items
   database that uses a `Project` select with `Vidwiz`, `Trackcrow`, and
   `Habitat`.
+- `NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL` should point to the Greenhouse
+  experiments database with `Name`, `Status`, `Priority`, and `Description`.
 
 3. Start API and MCP:
 
@@ -106,6 +109,10 @@ For Notion MCP verification, confirm these tool calls succeed from the client:
 - `list_work_item_projects()`
 - `create_work_item(name="Saarthi MCP verification item", project="Habitat")`
 - `update_work_item(page_id="<page_id from create_work_item>", status="Completed")`
+- `get_greenhouse_experiments_schema()`
+- `list_greenhouse_experiments(page_size=5)`
+- `create_greenhouse_experiment(name="Saarthi MCP verification experiment")`
+- `update_greenhouse_experiment(page_id="<page_id from create_greenhouse_experiment>", status="Completed")`
 
 ## Common Ops
 

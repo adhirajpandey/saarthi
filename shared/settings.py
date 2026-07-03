@@ -21,6 +21,7 @@ ENV_OWNED_KEYS = frozenset(
         "NOTION_API_KEY",
         "NOTION_LINKS_DATABASE_URL",
         "NOTION_WORK_ITEMS_DATABASE_URL",
+        "NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL",
         "SMTP_EMAIL",
         "SMTP_APP_PASSWORD",
         "SMTP_HOST",
@@ -444,6 +445,7 @@ class NotionSettings(RuntimeSettings):
     notion_api_key: str
     notion_links_database_url: str
     notion_work_items_database_url: str
+    notion_greenhouse_experiments_database_url: str
 
 
 class BackupArtifactSettings(NtfyRuntimeSettings):

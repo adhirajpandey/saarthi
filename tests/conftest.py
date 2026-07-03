@@ -94,6 +94,7 @@ def runtime_config(
         "NOTION_API_KEY": "test-notion-token",
         "NOTION_LINKS_DATABASE_URL": "https://www.notion.so/workspace/Links-11111111111111111111111111111111?pvs=4",
         "NOTION_WORK_ITEMS_DATABASE_URL": "https://www.notion.so/workspace/Work-Items-22222222222222222222222222222222?pvs=4",
+        "NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL": "https://www.notion.so/workspace/Greenhouse-44444444444444444444444444444444?pvs=4",
         "TRACKCROW_DB_URL": "postgres://trackcrow",
         "TRACKCROW_MCP_USER_UUID": "trackcrow-user-uuid",
         "SMTP_EMAIL": "smtp@example.com",

@@ -503,7 +503,8 @@ Success:
 Remarks:
 
 - This tool is read-only.
-- `database_key` must be `links` or `work_items`.
+- `database_key` must be `links`, `work_items`, or
+  `greenhouse_experiments`.
 - The MCP response returns the resolved Notion `database_id` and `data_source_id`
   so agents can reason about the backing resource shape.
 
@@ -562,7 +563,8 @@ Success:
 Remarks:
 
 - This tool is read-only.
-- `database_key` must be `links` or `work_items`.
+- `database_key` must be `links`, `work_items`, or
+  `greenhouse_experiments`.
 - `page_size` defaults to `25` and is capped at `100`.
 - `project` is only valid when `database_key` is `work_items`.
 - Accepted `project` values are `Vidwiz`, `Trackcrow`, `Habitat`, and `all`.
@@ -655,7 +657,7 @@ Remarks:
 ### `get_work_items_database_schema`
 
 Short description:
-Returns schema metadata for the combined work items Notion database.
+Returns schema metadata for the work items Notion database.
 
 Expected input:
 
@@ -687,8 +689,8 @@ Remarks:
 - This tool is read-only.
 - This is a convenience wrapper around `get_notion_database_schema` for
   `database_key="work_items"`.
-- The combined work items database is expected to use a `Project` select with
-  `Vidwiz`, `Trackcrow`, and `Habitat`.
+- The work items database is expected to use a `Project` select with `Vidwiz`,
+  `Trackcrow`, and `Habitat`.
 - The returned schema is also used by the work-item write tools to serialize
   typed fields to the actual Notion property types configured in the live data
   source.
@@ -696,7 +698,7 @@ Remarks:
 ### `list_work_items`
 
 Short description:
-Lists work items from the combined Notion work items database.
+Lists work items from the Notion work items database.
 
 Expected input:
 
@@ -756,7 +758,7 @@ Remarks:
 ### `create_work_item`
 
 Short description:
-Creates one work item in the combined Notion work items database.
+Creates one work item in the Notion work items database.
 
 Expected input:
 
@@ -814,7 +816,7 @@ Remarks:
 ### `update_work_item`
 
 Short description:
-Updates one work item in the combined Notion work items database by page ID.
+Updates one work item in the Notion work items database by page ID.
 
 Expected input:
 
@@ -863,6 +865,186 @@ Remarks:
 - Property serialization is schema-driven; for example, Saarthi does not assume
   the `Status` field uses the Notion `status` property type.
 
+### `get_greenhouse_experiments_schema`
+
+Short description:
+Returns schema metadata for the Greenhouse experiments Notion database.
+
+Expected input:
+
+```json
+{}
+```
+
+Expected output:
+
+```json
+{
+  "success": true,
+  "database_key": "greenhouse_experiments",
+  "database_id": "391fad61-8b95-8091-a375-e80219bc6c2f",
+  "data_source_id": "391fad61-8b95-80fd-b699-000b01d7ae5d",
+  "properties": {
+    "Name": { "id": "title", "name": "Name", "type": "title" },
+    "Status": { "id": "...", "name": "Status", "type": "select" },
+    "Priority": { "id": "...", "name": "Priority", "type": "select" },
+    "Description": { "id": "...", "name": "Description", "type": "rich_text" }
+  }
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- This is a convenience wrapper around `get_notion_database_schema` for
+  `database_key="greenhouse_experiments"`.
+- The Greenhouse experiments database intentionally does not expose `Project`
+  or `Category`.
+
+### `list_greenhouse_experiments`
+
+Short description:
+Lists Greenhouse experiments from the configured Notion database.
+
+Expected input:
+
+```json
+{
+  "page_size": 25,
+  "start_cursor": null
+}
+```
+
+Expected output:
+
+```json
+{
+  "success": true,
+  "count": 1,
+  "filters": {
+    "database_key": "greenhouse_experiments",
+    "database_id": "391fad61-8b95-8091-a375-e80219bc6c2f",
+    "data_source_id": "391fad61-8b95-80fd-b699-000b01d7ae5d",
+    "start_cursor": null,
+    "page_size": 25,
+    "project": "all"
+  },
+  "has_more": false,
+  "next_cursor": null,
+  "pages": [
+    {
+      "page_id": "391fad61-8b95-81c2-8870-d5618f920e73",
+      "url": "https://www.notion.so/...",
+      "properties": {
+        "Name": { "type": "title", "value": "Postgres read-capacity benchmarking" },
+        "Status": { "type": "select", "value": "Pending" },
+        "Priority": { "type": "select", "value": "P2" },
+        "Description": {
+          "type": "rich_text",
+          "value": "Measure how many reads the current setup can sustain."
+        }
+      }
+    }
+  ]
+}
+```
+
+Remarks:
+
+- This tool is read-only.
+- This is a convenience wrapper around `query_notion_database` for
+  `database_key="greenhouse_experiments"`.
+- `page_size` defaults to `25` and is capped at `100`.
+
+### `create_greenhouse_experiment`
+
+Short description:
+Creates one Greenhouse experiment in the configured Notion database.
+
+Expected input:
+
+```json
+{
+  "name": "Postgres read-capacity benchmarking",
+  "status": "Pending",
+  "priority": "P2",
+  "description": "Measure how many reads the current setup can sustain."
+}
+```
+
+Expected output:
+
+```json
+{
+  "success": true,
+  "page": {
+    "page_id": "391fad61-8b95-8139-9948-d93d9bc737ee",
+    "url": "https://www.notion.so/...",
+    "properties": {
+      "Name": { "type": "title", "value": "Postgres read-capacity benchmarking" },
+      "Status": { "type": "select", "value": "Pending" },
+      "Priority": { "type": "select", "value": "P2" },
+      "Description": {
+        "type": "rich_text",
+        "value": "Measure how many reads the current setup can sustain."
+      }
+    }
+  }
+}
+```
+
+Remarks:
+
+- This tool is write-capable.
+- `name` is required.
+- `status`, `priority`, and `description` are optional.
+- Greenhouse experiments intentionally do not accept `project` or `category`.
+- Property serialization is schema-driven.
+
+### `update_greenhouse_experiment`
+
+Short description:
+Updates one Greenhouse experiment by Notion page ID.
+
+Expected input:
+
+```json
+{
+  "page_id": "391fad61-8b95-8139-9948-d93d9bc737ee",
+  "status": "Completed",
+  "description": "Benchmark finished and notes captured."
+}
+```
+
+Expected output:
+
+```json
+{
+  "success": true,
+  "page": {
+    "page_id": "391fad61-8b95-8139-9948-d93d9bc737ee",
+    "url": "https://www.notion.so/...",
+    "properties": {
+      "Status": { "type": "select", "value": "Completed" },
+      "Description": {
+        "type": "rich_text",
+        "value": "Benchmark finished and notes captured."
+      }
+    }
+  }
+}
+```
+
+Remarks:
+
+- This tool is write-capable.
+- `page_id` is required and must be a valid Notion page ID.
+- At least one of `name`, `status`, `priority`, or `description` must be
+  provided.
+- Only the provided fields are patched.
+- Greenhouse experiments intentionally do not accept `project` or `category`.
+- Property serialization is schema-driven.
+
 ### `list_work_item_projects`
 
 Short description:
@@ -906,6 +1088,7 @@ Secrets / auth (`.env`):
 - `NOTION_API_KEY`
 - `NOTION_LINKS_DATABASE_URL`
 - `NOTION_WORK_ITEMS_DATABASE_URL`
+- `NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL`
 - `TRACKCROW_DB_URL`
 - `TRACKCROW_MCP_USER_UUID`
 
@@ -929,12 +1112,13 @@ Remarks:
   created by `uv run google-tasks-auth` or
   `uv run google-tasks-auth --headless`.
 - `NOTION_API_KEY` must belong to a Notion integration with read/write access
-  to the configured `work_items` database and read access to any databases used
-  by read-only tools.
+  to the configured `work_items` and `greenhouse_experiments` databases, and
+  read access to any databases used by read-only tools.
 - `NOTION_LINKS_DATABASE_URL` must reference the saved links database.
-- `NOTION_WORK_ITEMS_DATABASE_URL` must reference the combined work items
-  database.
-- The Notion integration must be shared with both configured Notion databases.
+- `NOTION_WORK_ITEMS_DATABASE_URL` must reference the work items database.
+- `NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL` must reference the Greenhouse
+  experiments database.
+- The Notion integration must be shared with all configured Notion databases.
 - `TRACKCROW_MCP_USER_UUID` fixes the Trackcrow user scope for transaction
   searches.
 - The SSH private key is mounted into the `saarthi-mcp` container by
@@ -958,6 +1142,13 @@ list_work_items(project="all", page_size=5)
 list_work_item_projects()
 create_work_item(name="Saarthi MCP verification item", project="Habitat")
 update_work_item(page_id="<page_id from create_work_item>", status="Completed")
+get_greenhouse_experiments_schema()
+list_greenhouse_experiments(page_size=5)
+create_greenhouse_experiment(name="Saarthi MCP verification experiment")
+update_greenhouse_experiment(
+    page_id="<page_id from create_greenhouse_experiment>",
+    status="Completed",
+)
 ```
 
 ## Runtime Boundaries

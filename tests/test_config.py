@@ -177,6 +177,7 @@ def test_notion_settings_require_api_key(monkeypatch) -> None:
     monkeypatch.delenv("NOTION_API_KEY", raising=False)
     monkeypatch.setenv("NOTION_LINKS_DATABASE_URL", "https://notion.so/links")
     monkeypatch.setenv("NOTION_WORK_ITEMS_DATABASE_URL", "https://notion.so/work")
+    monkeypatch.setenv("NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL", "https://notion.so/greenhouse")
 
     with pytest.raises(ValueError, match="notion_api_key"):
         get_notion_settings()
@@ -186,6 +187,7 @@ def test_notion_settings_require_links_database_url(monkeypatch) -> None:
     monkeypatch.setenv("NOTION_API_KEY", "secret")
     monkeypatch.delenv("NOTION_LINKS_DATABASE_URL", raising=False)
     monkeypatch.setenv("NOTION_WORK_ITEMS_DATABASE_URL", "https://notion.so/work")
+    monkeypatch.setenv("NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL", "https://notion.so/greenhouse")
 
     with pytest.raises(ValueError, match="notion_links_database_url"):
         get_notion_settings()
@@ -195,8 +197,19 @@ def test_notion_settings_require_work_items_database_url(monkeypatch) -> None:
     monkeypatch.setenv("NOTION_API_KEY", "secret")
     monkeypatch.setenv("NOTION_LINKS_DATABASE_URL", "https://notion.so/links")
     monkeypatch.delenv("NOTION_WORK_ITEMS_DATABASE_URL", raising=False)
+    monkeypatch.setenv("NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL", "https://notion.so/greenhouse")
 
     with pytest.raises(ValueError, match="notion_work_items_database_url"):
+        get_notion_settings()
+
+
+def test_notion_settings_require_greenhouse_experiments_database_url(monkeypatch) -> None:
+    monkeypatch.setenv("NOTION_API_KEY", "secret")
+    monkeypatch.setenv("NOTION_LINKS_DATABASE_URL", "https://notion.so/links")
+    monkeypatch.setenv("NOTION_WORK_ITEMS_DATABASE_URL", "https://notion.so/work")
+    monkeypatch.delenv("NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL", raising=False)
+
+    with pytest.raises(ValueError, match="notion_greenhouse_experiments_database_url"):
         get_notion_settings()
 
 

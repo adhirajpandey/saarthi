@@ -110,21 +110,28 @@ Current tool surface:
 - `get_google_task(...)`: fetches one Google task by ID from one Google task
   list.
 - `get_notion_database_schema(database_key)`: returns schema metadata for the
-  configured Notion `links` or `work_items` database.
+  configured Notion `links`, `work_items`, or `greenhouse_experiments`
+  database.
 - `query_notion_database(...)`: queries rows from the configured Notion
-  `links` or `work_items` database.
+  `links`, `work_items`, or `greenhouse_experiments` database.
 - `get_links_database_schema()`: returns schema metadata for the saved links
   Notion database.
 - `list_saved_links(...)`: lists saved links from Notion.
-- `get_work_items_database_schema()`: returns schema metadata for the combined
+- `get_work_items_database_schema()`: returns schema metadata for the
   work items Notion database.
-- `list_work_items(...)`: lists combined Notion work items, optionally filtered
-  by project.
+- `list_work_items(...)`: lists Notion work items, optionally filtered by
+  project.
 - `list_work_item_projects()`: lists project names that currently have work
   items, with counts.
-- `create_work_item(...)`: creates a work item in the combined Notion work
-  items database.
+- `create_work_item(...)`: creates a work item in the Notion work items
+  database.
 - `update_work_item(...)`: updates a work item by Notion `page_id`.
+- `get_greenhouse_experiments_schema()`: returns schema metadata for the
+  Greenhouse experiments Notion database.
+- `list_greenhouse_experiments(...)`: lists Greenhouse experiments from Notion.
+- `create_greenhouse_experiment(...)`: creates a Greenhouse experiment.
+- `update_greenhouse_experiment(...)`: updates a Greenhouse experiment by
+  Notion `page_id`.
 
 Detailed MCP contracts are documented in `mcp.md`.
 
@@ -143,21 +150,24 @@ Flow:
 3. Fetch the single data source attached to that database.
 4. Read schema metadata or query rows from the Notion Data Sources API for
    read-only tools.
-5. Fetch the live data-source schema for work-item write tools.
-6. Serialize typed work-item fields to the actual Notion property types exposed
-   by that schema, then create or patch the page.
+5. Fetch the live data-source schema for write tools.
+6. Serialize typed work-item or Greenhouse experiment fields to the actual
+   Notion property types exposed by that schema, then create or patch the page.
 7. Normalize page properties into agent-friendly MCP payloads.
 
 Current Notion scope:
 
 - `links`: saved links database, read-only
-- `work_items`: combined work items database, read/write through MCP
+- `work_items`: work items database, read/write through MCP
+- `greenhouse_experiments`: Greenhouse experiments database, read/write through
+  MCP
 
-Work items now live in one combined Notion database with a `Project` select
-property. Current project options are `Vidwiz`, `Trackcrow`, and `Habitat`.
-Current typed work-item write fields are `Name`, `Project`, `Status`,
-`Priority`, `Category`, and `Description`.
-The write path is schema-driven and does not assume any one fixed Notion
+Work items use a `Project` select with current options `Vidwiz`, `Trackcrow`,
+and `Habitat`. Current typed work-item write fields are `Name`, `Project`,
+`Status`, `Priority`, `Category`, and `Description`.
+Greenhouse experiments live in their own Notion database and expose `Name`,
+`Status`, `Priority`, and `Description`.
+The write paths are schema-driven and do not assume any one fixed Notion
 property subtype for fields such as `Status`.
 
 ## Script Runtime
@@ -294,8 +304,9 @@ GDrive backup, and Shikari runtimes.
   `google-tasks-auth` and used by Google Tasks MCP tools
 - `NOTION_API_KEY`: integration token used by the Notion MCP tools
 - `NOTION_LINKS_DATABASE_URL`: saved links Notion database URL or ID
-- `NOTION_WORK_ITEMS_DATABASE_URL`: combined work items Notion database URL or
-  ID
+- `NOTION_WORK_ITEMS_DATABASE_URL`: work items Notion database URL or ID
+- `NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL`: Greenhouse experiments Notion
+  database URL or ID
 - `scripts/schedule_scripts/config.json`: scheduler input
 - `data/shikari/sessions`: merged Shikari + Saarthi sensor sessions
 - `data/shikari/outputs`: generated visualization artifacts

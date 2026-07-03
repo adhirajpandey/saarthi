@@ -7,11 +7,13 @@ import pytest
 from app.services.notion.client import (
     NOTION_VERSION,
     NotionApiError,
+    create_greenhouse_experiment,
     create_work_item,
     get_database_schema,
     list_work_item_projects,
     parse_database_id,
     query_database,
+    update_greenhouse_experiment,
     update_work_item,
 )
 from shared.settings import get_notion_settings
@@ -282,6 +284,43 @@ def test_query_database_rejects_project_filter_for_links(runtime_config) -> None
         query_database(settings=settings, database_key="links", project="Habitat")
 
 
+def test_query_database_rejects_greenhouse_project_for_work_items(runtime_config) -> None:
+    runtime_config()
+    settings = get_notion_settings()
+
+    with pytest.raises(ValueError, match="project must be one of: all, Vidwiz, Trackcrow, Habitat"):
+        query_database(settings=settings, database_key="work_items", project="Greenhouse")
+
+
+def test_query_database_accepts_greenhouse_experiments_database(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config()
+    settings = get_notion_settings()
+    calls: list[dict[str, object]] = []
+
+    def _fake_request(**kwargs):
+        calls.append(kwargs)
+        if kwargs["url"].endswith("/databases/44444444-4444-4444-4444-444444444444"):
+            return _FakeResponse(
+                {
+                    "object": "database",
+                    "id": "44444444-4444-4444-4444-444444444444",
+                    "data_sources": [{"id": "greenhouse-data-source"}],
+                }
+            )
+        return _FakeResponse({"object": "list", "has_more": False, "next_cursor": None, "results": []})
+
+    monkeypatch.setattr("app.services.notion.client.requests.request", _fake_request)
+
+    result = query_database(settings=settings, database_key="greenhouse_experiments", page_size=5)
+
+    assert result["success"] is True
+    assert result["filters"]["database_key"] == "greenhouse_experiments"
+    assert result["filters"]["data_source_id"] == "greenhouse-data-source"
+    assert calls[1]["json"] == {"page_size": 5}
+
+
 def test_create_work_item_posts_expected_properties(monkeypatch, runtime_config) -> None:
     runtime_config()
     settings = get_notion_settings()
@@ -399,6 +438,106 @@ def test_create_work_item_posts_expected_properties(monkeypatch, runtime_config)
     }
 
 
+def test_create_work_item_rejects_greenhouse_project(runtime_config) -> None:
+    runtime_config()
+    settings = get_notion_settings()
+
+    with pytest.raises(ValueError, match="project must be one of: Vidwiz, Trackcrow, Habitat"):
+        create_work_item(settings=settings, name="Greenhouse item", project="Greenhouse")
+
+
+def test_create_greenhouse_experiment_posts_expected_properties(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config()
+    settings = get_notion_settings()
+    calls: list[dict[str, object]] = []
+
+    def _fake_request(**kwargs):
+        calls.append(kwargs)
+        if kwargs["url"].endswith("/databases/44444444-4444-4444-4444-444444444444"):
+            return _FakeResponse(
+                {
+                    "object": "database",
+                    "id": "44444444-4444-4444-4444-444444444444",
+                    "data_sources": [{"id": "greenhouse-data-source"}],
+                }
+            )
+        if kwargs["url"].endswith("/data_sources/greenhouse-data-source"):
+            return _FakeResponse(
+                {
+                    "object": "data_source",
+                    "id": "greenhouse-data-source",
+                    "properties": {
+                        "Name": {"id": "title", "type": "title"},
+                        "Status": {"id": "status", "type": "select"},
+                        "Priority": {"id": "priority", "type": "select"},
+                        "Description": {"id": "description", "type": "rich_text"},
+                    },
+                }
+            )
+        return _FakeResponse(
+            {
+                "id": "page-1",
+                "url": "https://notion.so/page-1",
+                "created_time": "2026-07-01T00:00:00.000Z",
+                "last_edited_time": "2026-07-02T00:00:00.000Z",
+                "archived": False,
+                "in_trash": False,
+                "properties": {
+                    "Name": {
+                        "id": "title",
+                        "type": "title",
+                        "title": [{"plain_text": "Greenhouse experiment"}],
+                    },
+                    "Status": {"id": "status", "type": "select", "select": {"name": "Pending"}},
+                    "Priority": {"id": "priority", "type": "select", "select": {"name": "P2"}},
+                    "Description": {
+                        "id": "description",
+                        "type": "rich_text",
+                        "rich_text": [{"plain_text": "Run the experiment"}],
+                    },
+                },
+            }
+        )
+
+    monkeypatch.setattr("app.services.notion.client.requests.request", _fake_request)
+
+    result = create_greenhouse_experiment(
+        settings=settings,
+        name="Greenhouse experiment",
+        status="Pending",
+        priority="P2",
+        description="Run the experiment",
+    )
+
+    assert result["success"] is True
+    assert result["page"]["properties"]["Name"]["value"] == "Greenhouse experiment"
+    assert calls[2]["json"] == {
+        "parent": {"data_source_id": "greenhouse-data-source"},
+        "properties": {
+            "Name": {
+                "title": [
+                    {
+                        "type": "text",
+                        "text": {"content": "Greenhouse experiment"},
+                    }
+                ]
+            },
+            "Status": {"select": {"name": "Pending"}},
+            "Priority": {"select": {"name": "P2"}},
+            "Description": {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {"content": "Run the experiment"},
+                    }
+                ]
+            },
+        },
+    }
+
+
 def test_update_work_item_patches_only_provided_fields(monkeypatch, runtime_config) -> None:
     runtime_config()
     settings = get_notion_settings()
@@ -502,6 +641,85 @@ def test_update_work_item_requires_at_least_one_field(runtime_config) -> None:
             settings=settings,
             page_id="33333333-3333-3333-3333-333333333333",
         )
+
+
+def test_update_greenhouse_experiment_patches_only_provided_fields(
+    monkeypatch, runtime_config
+) -> None:
+    runtime_config()
+    settings = get_notion_settings()
+    calls: list[dict[str, object]] = []
+
+    def _fake_request(**kwargs):
+        calls.append(kwargs)
+        if kwargs["url"].endswith("/databases/44444444-4444-4444-4444-444444444444"):
+            return _FakeResponse(
+                {
+                    "object": "database",
+                    "id": "44444444-4444-4444-4444-444444444444",
+                    "data_sources": [{"id": "greenhouse-data-source"}],
+                }
+            )
+        if kwargs["url"].endswith("/data_sources/greenhouse-data-source"):
+            return _FakeResponse(
+                {
+                    "object": "data_source",
+                    "id": "greenhouse-data-source",
+                    "properties": {
+                        "Name": {"id": "title", "type": "title"},
+                        "Status": {"id": "status", "type": "select"},
+                        "Priority": {"id": "priority", "type": "select"},
+                        "Description": {"id": "description", "type": "rich_text"},
+                    },
+                }
+            )
+        return _FakeResponse(
+            {
+                "id": "55555555-5555-5555-5555-555555555555",
+                "url": "https://notion.so/page-1",
+                "created_time": "2026-07-01T00:00:00.000Z",
+                "last_edited_time": "2026-07-02T00:00:00.000Z",
+                "archived": False,
+                "in_trash": False,
+                "properties": {
+                    "Status": {
+                        "id": "status",
+                        "type": "select",
+                        "select": {"name": "Completed"},
+                    },
+                    "Description": {
+                        "id": "description",
+                        "type": "rich_text",
+                        "rich_text": [{"plain_text": "Updated result"}],
+                    },
+                },
+            }
+        )
+
+    monkeypatch.setattr("app.services.notion.client.requests.request", _fake_request)
+
+    result = update_greenhouse_experiment(
+        settings=settings,
+        page_id="55555555-5555-5555-5555-555555555555",
+        status="Completed",
+        description="Updated result",
+    )
+
+    assert result["success"] is True
+    assert result["page"]["properties"]["Status"]["value"] == "Completed"
+    assert calls[2]["json"] == {
+        "properties": {
+            "Status": {"select": {"name": "Completed"}},
+            "Description": {
+                "rich_text": [
+                    {
+                        "type": "text",
+                        "text": {"content": "Updated result"},
+                    }
+                ]
+            },
+        }
+    }
 
 
 def test_create_work_item_surfaces_notion_api_errors(monkeypatch, runtime_config) -> None:
@@ -609,6 +827,21 @@ def test_list_work_item_projects_returns_projects_with_counts(
                                     "id": "project",
                                     "type": "select",
                                     "select": {"name": "Trackcrow"},
+                                }
+                            },
+                        },
+                        {
+                            "id": "page-greenhouse",
+                            "url": "https://notion.so/page-greenhouse",
+                            "created_time": "2026-07-01T00:00:00.000Z",
+                            "last_edited_time": "2026-07-02T00:00:00.000Z",
+                            "archived": False,
+                            "in_trash": False,
+                            "properties": {
+                                "Project": {
+                                    "id": "project",
+                                    "type": "select",
+                                    "select": {"name": "Greenhouse"},
                                 }
                             },
                         },
