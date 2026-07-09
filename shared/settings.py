@@ -61,7 +61,6 @@ API_CONFIG_KEYS = frozenset(
         "APP_NAME",
         "LOCATION_DB_PATH",
         "GEOFENCE_MAPPING_PATH",
-        "DELL_TAILSCALE_IP",
         "GEOFENCE_SUBJECT_TEMPLATE",
         "GEOFENCE_EMAIL_TEMPLATE",
         "GEOFENCE_WHATSAPP_ENTERED_TEMPLATE",
@@ -348,7 +347,6 @@ class ApiSettings(RuntimeSettings):
     app_name: str
     location_db_path: str
     geofence_mapping_path: str
-    dell_tailscale_ip: str
     admin_token: str
     geofence_subject_template: str
     geofence_email_template: str
@@ -503,38 +501,6 @@ class BackupGdriveSettings(NtfyRuntimeSettings):
                 item.strip() for item in folders.split(",") if item.strip()
             ]
         return value
-
-
-class SchedulerScriptSettings(BaseModel):
-    """Systemd scheduling settings loaded from JSON."""
-
-    name: str
-    command: str
-    time: str
-    description: str
-
-
-class SchedulerSettings(BaseModel):
-    """Scheduler script configuration model."""
-
-    systemd_path: str
-    uv_bin: str
-    working_dir: str
-    home_dir: str
-    scripts: list[SchedulerScriptSettings]
-
-    @model_validator(mode="after")
-    def _validate_times(self) -> "SchedulerSettings":
-        for script in self.scripts:
-            parts = script.time.split(":")
-            if len(parts) != 2:
-                raise ValueError(f"Invalid time format for {script.name}: {script.time}")
-            hour, minute = parts
-            if not hour.isdigit() or not minute.isdigit():
-                raise ValueError(f"Invalid time format for {script.name}: {script.time}")
-            if int(hour) not in range(0, 24) or int(minute) not in range(0, 60):
-                raise ValueError(f"Invalid time value for {script.name}: {script.time}")
-        return self
 
 
 class ShikariSettings(RuntimeSettings):

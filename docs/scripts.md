@@ -12,7 +12,6 @@ Scripts are exposed via `pyproject.toml`:
 - `cloudflare-dns` -> `scripts.cloudflare_dns.main:main`
 - `google-tasks-auth` -> `scripts.google_tasks_auth.main:main`
 - `restore-dbs-test` -> `scripts.restore_dbs_test.main:main`
-- `schedule-scripts` -> `scripts.schedule_scripts.main:main`
 - `shikari-visualize` -> `scripts.shikari_visualize.main:main`
 
 Remarks:
@@ -82,7 +81,8 @@ Secrets / connections (`.env`):
 
 System prerequisites:
 
-- `pg_dump` available on PATH
+- `pg_dump` available on PATH. In Docker deployment, use
+  `docker compose run --rm --no-deps saarthi-cron backup-dbs`.
 - network access to DB + S3
 
 Expected output:
@@ -128,7 +128,11 @@ Secrets / connections (`.env`):
 
 System prerequisites:
 
-- `rclone` installed and configured for referenced remotes
+- `rclone` installed and configured for referenced remotes. In Docker
+  deployment, set `SAARTHI_RCLONE_CONFIG_PATH`. If the config references a
+  service account file, also set `SAARTHI_RCLONE_SERVICE_ACCOUNT_PATH`. The
+  container mounts those files under `/app/secrets/rclone/`, then use
+  `docker compose run --rm --no-deps saarthi-cron backup-gdrive`.
 - network access to source/destination
 
 Expected output:
@@ -372,49 +376,6 @@ Remarks:
 - The written token file includes refresh token state and is reused by the
   Google Tasks MCP tools.
 
-### `schedule-scripts`
-
-Short description:
-Generates systemd service/timer units from JSON config and enables timers.
-
-ASCII flow:
-
-```text
-Load scripts/schedule_scripts/config.json
-  -> validate SchedulerSettings
-  -> generate *.service + *.timer files
-  -> systemctl daemon-reload
-  -> systemctl enable --now <name>.timer
-  -> exit 0 or 1
-```
-
-Expected input:
-
-JSON config (`scripts/schedule_scripts/config.json`):
-
-- `systemd_path`
-- `uv_bin`
-- `working_dir`
-- `home_dir`
-- `scripts[]` with `name`, `command`, `time`, `description`
-
-System prerequisites:
-
-- systemd-based host
-- write permission to configured `systemd_path`
-- permission to run `systemctl`
-
-Expected output:
-
-- Generated `.service` and `.timer` files for each configured script.
-- Enabled timers on success.
-- Exit code `0` on full success, `1` on permission/systemctl/validation failures.
-
-Remarks:
-
-- Script does not use ntfy/WhatsApp notifications.
-- Invalid `time` values in config are rejected by model validation.
-
 ### `shikari-visualize`
 
 Short description:
@@ -473,12 +434,11 @@ Remarks:
 
 ## Run Commands
 
-- `uv run backup-dbs`
-- `uv run backup-gdrive`
+- `docker compose run --rm --no-deps saarthi-cron backup-dbs`
+- `docker compose run --rm --no-deps saarthi-cron backup-gdrive`
 - `uv run cloudflare-zones list`
 - `uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied`
 - `uv run google-tasks-auth --headless`
 - `uv run restore-dbs-test`
-- `sudo env "PATH=$PATH" uv run schedule-scripts`
 - `uv run shikari-visualize --list`
 - `uv run shikari-visualize 2026-03-13-22:02:58 --output html png`

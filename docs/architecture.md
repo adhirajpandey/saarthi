@@ -37,13 +37,12 @@ All surfaces reuse shared modules for settings, logging, and notification transp
       |                    |     | tool access      |        | cloudflare-dns /         |
       |                    |     |                  |        | google-tasks-auth /      |
       |                    |     |                  |        | restore-dbs-test /       |
-      |                    |     |                  |        | schedule-scripts /       |
       |                    |     |                  |        | shikari-visualize        |
       +---------+----------+     +--------+---------+        +---------+----------------+
                 |                         |                            |
       +---------v----------+     +--------v---------+        +---------v----------------+
       | SQLite + Geofence  |     | WhatsApp tool    |        | pg_dump / rclone /       |
-      | transition engine  |     | via SSH sender   |        | systemd + cloud uploads  |
+      | transition engine  |     | via SSH sender   |        | cloud uploads            |
       +--------------------+     +------------------+        +--------------------------+
 
                           +------------------------------+
@@ -77,8 +76,7 @@ Layer responsibilities:
 - Routers: HTTP contract + dependency wiring
 - Dependencies: auth and settings access
 - Services: persistence, transition detection, notification dispatch
-- Health endpoint also reports host tool availability (`tailscale`, `rclone`, `pg_dump`)
-  and performs a Tailscale reachability probe to Dell home.
+- Health endpoint is liveness-only and returns `{"status": "healthy"}`.
 
 Error shape:
 
@@ -244,15 +242,6 @@ Flow:
 4. Call the Google Tasks API.
 5. Normalize task list or task payloads for MCP consumers.
 
-### `schedule-scripts`
-
-Flow:
-
-1. Load scheduler JSON config.
-2. Validate scheduler model.
-3. Generate systemd unit files.
-4. Reload daemon and enable timers.
-
 ### `shikari-visualize`
 
 Flow:
@@ -307,7 +296,6 @@ GDrive backup, and Shikari runtimes.
 - `NOTION_WORK_ITEMS_DATABASE_URL`: work items Notion database URL or ID
 - `NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL`: Greenhouse experiments Notion
   database URL or ID
-- `scripts/schedule_scripts/config.json`: scheduler input
 - `data/shikari/sessions`: merged Shikari + Saarthi sensor sessions
 - `data/shikari/outputs`: generated visualization artifacts
 - Shikari config keys: `SHIKARI_SESSIONS_PATH`, `SHIKARI_OUTPUTS_PATH`,

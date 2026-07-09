@@ -30,7 +30,6 @@ cloudflare-zones = "scripts.cloudflare_zones.main:main"
 cloudflare-dns = "scripts.cloudflare_dns.main:main"
 google-tasks-auth = "scripts.google_tasks_auth.main:main"
 restore-dbs-test = "scripts.restore_dbs_test.main:main"
-schedule-scripts = "scripts.schedule_scripts.main:main"
 shikari-visualize = "scripts.shikari_visualize.main:main"
 
 [tool.uv]

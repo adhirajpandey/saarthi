@@ -1,2 +1,0 @@
-"""Systemd schedule generator package."""
-

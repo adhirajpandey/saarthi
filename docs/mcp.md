@@ -1121,8 +1121,10 @@ Remarks:
 - The Notion integration must be shared with all configured Notion databases.
 - `TRACKCROW_MCP_USER_UUID` fixes the Trackcrow user scope for transaction
   searches.
-- The SSH private key is mounted into the `saarthi-mcp` container by
-  `docker-compose.yml`.
+- The SSH private key and Google Tasks token file are mounted into the
+  `saarthi-mcp` container by `docker-compose.yml` from host paths declared in
+  `.env`. Google Tasks credentials use the fixed internal secret layout under
+  `/app/secrets`.
 
 ## Verify
 

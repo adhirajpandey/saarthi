@@ -6,7 +6,7 @@ Raspberry Pi Linux host with:
 
 - API in Docker Compose (`saarthi-api`)
 - MCP server in Docker Compose (`saarthi-mcp`)
-- Backups scheduled via host systemd timers (`schedule-scripts`)
+- Backups scheduled by host cron invoking Docker Compose one-shot runs
 - Local Shikari visualization CLI for ride dashboards (`shikari-visualize`)
 
 ## Quick Setup
@@ -33,7 +33,15 @@ cp .env.example .env
   `GOOGLE_TASKS_TOKEN_PATH`, `NOTION_API_KEY`,
   `NOTION_LINKS_DATABASE_URL`, `NOTION_WORK_ITEMS_DATABASE_URL`,
   `NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL`,
-  SMTP/ntfy/AWS/DB URLs, `RESTORE_PG_PASSWORD` as needed)
+  `TRACKCROW_MCP_USER_UUID`, SMTP/ntfy/AWS/DB URLs,
+  `RESTORE_PG_PASSWORD` as needed)
+- `.env`: required Docker host-side bind mount paths
+  (`SAARTHI_DATA_PATH`, `SAARTHI_LOGS_PATH`, `SAARTHI_SSH_KEY_PATH`,
+  `SAARTHI_GOOGLE_TASKS_TOKEN_PATH`, `SAARTHI_RCLONE_CONFIG_PATH`,
+  `SAARTHI_RCLONE_SERVICE_ACCOUNT_PATH`). Container-side targets are fixed in
+  `docker-compose.yml` under `/app/data`, `/app/logs`, and `/app/secrets/...`.
+  Set `GOOGLE_TASKS_TOKEN_PATH` to `/app/secrets/google/google-tasks-token.json`
+  so the runtime setting matches the fixed container target.
 - Share the Notion integration tied to `NOTION_API_KEY` with all configured
   Notion databases, with read access for the saved links database and
   read/write access for the work items and Greenhouse experiments databases.
@@ -49,19 +57,25 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-`saarthi-api` mounts `tailscale`, `rclone`, and `pg_dump` binaries from host, and
-mounts the Tailscale runtime socket path so `/health` can evaluate
-`dell_home_connectivity`.
-For `pg_dump_available`, `/health` checks host-mounted PATH presence of `pg_dump`.
+`docker-compose.yml` uses one file for API, MCP, and the profiled ops service.
+The default `up` starts only `saarthi-api` and `saarthi-mcp`.
 
 `saarthi-mcp` serves the MCP endpoint on `http://localhost:8001/mcp` and requires
 `Authorization: Bearer <MCP_TOKEN>`. Detailed MCP setup is documented in `mcp.md`.
 
-4. Configure backup timers:
+4. Configure host cron:
 
 ```bash
-sudo env "PATH=$PATH" uv run schedule-scripts
+docker compose run --rm --no-deps saarthi-cron backup-dbs
+docker compose run --rm --no-deps saarthi-cron backup-gdrive
 ```
+
+Add those commands to the host crontab at the desired schedule. The
+`saarthi-cron` service is under the `cron` profile and is intended for
+one-shot `docker compose run` invocations, not long-running `up`.
+For services running on the Docker host itself, use `host.docker.internal`
+in `.env` connection URLs rather than `localhost`; inside a container,
+`localhost` points at the container.
 
 5. Ensure Shikari data paths exist:
 
@@ -80,10 +94,8 @@ headless host, open the printed Google login URL on another machine, complete
 sign-in, copy the final `http://127.0.0.1:1/...` redirect URL from the browser
 address bar, and paste it back into the terminal prompt.
 
-The current `docker-compose.yml` mounts `/home/adhiraj/.config/saarthi` into
-`saarthi-mcp` as read-only so a host token file at
-`/home/adhiraj/.config/saarthi/google-tasks-token.json` is visible inside the
-MCP container.
+Set `SAARTHI_GOOGLE_TASKS_TOKEN_PATH` to the host token file and set
+`GOOGLE_TASKS_TOKEN_PATH=/app/secrets/google/google-tasks-token.json`.
 
 ## Verify
 
@@ -92,8 +104,8 @@ curl -s http://localhost:8000/health
 docker compose logs saarthi-api
 docker compose logs saarthi-mcp
 codex mcp get saarthi
-systemctl status saarthi-backup-dbs.timer
-systemctl status saarthi-backup-gdrive.timer
+docker compose run --rm --no-deps saarthi-cron backup-dbs
+docker compose run --rm --no-deps saarthi-cron backup-gdrive
 uv run cloudflare-zones list
 uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied
 uv run google-tasks-auth --headless
@@ -126,8 +138,8 @@ docker compose restart saarthi-api
 docker compose restart saarthi-mcp
 
 # Manual backup runs
-uv run backup-dbs
-uv run backup-gdrive
+docker compose run --rm --no-deps saarthi-cron backup-dbs
+docker compose run --rm --no-deps saarthi-cron backup-gdrive
 uv run restore-dbs-test
 
 # Manual Cloudflare reads
@@ -141,3 +153,6 @@ uv run google-tasks-auth --headless
 uv run shikari-visualize --list
 uv run shikari-visualize 2026-03-13-22:02:58 --output html
 ```
+
+`restore-dbs-test` remains host-run for now because it manages disposable
+Docker containers directly. The ops container does not mount the Docker socket.

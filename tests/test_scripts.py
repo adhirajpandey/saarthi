@@ -28,14 +28,11 @@ from scripts.restore_dbs_test.main import (
     latest_key,
     restore_db,
 )
-from scripts.schedule_scripts import main as schedule_main
-from scripts.schedule_scripts.main import generate_files
 from shared.logging.setup import setup_logging
 from shared.settings import (
     BackupDbSettings,
     BackupGdriveSettings,
     RestoreDbTestSettings,
-    SchedulerSettings,
 )
 
 _EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "app" / "config" / "config.example.py"
@@ -343,35 +340,6 @@ def test_restore_db_uses_absolute_readonly_bind_mount_for_relative_temp_dir(
     assert mount_arg == f"type=bind,src={dump_path.parent.resolve()},dst=/backups,readonly"
 
 
-def test_generate_files_uses_home_dir_from_config(test_workspace: Path) -> None:
-    config = SchedulerSettings.model_validate(
-        {
-            "systemd_path": str(test_workspace),
-            "uv_bin": "/home/test/.local/bin/uv",
-            "working_dir": "/home/test/projects/saarthi",
-            "home_dir": "/home/test",
-            "scripts": [
-                {
-                    "name": "saarthi-backup-dbs",
-                    "command": "backup-dbs",
-                    "time": "04:00",
-                    "description": "Backup dbs",
-                }
-            ],
-        }
-    )
-
-    timer_names = generate_files(config)
-
-    service_content = (test_workspace / "saarthi-backup-dbs.service").read_text(encoding="utf-8")
-    timer_content = (test_workspace / "saarthi-backup-dbs.timer").read_text(encoding="utf-8")
-
-    assert timer_names == ["saarthi-backup-dbs"]
-    assert 'Environment="HOME=/home/test"' in service_content
-    assert "ExecStart=/home/test/.local/bin/uv run backup-dbs" in service_content
-    assert "OnCalendar=*-*-* 04:00:00" in timer_content
-
-
 def test_setup_logging_defaults_without_validation_error(monkeypatch) -> None:
     observed = {"called": False}
 
@@ -384,73 +352,6 @@ def test_setup_logging_defaults_without_validation_error(monkeypatch) -> None:
     setup_logging()
 
     assert observed["called"] is True
-
-
-def test_schedule_scripts_main_bootstrap_is_side_effect_safe(monkeypatch, test_workspace: Path) -> None:
-    config = SchedulerSettings.model_validate(
-        {
-            "systemd_path": str(test_workspace),
-            "uv_bin": "/home/test/.local/bin/uv",
-            "working_dir": "/home/test/projects/saarthi",
-            "home_dir": "/home/test",
-            "scripts": [],
-        }
-    )
-
-    calls = {"generated": 0, "enabled": 0}
-
-    monkeypatch.setattr("shared.logging.setup.os.makedirs", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr("shared.logging.setup.logging.config.dictConfig", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr("scripts.schedule_scripts.main.load_config", lambda: config)
-    monkeypatch.setattr(
-        "scripts.schedule_scripts.main.generate_files",
-        lambda _config: calls.__setitem__("generated", calls["generated"] + 1) or [],
-    )
-    monkeypatch.setattr(
-        "scripts.schedule_scripts.main.enable_timers",
-        lambda _names: calls.__setitem__("enabled", calls["enabled"] + 1),
-    )
-
-    exit_code = schedule_main.main()
-
-    assert exit_code == 0
-    assert calls["generated"] == 1
-    assert calls["enabled"] == 1
-
-
-def test_schedule_scripts_main_returns_1_on_permission_error(
-    monkeypatch,
-    test_workspace: Path,
-) -> None:
-    config = SchedulerSettings.model_validate(
-        {
-            "systemd_path": str(test_workspace),
-            "uv_bin": "/home/test/.local/bin/uv",
-            "working_dir": "/home/test/projects/saarthi",
-            "home_dir": "/home/test",
-            "scripts": [],
-        }
-    )
-    calls = {"enabled": 0}
-
-    monkeypatch.setattr("shared.logging.setup.os.makedirs", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr("shared.logging.setup.logging.config.dictConfig", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr("scripts.schedule_scripts.main.load_config", lambda: config)
-    monkeypatch.setattr(
-        "scripts.schedule_scripts.main.generate_files",
-        lambda *_: (_ for _ in ()).throw(
-            PermissionError(13, "Permission denied", "/etc/systemd/system/demo.service")
-        ),
-    )
-    monkeypatch.setattr(
-        "scripts.schedule_scripts.main.enable_timers",
-        lambda _names: calls.__setitem__("enabled", calls["enabled"] + 1),
-    )
-
-    exit_code = schedule_main.main()
-
-    assert exit_code == 1
-    assert calls["enabled"] == 0
 
 
 def test_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:

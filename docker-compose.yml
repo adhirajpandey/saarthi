@@ -4,6 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
     image: adhirajpandey/saarthi:latest
     env_file:
       - .env
@@ -11,19 +12,16 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-      - /home/adhiraj/.ssh/id_ed25519:/root/.ssh/id_ed25519:ro
-      - /usr/bin/tailscale:/usr/bin/tailscale:ro
-      - /usr/bin/rclone:/usr/bin/rclone:ro
-      - /usr/bin/pg_dump:/usr/bin/pg_dump:ro
-      - /var/run/tailscale:/var/run/tailscale
+      - ${SAARTHI_DATA_PATH:?set SAARTHI_DATA_PATH}:/app/data
+      - ${SAARTHI_LOGS_PATH:?set SAARTHI_LOGS_PATH}:/app/logs
+      - ${SAARTHI_SSH_KEY_PATH:?set SAARTHI_SSH_KEY_PATH}:/root/.ssh/id_ed25519:ro
 
   saarthi-mcp:
     container_name: saarthi-mcp
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
     image: adhirajpandey/saarthi:latest
     env_file:
       - .env
@@ -32,6 +30,28 @@ services:
     ports:
       - "8001:8001"
     volumes:
-      - ./logs:/app/logs
-      - /home/adhiraj/.config/saarthi:/home/adhiraj/.config/saarthi:ro
-      - /home/adhiraj/.ssh/id_ed25519:/root/.ssh/id_ed25519:ro
+      - ${SAARTHI_LOGS_PATH:?set SAARTHI_LOGS_PATH}:/app/logs
+      - ${SAARTHI_GOOGLE_TASKS_TOKEN_PATH:?set SAARTHI_GOOGLE_TASKS_TOKEN_PATH}:/app/secrets/google/google-tasks-token.json:ro
+      - ${SAARTHI_SSH_KEY_PATH:?set SAARTHI_SSH_KEY_PATH}:/root/.ssh/id_ed25519:ro
+
+  saarthi-cron:
+    container_name: saarthi-cron
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ops
+    image: adhirajpandey/saarthi:ops
+    profiles: ["cron"]
+    env_file:
+      - .env
+    environment:
+      RCLONE_CONFIG: /app/secrets/rclone/rclone.conf
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: "no"
+    volumes:
+      - ${SAARTHI_DATA_PATH:?set SAARTHI_DATA_PATH}:/app/data
+      - ${SAARTHI_LOGS_PATH:?set SAARTHI_LOGS_PATH}:/app/logs
+      - ${SAARTHI_SSH_KEY_PATH:?set SAARTHI_SSH_KEY_PATH}:/root/.ssh/id_ed25519:ro
+      - ${SAARTHI_RCLONE_CONFIG_PATH:?set SAARTHI_RCLONE_CONFIG_PATH}:/app/secrets/rclone/rclone.conf:ro
+      - ${SAARTHI_RCLONE_SERVICE_ACCOUNT_PATH:?set SAARTHI_RCLONE_SERVICE_ACCOUNT_PATH}:/app/secrets/rclone/gdrive-service-account.json:ro
