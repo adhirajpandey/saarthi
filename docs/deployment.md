@@ -66,8 +66,8 @@ The default `up` starts only `saarthi-api` and `saarthi-mcp`.
 4. Configure host cron:
 
 ```bash
-docker compose run --rm --no-deps saarthi-cron backup-dbs
-docker compose run --rm --no-deps saarthi-cron backup-gdrive
+docker compose run --rm --no-deps saarthi-cron uv run backup-dbs
+docker compose run --rm --no-deps saarthi-cron uv run backup-gdrive
 ```
 
 Add those commands to the host crontab at the desired schedule. The
@@ -104,8 +104,8 @@ curl -s http://localhost:8000/health
 docker compose logs saarthi-api
 docker compose logs saarthi-mcp
 codex mcp get saarthi
-docker compose run --rm --no-deps saarthi-cron backup-dbs
-docker compose run --rm --no-deps saarthi-cron backup-gdrive
+docker compose run --rm --no-deps saarthi-cron uv run backup-dbs
+docker compose run --rm --no-deps saarthi-cron uv run backup-gdrive
 uv run cloudflare-zones list
 uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied
 uv run google-tasks-auth --headless
@@ -138,8 +138,8 @@ docker compose restart saarthi-api
 docker compose restart saarthi-mcp
 
 # Manual backup runs
-docker compose run --rm --no-deps saarthi-cron backup-dbs
-docker compose run --rm --no-deps saarthi-cron backup-gdrive
+docker compose run --rm --no-deps saarthi-cron uv run backup-dbs
+docker compose run --rm --no-deps saarthi-cron uv run backup-gdrive
 uv run restore-dbs-test
 
 # Manual Cloudflare reads

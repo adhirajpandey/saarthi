@@ -49,6 +49,3 @@ FROM base AS ops
 RUN apt-get update \
     && apt-get install -y --no-install-recommends postgresql-client rclone \
     && rm -rf /var/lib/apt/lists/*
-
-ENTRYPOINT ["uv", "run"]
-CMD ["backup-dbs"]

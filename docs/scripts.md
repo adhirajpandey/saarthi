@@ -81,8 +81,7 @@ Secrets / connections (`.env`):
 
 System prerequisites:
 
-- `pg_dump` available on PATH. In Docker deployment, use
-  `docker compose run --rm --no-deps saarthi-cron backup-dbs`.
+- `pg_dump` available on PATH.
 - network access to DB + S3
 
 Expected output:
@@ -131,8 +130,7 @@ System prerequisites:
 - `rclone` installed and configured for referenced remotes. In Docker
   deployment, set `SAARTHI_RCLONE_CONFIG_PATH`. If the config references a
   service account file, also set `SAARTHI_RCLONE_SERVICE_ACCOUNT_PATH`. The
-  container mounts those files under `/app/secrets/rclone/`, then use
-  `docker compose run --rm --no-deps saarthi-cron backup-gdrive`.
+  container mounts those files under `/app/secrets/rclone/`.
 - network access to source/destination
 
 Expected output:
@@ -434,8 +432,9 @@ Remarks:
 
 ## Run Commands
 
-- `docker compose run --rm --no-deps saarthi-cron backup-dbs`
-- `docker compose run --rm --no-deps saarthi-cron backup-gdrive`
+- Docker deployment and cron commands are documented in `deployment.md`.
+- `uv run backup-dbs`
+- `uv run backup-gdrive`
 - `uv run cloudflare-zones list`
 - `uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied`
 - `uv run google-tasks-auth --headless`
