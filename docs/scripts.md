@@ -152,6 +152,13 @@ Remarks:
 Short description:
 Verifies the latest S3 database backups by restoring them into disposable PostgreSQL containers and running configured test queries.
 
+Run this command manually from the Docker host when restoreability needs to be
+checked, such as after changing backup configuration or as part of a periodic
+disaster-recovery check. It is not a scheduled backup job and must not be run
+inside `saarthi-cron`: the script invokes the host's Docker CLI to create and
+remove its own disposable PostgreSQL containers, while the ops container does
+not mount the Docker socket.
+
 ASCII flow:
 
 ```text
@@ -199,9 +206,20 @@ Secrets / connections (`.env`):
 
 System prerequisites:
 
+- run from the Saarthi repository checkout on the Docker host
+- project dependencies installed with `uv sync`
+- configured `app/config/config.py` and `.env` files
 - Docker available on PATH
+- permission for the current host user to run Docker commands
 - access to the configured PostgreSQL image in `RESTORE_PG_IMAGE`
 - network access to S3
+
+Manual invocation:
+
+```bash
+cd /home/adhiraj/projects/saarthi
+uv run restore-dbs-test
+```
 
 Expected output:
 
@@ -213,8 +231,17 @@ Expected output:
 Remarks:
 
 - If one DB fails, the script continues processing remaining targets, then returns failure overall.
+- A successful run logs `Restore verification passed` for every configured
+  database, logs `All restore verification checks passed`, and exits with code
+  `0`. Any missing backup, restore error, or query mismatch exits with code `1`.
 - `RESTORE_TEMP_DIR` is a parent workspace, not the directory deleted directly.
 - Each run creates its own disposable child directory under `RESTORE_TEMP_DIR` and teardown removes only that run directory.
+- Disposable containers are named `restore-test-vidwiz`,
+  `restore-test-trackcrow`, and `restore-test-smashdiary`. Teardown attempts to
+  remove them and the per-run workspace whether verification passes or fails.
+- If a run is interrupted before teardown finishes, inspect leftovers with
+  `docker ps -a --filter name=restore-test-` before rerunning. A new run removes
+  a same-named restore container before recreating it.
 - Top-level failures also attempt notification dispatch when settings are available.
 
 ### `cloudflare-zones`

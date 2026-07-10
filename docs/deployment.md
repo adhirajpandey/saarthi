@@ -162,7 +162,6 @@ docker compose restart saarthi-mcp
 # Manual backup runs
 docker compose run --rm --no-deps saarthi-cron uv run backup-dbs
 docker compose run --rm --no-deps saarthi-cron uv run backup-gdrive
-uv run restore-dbs-test
 
 # Manual Cloudflare reads
 uv run cloudflare-zones list
@@ -176,5 +175,37 @@ uv run shikari-visualize --list
 uv run shikari-visualize 2026-03-13-22:02:58 --output html
 ```
 
-`restore-dbs-test` remains host-run for now because it manages disposable
-Docker containers directly. The ops container does not mount the Docker socket.
+### Manual database restore verification
+
+Run restore verification directly from the Docker host when you need to prove
+that the latest S3 backups can be restored—for example after changing backup
+settings or during a periodic disaster-recovery check:
+
+```bash
+cd /home/adhiraj/projects/saarthi
+uv run restore-dbs-test
+```
+
+This is intentionally a host-only, manually initiated operation. Do not add it
+to host cron and do not run it through `saarthi-cron`. The script uses the
+host's Docker CLI to start and remove disposable PostgreSQL containers; the ops
+container intentionally has no Docker socket mount.
+
+Before running, confirm that the repository dependencies and runtime
+configuration are current, the host user can run Docker, the configured
+PostgreSQL image is available, and the host can access S3. Success requires a
+`Restore verification passed` line for every configured database, followed by
+`All restore verification checks passed`, with exit code `0`. A missing backup,
+restore failure, or verification-query mismatch produces exit code `1` after
+the remaining databases are checked.
+
+The script normally removes its per-run files and `restore-test-*` containers
+on both success and failure. If the process is interrupted, inspect any
+leftovers before rerunning:
+
+```bash
+docker ps -a --filter name=restore-test-
+```
+
+See `scripts.md` for the full configuration, verification, and cleanup
+contract.
