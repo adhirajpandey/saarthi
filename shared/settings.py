@@ -372,11 +372,9 @@ class McpSettings(RuntimeSettings):
     trackcrow_mcp_user_uuid: str
 
     @model_validator(mode="after")
-    def _validate_mcp_whatsapp_config(self) -> "McpSettings":
-        if not self.whatsapp_enabled:
-            raise ValueError("WHATSAPP_ENABLED is required for the MCP server")
+    def _validate_mcp_config(self) -> "McpSettings":
         self._validate_whatsapp_transport()
-        if not self.whatsapp_target_personal:
+        if self.whatsapp_enabled and not self.whatsapp_target_personal:
             raise ValueError("WHATSAPP_TARGET_PERSONAL is required for the MCP server")
         if not self.trackcrow_db_url:
             raise ValueError("TRACKCROW_DB_URL is required for the MCP server")

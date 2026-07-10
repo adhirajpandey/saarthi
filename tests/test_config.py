@@ -95,6 +95,21 @@ def test_mcp_settings_requires_personal_whatsapp_target(runtime_config) -> None:
         get_mcp_settings()
 
 
+def test_mcp_settings_allow_disabled_whatsapp_without_transport(runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": False,
+            "WHATSAPP_SSH_HOST": None,
+            "WHATSAPP_HERMES_COMMAND_PATH": None,
+            "WHATSAPP_TARGET_PERSONAL": None,
+        }
+    )
+
+    settings = get_mcp_settings()
+
+    assert settings.whatsapp_enabled is False
+
+
 def test_mcp_settings_requires_mcp_token(monkeypatch, runtime_config) -> None:
     runtime_config(
         {

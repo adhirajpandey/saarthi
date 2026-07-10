@@ -88,13 +88,13 @@ Startup flow (`mcp-server/server.py`):
 
 1. Load and validate MCP settings.
 2. Configure FastMCP bearer-token auth from `MCP_TOKEN`.
-3. Register MCP tools.
+3. Register MCP tools, including `send_whatsapp_message` only when WhatsApp is enabled.
 4. Serve streamable HTTP on `/mcp`.
 
 Current tool surface:
 
-- `send_whatsapp_message(message)`: sends a WhatsApp message to
-  `WHATSAPP_TARGET_PERSONAL` using the shared SSH WhatsApp transport.
+- `send_whatsapp_message(message)`: when WhatsApp is enabled, sends a message
+  to `WHATSAPP_TARGET_PERSONAL` using the shared SSH WhatsApp transport.
 - `search_transactions(...)`: reads Trackcrow transactions for the configured
   MCP user.
 - `list_cloudflare_zones(...)`: lists zones visible to the configured

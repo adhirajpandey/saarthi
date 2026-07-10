@@ -77,6 +77,7 @@ Failure:
 
 Remarks:
 
+- The tool is registered only when `WHATSAPP_ENABLED` is true.
 - Empty or whitespace-only messages are rejected.
 - The recipient is fixed to `WHATSAPP_TARGET_PERSONAL`.
 - The MCP server defines the tool boundary; actual sending is performed by
@@ -1102,9 +1103,12 @@ Configuration (`app/config/config.py`):
 
 Remarks:
 
-- `WHATSAPP_ENABLED` must be enabled for the MCP runtime.
-- `WHATSAPP_TARGET_PERSONAL` is required because MCP messages are sent to the
-  personal target, not the geofence family target.
+- MCP starts when `WHATSAPP_ENABLED` is false and omits
+  `send_whatsapp_message` from its advertised tool surface.
+- When `WHATSAPP_ENABLED` is true, `WHATSAPP_SSH_HOST`,
+  `WHATSAPP_HERMES_COMMAND_PATH`, and `WHATSAPP_TARGET_PERSONAL` are required;
+  invalid enabled configuration fails during startup. MCP messages are sent to
+  the personal target, not the geofence family target.
 - `CLOUDFLARE_API_TOKEN` is required for the Cloudflare MCP tools.
 - `GOOGLE_TASKS_CLIENT_ID` and `GOOGLE_TASKS_CLIENT_SECRET` must reference a
   Google OAuth Desktop app client with the Google Tasks API enabled.
@@ -1121,10 +1125,11 @@ Remarks:
 - The Notion integration must be shared with all configured Notion databases.
 - `TRACKCROW_MCP_USER_UUID` fixes the Trackcrow user scope for transaction
   searches.
-- The SSH private key and Google Tasks token file are mounted into the
-  `saarthi-mcp` container by `docker-compose.yml` from host paths declared in
-  `.env`. Google Tasks credentials use the fixed internal secret layout under
-  `/app/secrets`.
+- When WhatsApp is enabled, the SSH private key is mounted into the
+  `saarthi-mcp` container from `SAARTHI_SSH_KEY_PATH`. Without that path,
+  Compose uses `/dev/null` so WhatsApp-disabled MCP deployments do not require
+  an SSH key. The Google Tasks token file remains mounted from its host path
+  into the fixed internal secret layout under `/app/secrets`.
 
 ## Verify
 

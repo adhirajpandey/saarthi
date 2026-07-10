@@ -36,13 +36,16 @@ cp .env.example .env
   `NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL`,
   `TRACKCROW_MCP_USER_UUID`, SMTP/AWS/DB URLs,
   `RESTORE_PG_PASSWORD` as needed)
-- `.env`: required Docker host-side bind mount paths
-  (`SAARTHI_DATA_PATH`, `SAARTHI_LOGS_PATH`, `SAARTHI_SSH_KEY_PATH`,
+- `.env`: Docker host-side bind mount paths
+  (`SAARTHI_DATA_PATH`, `SAARTHI_LOGS_PATH`,
   `SAARTHI_GOOGLE_TASKS_TOKEN_PATH`, `SAARTHI_RCLONE_CONFIG_PATH`,
   `SAARTHI_RCLONE_SERVICE_ACCOUNT_PATH`). Container-side targets are fixed in
   `docker-compose.yml` under `/app/data`, `/app/logs`, and `/app/secrets/...`.
   Set `GOOGLE_TASKS_TOKEN_PATH` to `/app/secrets/google/google-tasks-token.json`
   so the runtime setting matches the fixed container target.
+- `SAARTHI_SSH_KEY_PATH` is required when `WHATSAPP_ENABLED` is true. When
+  WhatsApp is disabled and the path is unset, Docker Compose mounts `/dev/null`
+  instead so API and MCP startup do not depend on an SSH key.
 - Share the Notion integration tied to `NOTION_API_KEY` with all configured
   Notion databases, with read access for the saved links database and
   read/write access for the work items and Greenhouse experiments databases.
@@ -63,6 +66,8 @@ The default `up` starts only `saarthi-api` and `saarthi-mcp`.
 
 `saarthi-mcp` serves the MCP endpoint on `http://localhost:8001/mcp` and requires
 `Authorization: Bearer <MCP_TOKEN>`. Detailed MCP setup is documented in `mcp.md`.
+When `WHATSAPP_ENABLED` is false, MCP starts normally without the
+`send_whatsapp_message` tool; its other configured tools remain available.
 
 4. Configure host cron:
 

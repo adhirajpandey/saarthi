@@ -47,7 +47,8 @@ def build_mcp_auth(settings: McpSettings) -> MultiAuth:
     return MultiAuth(verifiers=[verifier])
 
 
-mcp = FastMCP("saarthi-mcp", auth=build_mcp_auth(get_mcp_settings()))
+mcp_settings = get_mcp_settings()
+mcp = FastMCP("saarthi-mcp", auth=build_mcp_auth(mcp_settings))
 
 
 def send_personal_whatsapp_message(message: str) -> dict[str, bool | str]:
@@ -66,10 +67,13 @@ def send_personal_whatsapp_message(message: str) -> dict[str, bool | str]:
     return {"success": False, "message": "Failed to send WhatsApp message"}
 
 
-@mcp.tool(name="send_whatsapp_message")
 def send_whatsapp_message_tool(message: str) -> dict[str, bool | str]:
     """Send a WhatsApp message to the configured personal target."""
     return send_personal_whatsapp_message(message)
+
+
+if mcp_settings.whatsapp_enabled:
+    mcp.tool(name="send_whatsapp_message")(send_whatsapp_message_tool)
 
 
 def search_personal_transactions(

@@ -126,6 +126,39 @@ def test_mcp_auth_rejects_invalid_token(monkeypatch, runtime_config) -> None:
     assert token is None
 
 
+def test_mcp_server_omits_whatsapp_tool_when_disabled(runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": False,
+            "WHATSAPP_SSH_HOST": None,
+            "WHATSAPP_HERMES_COMMAND_PATH": None,
+            "WHATSAPP_TARGET_PERSONAL": None,
+        }
+    )
+
+    server = _load_mcp_server()
+    tool_names = {tool.name for tool in asyncio.run(server.mcp.list_tools())}
+
+    assert "send_whatsapp_message" not in tool_names
+    assert "search_transactions" in tool_names
+
+
+def test_mcp_server_registers_whatsapp_tool_when_enabled(runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "pookie",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+
+    server = _load_mcp_server()
+    tool_names = {tool.name for tool in asyncio.run(server.mcp.list_tools())}
+
+    assert "send_whatsapp_message" in tool_names
+
+
 def test_search_personal_transactions_delegates_to_service(monkeypatch, runtime_config) -> None:
     runtime_config(
         {
