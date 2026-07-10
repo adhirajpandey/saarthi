@@ -273,7 +273,6 @@ GDrive backup, and Shikari runtimes.
 ### Notification Transports (`shared/notifications/*`)
 
 - SMTP email
-- ntfy HTTP
 - WhatsApp via SSH remote command
 
 ## Runtime Paths and State

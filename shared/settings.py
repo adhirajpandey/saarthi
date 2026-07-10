@@ -4,7 +4,7 @@ import importlib
 import os
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, model_validator
@@ -33,8 +33,6 @@ ENV_OWNED_KEYS = frozenset(
         "SMASHDIARY_DB_URL",
         "TRACKCROW_MCP_USER_UUID",
         "RESTORE_PG_PASSWORD",
-        "NTFY_BASE_URL",
-        "NTFY_TOKEN",
     }
 )
 
@@ -45,14 +43,12 @@ COMMON_CONFIG_KEYS = frozenset(
         "LOG_DATE_FORMAT",
         "LOG_FILE",
         "EMAIL_ENABLED",
-        "NTFY_ENABLED",
         "WHATSAPP_ENABLED",
         "WHATSAPP_SSH_HOST",
         "WHATSAPP_HERMES_COMMAND_PATH",
         "WHATSAPP_TARGET_FAMILY",
         "WHATSAPP_TARGET_PERSONAL",
         "WHATSAPP_TIMEOUT_SECONDS",
-        "NTFY_TOPIC",
     }
 )
 
@@ -241,14 +237,6 @@ class SmtpSettings(BaseModel):
     port: int
 
 
-class NtfySettings(BaseModel):
-    """ntfy credentials and defaults."""
-
-    base_url: str
-    token: str
-    topic: str
-
-
 class WhatsAppSettings(BaseModel):
     """WhatsApp sender configuration."""
 
@@ -266,7 +254,6 @@ class RuntimeSettings(BaseModel):
     log_date_format: str
     log_file: str
     email_enabled: bool
-    ntfy_enabled: bool
     whatsapp_enabled: bool
     whatsapp_ssh_host: str | None = None
     whatsapp_hermes_command_path: str | None = None
@@ -309,36 +296,17 @@ class RuntimeSettings(BaseModel):
 
 
 # Runtime settings models
-class NtfyRuntimeSettings(RuntimeSettings):
-    """Runtime settings that include ntfy integration."""
-
-    ntfy_base_url: str | None = None
-    ntfy_token: str | None = None
-    ntfy_topic: str
+class ScriptNotificationSettings(RuntimeSettings):
+    """Runtime settings for scripts that require WhatsApp notifications."""
 
     @model_validator(mode="after")
-    def _validate_ntfy_config(self) -> "NtfyRuntimeSettings":
-        if not (self.ntfy_enabled or self.whatsapp_enabled):
-            raise ValueError(
-                "At least one script notification channel must be enabled: "
-                "NTFY_ENABLED or WHATSAPP_ENABLED"
-            )
-        if self.ntfy_enabled:
-            if not self.ntfy_base_url:
-                raise ValueError("NTFY_BASE_URL is required when NTFY_ENABLED is true")
-            if not self.ntfy_token:
-                raise ValueError("NTFY_TOKEN is required when NTFY_ENABLED is true")
+    def _validate_script_whatsapp_config(self) -> "ScriptNotificationSettings":
+        if not self.whatsapp_enabled:
+            raise ValueError("WHATSAPP_ENABLED is required for script notifications")
         self._validate_whatsapp_transport()
-        if self.whatsapp_enabled and not self.whatsapp_target_personal:
+        if not self.whatsapp_target_personal:
             raise ValueError("WHATSAPP_TARGET_PERSONAL is required when WHATSAPP_ENABLED is true")
         return self
-
-    def ntfy_settings(self) -> NtfySettings:
-        return NtfySettings(
-            base_url=cast(str, self.ntfy_base_url),
-            token=cast(str, self.ntfy_token),
-            topic=self.ntfy_topic,
-        )
 
 
 class ApiSettings(RuntimeSettings):
@@ -446,7 +414,7 @@ class NotionSettings(RuntimeSettings):
     notion_greenhouse_experiments_database_url: str
 
 
-class BackupArtifactSettings(NtfyRuntimeSettings):
+class BackupArtifactSettings(ScriptNotificationSettings):
     """Shared settings for DB backup artifacts stored in S3."""
 
     aws_access_key: str
@@ -483,7 +451,7 @@ class RestoreDbTestSettings(BackupArtifactSettings):
     smashdiary_restore_expected_output: str
 
 
-class BackupGdriveSettings(NtfyRuntimeSettings):
+class BackupGdriveSettings(ScriptNotificationSettings):
     """Settings required by the Google Drive backup script."""
 
     gdrive_source: str

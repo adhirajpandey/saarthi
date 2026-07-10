@@ -38,15 +38,8 @@ def side_effect_guard(monkeypatch):
                 "Mock shared.notifications.email.smtplib.SMTP_SSL explicitly."
             )
 
-    def _blocked_requests_post(*_args, **_kwargs):
-        raise AssertionError(
-            "Outbound HTTP is blocked in tests. "
-            "Mock shared.notifications.ntfy.requests.post explicitly."
-        )
-
     monkeypatch.setattr("subprocess.run", _blocked_subprocess_run)
     monkeypatch.setattr("shared.notifications.email.smtplib.SMTP_SSL", _BlockedSmtpServer)
-    monkeypatch.setattr("shared.notifications.ntfy.requests.post", _blocked_requests_post)
 
 
 @pytest.fixture(autouse=True)

@@ -10,7 +10,6 @@ from typing import TypedDict
 import boto3
 
 from shared.logging import setup_logging
-from shared.notifications.ntfy import send_ntfy_message
 from shared.notifications.whatsapp import send_whatsapp_message
 from shared.settings import BackupDbSettings, get_backup_db_settings
 
@@ -112,27 +111,14 @@ def _dispatch_notifications(
     output_lines: list[str],
     success: bool,
 ) -> None:
-    console_output = "\n".join(output_lines)
-
-    if settings.ntfy_enabled:
-        try:
-            send_ntfy_message(
-                message=console_output,
-                ntfy_settings=settings.ntfy_settings(),
-                title=title,
-            )
-        except Exception as exc:
-            logger.error("Failed to dispatch ntfy backup notification: %s", exc)
-
-    if settings.whatsapp_enabled:
-        try:
-            summary = _build_whatsapp_summary(title, output_lines, success)
-            send_whatsapp_message(
-                message=summary,
-                whatsapp_settings=settings.whatsapp_settings_for_scripts(),
-            )
-        except Exception as exc:
-            logger.error("Failed to dispatch WhatsApp backup notification: %s", exc)
+    try:
+        summary = _build_whatsapp_summary(title, output_lines, success)
+        send_whatsapp_message(
+            message=summary,
+            whatsapp_settings=settings.whatsapp_settings_for_scripts(),
+        )
+    except Exception as exc:
+        logger.error("Failed to dispatch WhatsApp backup notification: %s", exc)
 
 
 def main() -> int:

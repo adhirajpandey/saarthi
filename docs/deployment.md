@@ -21,9 +21,10 @@ cp .env.example .env
 2. Fill values:
 
 - `app/config/config.py`: non-secret settings
-- If enabling `WHATSAPP_ENABLED`, set `WHATSAPP_HERMES_COMMAND_PATH` explicitly to
-  the correct binary path on that host. The example config leaves it unset on
-  purpose.
+- Operational backup and restore-verification scripts require
+  `WHATSAPP_ENABLED`. Set `WHATSAPP_HERMES_COMMAND_PATH` explicitly to the
+  correct binary path on that host and configure `WHATSAPP_TARGET_PERSONAL`.
+  The example config leaves these values unset on purpose.
 - For geofence WhatsApp notifications, set both
   `GEOFENCE_WHATSAPP_ENTERED_TEMPLATE` and
   `GEOFENCE_WHATSAPP_EXITED_TEMPLATE`. These replace the older single-template
@@ -33,7 +34,7 @@ cp .env.example .env
   `GOOGLE_TASKS_TOKEN_PATH`, `NOTION_API_KEY`,
   `NOTION_LINKS_DATABASE_URL`, `NOTION_WORK_ITEMS_DATABASE_URL`,
   `NOTION_GREENHOUSE_EXPERIMENTS_DATABASE_URL`,
-  `TRACKCROW_MCP_USER_UUID`, SMTP/ntfy/AWS/DB URLs,
+  `TRACKCROW_MCP_USER_UUID`, SMTP/AWS/DB URLs,
   `RESTORE_PG_PASSWORD` as needed)
 - `.env`: required Docker host-side bind mount paths
   (`SAARTHI_DATA_PATH`, `SAARTHI_LOGS_PATH`, `SAARTHI_SSH_KEY_PATH`,

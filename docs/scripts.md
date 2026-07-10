@@ -28,13 +28,15 @@ Remarks:
 
 ### Shared Notification Pattern
 
-Backup scripts (`backup-dbs`, `backup-gdrive`) send notifications based on toggles:
+Backup and restore-verification scripts send status notifications through WhatsApp.
+Their settings require:
 
-- ntfy (`NTFY_ENABLED`)
-- WhatsApp (`WHATSAPP_ENABLED`)
+- `WHATSAPP_ENABLED` set to `True`
+- the shared WhatsApp SSH transport values
+- `WHATSAPP_TARGET_PERSONAL` as the recipient
 
-Each script attempts notification dispatch but does not crash purely because a notification channel fails.
-Backup scripts reuse the shared notification transports.
+Each script attempts notification dispatch but does not crash purely because WhatsApp dispatch fails.
+All three workflows reuse the shared notification transport.
 
 ## Scripts
 
@@ -53,7 +55,7 @@ Load BackupDbSettings
        sanity check (file exists + non-empty)
        upload to S3
   -> teardown local dump files
-  -> dispatch ntfy/WhatsApp summary
+  -> dispatch WhatsApp summary
   -> exit 0 or 1
 ```
 
@@ -77,7 +79,6 @@ Secrets / connections (`.env`):
 - `VIDWIZ_DB_URL`
 - `TRACKCROW_DB_URL`
 - `SMASHDIARY_DB_URL`
-- ntfy credentials when ntfy enabled
 
 System prerequisites:
 
@@ -108,7 +109,7 @@ Load BackupGdriveSettings
   -> for each configured folder:
        run rclone copy
        collect stdout/stderr/failures
-  -> dispatch ntfy/WhatsApp summary
+  -> dispatch WhatsApp summary
   -> exit 0 or 1
 ```
 
@@ -120,10 +121,6 @@ Configuration (`app/config/config.py`):
 - `GDRIVE_DESTINATION`
 - `GDRIVE_FOLDERS`
 - notification toggles and shared runtime values
-
-Secrets / connections (`.env`):
-
-- ntfy credentials when ntfy enabled
 
 System prerequisites:
 
@@ -142,7 +139,7 @@ Expected output:
 Remarks:
 
 - Script processes all folders and computes final success at the end.
-- WhatsApp summary is intentionally concise compared to full ntfy/body output.
+- WhatsApp summary is intentionally concise compared to full command output.
 
 ### `restore-dbs-test`
 
@@ -162,7 +159,7 @@ Load RestoreDbTestSettings
        restore dump
        run verification query
   -> teardown run workspace + containers
-  -> dispatch ntfy/WhatsApp summary
+  -> dispatch WhatsApp summary
   -> exit 0 or 1
 ```
 
@@ -193,7 +190,6 @@ Secrets / connections (`.env`):
 - `AWS_ACCESS_KEY`
 - `AWS_SECRET_ACCESS_KEY`
 - `RESTORE_PG_PASSWORD`
-- ntfy credentials when ntfy enabled
 
 System prerequisites:
 

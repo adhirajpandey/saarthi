@@ -19,7 +19,6 @@ LOGGING_CONFIG = {
 
 NOTIFICATION_FLAGS = {
     "EMAIL_ENABLED": True,
-    "NTFY_ENABLED": True,
     "WHATSAPP_ENABLED": False,
 }
 
@@ -38,10 +37,6 @@ GEOFENCE_CONFIG = {
     "GEOFENCE_WHATSAPP_EXITED_TEMPLATE": "Location update: Adhiraj {area} se nikal gaye hain.",
     "GEOFENCE_UPDATES_RECIPIENT": "alerts@example.com",
     "GEOFENCE_SENDER_NAME": "Saarthi",
-}
-
-NTFY_CONFIG = {
-    "NTFY_TOPIC": "saarthi-backups",
 }
 
 BACKUP_DB_CONFIG = {
@@ -88,7 +83,6 @@ CONFIG = {
     **NOTIFICATION_FLAGS,
     **WHATSAPP_CONFIG,
     **GEOFENCE_CONFIG,
-    **NTFY_CONFIG,
     **BACKUP_DB_CONFIG,
     **RESTORE_DB_TEST_CONFIG,
     **GDRIVE_CONFIG,

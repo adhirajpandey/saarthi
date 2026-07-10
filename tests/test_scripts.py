@@ -49,14 +49,12 @@ def _runtime_kwargs(**overrides):
         "log_date_format": cfg["LOG_DATE_FORMAT"],
         "log_file": cfg["LOG_FILE"],
         "email_enabled": cfg["EMAIL_ENABLED"],
-        "ntfy_enabled": cfg["NTFY_ENABLED"],
         "whatsapp_enabled": cfg["WHATSAPP_ENABLED"],
         "whatsapp_ssh_host": cfg["WHATSAPP_SSH_HOST"],
         "whatsapp_hermes_command_path": cfg["WHATSAPP_HERMES_COMMAND_PATH"],
         "whatsapp_target_family": cfg["WHATSAPP_TARGET_FAMILY"],
         "whatsapp_target_personal": cfg["WHATSAPP_TARGET_PERSONAL"],
         "whatsapp_timeout_seconds": cfg["WHATSAPP_TIMEOUT_SECONDS"],
-        "ntfy_topic": cfg["NTFY_TOPIC"],
     }
     data.update(overrides)
     return data
@@ -64,7 +62,6 @@ def _runtime_kwargs(**overrides):
 
 def _backup_db_settings(**overrides) -> BackupDbSettings:
     defaults = {
-        "ntfy_enabled": False,
         "whatsapp_enabled": True,
         "whatsapp_ssh_host": "pookie",
         "whatsapp_hermes_command_path": _HERMES_BIN,
@@ -90,7 +87,6 @@ def _backup_db_settings(**overrides) -> BackupDbSettings:
 
 def _backup_gdrive_settings(**overrides) -> BackupGdriveSettings:
     defaults = {
-        "ntfy_enabled": False,
         "whatsapp_enabled": True,
         "whatsapp_ssh_host": "pookie",
         "whatsapp_hermes_command_path": _HERMES_BIN,
@@ -107,7 +103,6 @@ def _backup_gdrive_settings(**overrides) -> BackupGdriveSettings:
 
 def _restore_db_test_settings(**overrides) -> RestoreDbTestSettings:
     defaults = {
-        "ntfy_enabled": False,
         "whatsapp_enabled": True,
         "whatsapp_ssh_host": "pookie",
         "whatsapp_hermes_command_path": _HERMES_BIN,
@@ -139,15 +134,7 @@ def _restore_db_test_settings(**overrides) -> RestoreDbTestSettings:
 
 
 def test_build_db_map_uses_settings_values() -> None:
-    settings = BackupDbSettings(
-        **_runtime_kwargs(),
-        aws_access_key="ak",
-        aws_secret_access_key="sk",
-        vidwiz_db_url="postgres://vidwiz",
-        trackcrow_db_url="postgres://trackcrow",
-        smashdiary_db_url="postgres://smashdiary",
-        ntfy_base_url="https://ntfy.example.com",
-        ntfy_token="token",
+    settings = _backup_db_settings(
         backup_bucket="my-bucket",
         vidwiz_s3_prefix="db/vidwiz",
         trackcrow_s3_prefix="db/trackcrow",
@@ -354,7 +341,7 @@ def test_setup_logging_defaults_without_validation_error(monkeypatch) -> None:
     assert observed["called"] is True
 
 
-def test_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
+def test_dispatch_notifications_sends_whatsapp_summary(monkeypatch) -> None:
     settings = _backup_db_settings(
         backup_bucket=_BASE_CONFIG["BACKUP_BUCKET"],
         vidwiz_s3_prefix=_BASE_CONFIG["VIDWIZ_S3_PREFIX"],
@@ -365,9 +352,8 @@ def test_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
         smashdiary_dump_filename=_BASE_CONFIG["SMASHDIARY_DUMP_FILENAME"],
     )
 
-    calls = {"ntfy": 0, "wa": 0}
+    calls = {"wa": 0}
 
-    monkeypatch.setattr("scripts.backup_dbs.main.send_ntfy_message", lambda **_: calls.__setitem__("ntfy", calls["ntfy"] + 1))
     monkeypatch.setattr("scripts.backup_dbs.main.send_whatsapp_message", lambda **_: calls.__setitem__("wa", calls["wa"] + 1))
 
     _dispatch_notifications(
@@ -377,15 +363,13 @@ def test_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
         success=True,
     )
 
-    assert calls["ntfy"] == 0
     assert calls["wa"] == 1
 
 
-def test_restore_dispatch_notifications_respects_channel_toggles(monkeypatch) -> None:
+def test_restore_dispatch_notifications_sends_whatsapp_summary(monkeypatch) -> None:
     settings = _restore_db_test_settings()
-    calls = {"ntfy": 0, "wa": 0}
+    calls = {"wa": 0}
 
-    monkeypatch.setattr("scripts.restore_dbs_test.main.send_ntfy_message", lambda **_: calls.__setitem__("ntfy", calls["ntfy"] + 1))
     monkeypatch.setattr("scripts.restore_dbs_test.main.send_whatsapp_message", lambda **_: calls.__setitem__("wa", calls["wa"] + 1))
 
     dispatch_restore_notifications(
@@ -395,8 +379,25 @@ def test_restore_dispatch_notifications_respects_channel_toggles(monkeypatch) ->
         success=True,
     )
 
-    assert calls["ntfy"] == 0
     assert calls["wa"] == 1
+
+
+def test_dispatch_notifications_logs_whatsapp_failure(monkeypatch, caplog) -> None:
+    settings = _backup_db_settings()
+
+    def _raise_error(**_kwargs) -> None:
+        raise RuntimeError("WhatsApp unavailable")
+
+    monkeypatch.setattr("scripts.backup_dbs.main.send_whatsapp_message", _raise_error)
+
+    _dispatch_notifications(
+        settings=settings,
+        title="DB Backup Failed",
+        output_lines=["Backup failed for vidwiz"],
+        success=False,
+    )
+
+    assert "Failed to dispatch WhatsApp backup notification" in caplog.text
 
 
 def test_build_whatsapp_summary_is_concise() -> None:

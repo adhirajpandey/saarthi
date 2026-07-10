@@ -7,6 +7,7 @@ import pytest
 
 import shared.settings as settings_module
 from shared.settings import (
+    ScriptNotificationSettings,
     get_backup_db_settings,
     get_backup_gdrive_settings,
     get_api_settings,
@@ -336,7 +337,6 @@ def test_mcp_settings_ignore_api_only_config_keys(runtime_config) -> None:
 def test_backup_gdrive_settings_ignore_restore_only_config_keys(runtime_config) -> None:
     cfg = runtime_config(
         {
-            "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
             "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
@@ -357,10 +357,46 @@ def test_backup_gdrive_settings_ignore_restore_only_config_keys(runtime_config) 
     assert settings.gdrive_source == trimmed["GDRIVE_SOURCE"]
 
 
+def test_backup_gdrive_settings_require_whatsapp(runtime_config) -> None:
+    runtime_config({"WHATSAPP_ENABLED": False})
+
+    with pytest.raises(
+        ValueError,
+        match="WHATSAPP_ENABLED is required for script notifications",
+    ):
+        get_backup_gdrive_settings()
+
+
+def test_script_notification_settings_expose_whatsapp_config(runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": True,
+            "WHATSAPP_SSH_HOST": "ssh.example.com",
+            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+        }
+    )
+
+    get_backup_gdrive_settings()
+
+    assert set(ScriptNotificationSettings.model_fields) == {
+        "log_level",
+        "log_format",
+        "log_date_format",
+        "log_file",
+        "email_enabled",
+        "whatsapp_enabled",
+        "whatsapp_ssh_host",
+        "whatsapp_hermes_command_path",
+        "whatsapp_target_family",
+        "whatsapp_target_personal",
+        "whatsapp_timeout_seconds",
+    }
+
+
 def test_restore_db_test_settings_require_restore_only_config_keys(runtime_config, monkeypatch) -> None:
     cfg = runtime_config(
         {
-            "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
             "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
@@ -382,7 +418,6 @@ def test_restore_db_test_settings_require_restore_only_config_keys(runtime_confi
 def test_backup_gdrive_settings_require_gdrive_config_keys(runtime_config) -> None:
     cfg = runtime_config(
         {
-            "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
             "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
@@ -454,7 +489,6 @@ def test_shikari_settings_loads_repo_values(runtime_config) -> None:
 def test_restore_db_test_settings_loads_repo_and_env_values(runtime_config, monkeypatch) -> None:
     runtime_config(
         {
-            "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
             "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
@@ -485,7 +519,6 @@ def test_restore_db_test_settings_loads_repo_and_env_values(runtime_config, monk
 def test_restore_db_settings_ignore_api_only_config_keys(runtime_config, monkeypatch) -> None:
     cfg = runtime_config(
         {
-            "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
             "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
@@ -533,7 +566,6 @@ def test_restore_db_settings_ignore_api_only_config_keys(runtime_config, monkeyp
 def test_backup_db_settings_still_requires_live_db_urls(runtime_config, monkeypatch) -> None:
     runtime_config(
         {
-            "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
             "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
@@ -553,7 +585,6 @@ def test_backup_db_settings_still_requires_live_db_urls(runtime_config, monkeypa
 def test_backup_db_settings_ignore_restore_only_config_keys(runtime_config, monkeypatch) -> None:
     cfg = runtime_config(
         {
-            "NTFY_ENABLED": False,
             "WHATSAPP_ENABLED": True,
             "WHATSAPP_SSH_HOST": "ssh.example.com",
             "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
