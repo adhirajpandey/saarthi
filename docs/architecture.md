@@ -269,6 +269,8 @@ GDrive backup, and Shikari runtimes.
 - Single setup path for API, MCP, and scripts
 - Console + file handlers
 - Configurable format, level, date format, and file path
+- DB and GDrive backup CLIs intentionally disable the file handler so host cron
+  can keep separate full logs without duplicating their output in `app.log`.
 
 ### Notification Transports (`shared/notifications/*`)
 

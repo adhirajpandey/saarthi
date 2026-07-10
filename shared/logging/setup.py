@@ -14,12 +14,35 @@ DEFAULT_LOGGING_SETTINGS = LoggingSettings(
 )
 
 
-def setup_logging(settings: LoggingSettings | None = None) -> None:
+def setup_logging(
+    settings: LoggingSettings | None = None,
+    include_file: bool = True,
+) -> None:
     """Configure logging for the application."""
     resolved_settings = settings or DEFAULT_LOGGING_SETTINGS
-    log_dir = os.path.dirname(resolved_settings.file)
-    if log_dir:
-        os.makedirs(log_dir, exist_ok=True)
+    if include_file:
+        log_dir = os.path.dirname(resolved_settings.file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+
+    handlers = {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": resolved_settings.level,
+            "formatter": "default",
+            "stream": "ext://sys.stdout",
+        },
+    }
+    root_handlers = ["console"]
+    if include_file:
+        handlers["file"] = {
+            "class": "logging.FileHandler",
+            "level": resolved_settings.level,
+            "formatter": "default",
+            "filename": resolved_settings.file,
+            "encoding": "utf8",
+        }
+        root_handlers.append("file")
 
     config = {
         "version": 1,
@@ -30,34 +53,20 @@ def setup_logging(settings: LoggingSettings | None = None) -> None:
                 "datefmt": resolved_settings.date_format,
             },
         },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "level": resolved_settings.level,
-                "formatter": "default",
-                "stream": "ext://sys.stdout",
-            },
-            "file": {
-                "class": "logging.FileHandler",
-                "level": resolved_settings.level,
-                "formatter": "default",
-                "filename": resolved_settings.file,
-                "encoding": "utf8",
-            },
-        },
+        "handlers": handlers,
         "root": {
             "level": resolved_settings.level,
-            "handlers": ["console", "file"],
+            "handlers": root_handlers,
         },
         "loggers": {
             "uvicorn.error": {
                 "level": resolved_settings.level,
-                "handlers": ["console", "file"],
+                "handlers": root_handlers,
                 "propagate": False,
             },
             "uvicorn.access": {
                 "level": resolved_settings.level,
-                "handlers": ["console", "file"],
+                "handlers": root_handlers,
                 "propagate": False,
             },
         },

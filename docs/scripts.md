@@ -22,6 +22,9 @@ Remarks:
 
 - Scripts load typed settings from `shared/settings.py`.
 - Logging is initialized via `shared.logging.setup_logging(...)`.
+- `backup-dbs` and `backup-gdrive` emit logs to the console only. Host cron
+  redirects their complete stdout and stderr to separate per-job log files.
+- Other runtimes continue using the configured console and file handlers.
 - Exit code convention:
   - `0` = success
   - `1` = failure
@@ -89,7 +92,8 @@ Expected output:
 
 - Exit code `0` when all DB backups complete.
 - Exit code `1` when any DB backup step fails or setup fails.
-- Log output written to configured log destination.
+- Log output emitted to stdout/stderr; the Docker cron deployment captures it
+  in `logs/cron-backup-dbs.log` on the host.
 - Local dump files are cleaned up in teardown.
 
 Remarks:
@@ -135,6 +139,8 @@ Expected output:
 - Exit code `0` when all folder copies succeed.
 - Exit code `1` when any folder copy fails or setup fails.
 - Aggregated command output captured for notifications.
+- Log output emitted to stdout/stderr; the Docker cron deployment captures it
+  in `logs/cron-backup-gdrive.log` on the host.
 
 Remarks:
 

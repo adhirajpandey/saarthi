@@ -126,7 +126,7 @@ def main() -> int:
     output_lines: list[str] = []
     try:
         settings = get_backup_db_settings()
-        setup_logging(settings.logging_settings())
+        setup_logging(settings.logging_settings(), include_file=False)
         db_map = build_db_map(settings)
 
         created_files: list[Path] = []
@@ -184,7 +184,7 @@ def main() -> int:
         )
         return 0 if success else 1
     except Exception as exc:
-        setup_logging()
+        setup_logging(include_file=False)
         error_msg = f"Backup failed: {exc}"
         logger.exception(error_msg)
         if settings is not None:

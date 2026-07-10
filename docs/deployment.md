@@ -72,13 +72,18 @@ When `WHATSAPP_ENABLED` is false, MCP starts normally without the
 4. Configure host cron:
 
 ```bash
-docker compose run --rm --no-deps saarthi-cron uv run backup-dbs
-docker compose run --rm --no-deps saarthi-cron uv run backup-gdrive
+docker compose run --rm --no-deps saarthi-cron uv run backup-dbs >> /home/adhiraj/projects/saarthi/logs/cron-backup-dbs.log 2>&1
+docker compose run --rm --no-deps saarthi-cron uv run backup-gdrive >> /home/adhiraj/projects/saarthi/logs/cron-backup-gdrive.log 2>&1
 ```
 
 Add those commands to the host crontab at the desired schedule. The
 `saarthi-cron` service is under the `cron` profile and is intended for
 one-shot `docker compose run` invocations, not long-running `up`.
+Both backup CLIs are console-only: they do not write to the shared `app.log`.
+Cron captures their complete stdout and stderr in separate per-job files, so
+backup output is not duplicated across log files. Keep `uv run` in the
+container command because the project entry points are installed in its uv
+environment rather than on the container's global `PATH`.
 For services running on the Docker host itself, use `host.docker.internal`
 in `.env` connection URLs rather than `localhost`; inside a container,
 `localhost` points at the container.

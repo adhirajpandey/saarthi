@@ -341,6 +341,20 @@ def test_setup_logging_defaults_without_validation_error(monkeypatch) -> None:
     assert observed["called"] is True
 
 
+def test_setup_logging_can_disable_file_handler(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "shared.logging.setup.logging.config.dictConfig",
+        lambda config: observed.update(config),
+    )
+
+    setup_logging(include_file=False)
+
+    assert observed["root"]["handlers"] == ["console"]
+    assert "file" not in observed["handlers"]
+
+
 def test_dispatch_notifications_sends_whatsapp_summary(monkeypatch) -> None:
     settings = _backup_db_settings(
         backup_bucket=_BASE_CONFIG["BACKUP_BUCKET"],
@@ -436,7 +450,9 @@ def test_backup_dbs_main_exit_code_and_notification_title(monkeypatch) -> None:
     observed: dict[str, object] = {}
 
     monkeypatch.setattr("scripts.backup_dbs.main.get_backup_db_settings", lambda: settings)
-    monkeypatch.setattr("scripts.backup_dbs.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.backup_dbs.main.setup_logging", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(
         "scripts.backup_dbs.main.build_db_map",
         lambda *_: {
@@ -477,10 +493,31 @@ def test_backup_dbs_main_exit_code_and_notification_title(monkeypatch) -> None:
     assert observed["title"] == "DB Backup Success"
 
 
+def test_backup_dbs_main_uses_console_only_logging(monkeypatch) -> None:
+    settings = _backup_db_settings()
+    logging_calls: list[tuple[object, bool]] = []
+
+    monkeypatch.setattr("scripts.backup_dbs.main.get_backup_db_settings", lambda: settings)
+    monkeypatch.setattr(
+        "scripts.backup_dbs.main.setup_logging",
+        lambda logging_settings=None, include_file=True: logging_calls.append(
+            (logging_settings, include_file)
+        ),
+    )
+    monkeypatch.setattr("scripts.backup_dbs.main.build_db_map", lambda *_: {})
+    monkeypatch.setattr("scripts.backup_dbs.main.teardown", lambda *_: None)
+    monkeypatch.setattr("scripts.backup_dbs.main._dispatch_notifications", lambda **_: None)
+
+    assert backup_dbs_main.main() == 0
+    assert logging_calls == [(settings.logging_settings(), False)]
+
+
 def test_backup_gdrive_main_exit_codes(monkeypatch) -> None:
     settings = _backup_gdrive_settings()
     monkeypatch.setattr("scripts.backup_gdrive.main.get_backup_gdrive_settings", lambda: settings)
-    monkeypatch.setattr("scripts.backup_gdrive.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.backup_gdrive.main.setup_logging", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr("scripts.backup_gdrive.main.send_whatsapp_message", lambda **_: True)
 
     monkeypatch.setattr(
@@ -499,12 +536,39 @@ def test_backup_gdrive_main_exit_codes(monkeypatch) -> None:
     assert exit_code == 0
 
 
+def test_backup_gdrive_main_uses_console_only_logging(monkeypatch) -> None:
+    settings = _backup_gdrive_settings()
+    logging_calls: list[tuple[object, bool]] = []
+
+    monkeypatch.setattr("scripts.backup_gdrive.main.get_backup_gdrive_settings", lambda: settings)
+    monkeypatch.setattr(
+        "scripts.backup_gdrive.main.setup_logging",
+        lambda logging_settings=None, include_file=True: logging_calls.append(
+            (logging_settings, include_file)
+        ),
+    )
+    monkeypatch.setattr(
+        "scripts.backup_gdrive.main.subprocess.run",
+        lambda *_, **__: subprocess.CompletedProcess(args=["rclone", "copy"], returncode=0),
+    )
+    monkeypatch.setattr("scripts.backup_gdrive.main._dispatch_notifications", lambda **_: None)
+
+    assert backup_gdrive_main.main() == 0
+    assert logging_calls == [(settings.logging_settings(), False)]
+
+
 def test_backup_dbs_main_top_level_failure_dispatches_notification(monkeypatch) -> None:
     settings = _backup_db_settings()
     observed: dict[str, object] = {}
+    logging_calls: list[tuple[object, bool]] = []
 
     monkeypatch.setattr("scripts.backup_dbs.main.get_backup_db_settings", lambda: settings)
-    monkeypatch.setattr("scripts.backup_dbs.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.backup_dbs.main.setup_logging",
+        lambda logging_settings=None, include_file=True: logging_calls.append(
+            (logging_settings, include_file)
+        ),
+    )
     monkeypatch.setattr(
         "scripts.backup_dbs.main.build_db_map",
         lambda *_: (_ for _ in ()).throw(RuntimeError("bootstrap boom")),
@@ -519,6 +583,7 @@ def test_backup_dbs_main_top_level_failure_dispatches_notification(monkeypatch) 
     assert exit_code == 1
     assert observed["success"] is False
     assert observed["title"] == "DB Backup Failed"
+    assert logging_calls == [(settings.logging_settings(), False), (None, False)]
 
 
 def test_restore_dbs_test_main_exit_code_and_notification_title(monkeypatch) -> None:
@@ -661,9 +726,15 @@ def test_restore_dbs_test_main_attempts_teardown_after_failure(monkeypatch) -> N
 def test_backup_gdrive_main_top_level_failure_dispatches_notification(monkeypatch) -> None:
     settings = _backup_gdrive_settings()
     observed: dict[str, object] = {}
+    logging_calls: list[tuple[object, bool]] = []
 
     monkeypatch.setattr("scripts.backup_gdrive.main.get_backup_gdrive_settings", lambda: settings)
-    monkeypatch.setattr("scripts.backup_gdrive.main.setup_logging", lambda *_: None)
+    monkeypatch.setattr(
+        "scripts.backup_gdrive.main.setup_logging",
+        lambda logging_settings=None, include_file=True: logging_calls.append(
+            (logging_settings, include_file)
+        ),
+    )
     monkeypatch.setattr(
         "scripts.backup_gdrive.main.subprocess.run",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("rclone missing")),
@@ -678,3 +749,4 @@ def test_backup_gdrive_main_top_level_failure_dispatches_notification(monkeypatc
     assert exit_code == 1
     assert observed["success"] is False
     assert observed["title"] == "GDrive Backup Failed"
+    assert logging_calls == [(settings.logging_settings(), False), (None, False)]
