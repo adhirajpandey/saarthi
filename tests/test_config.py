@@ -623,3 +623,10 @@ def test_backup_db_settings_ignore_restore_only_config_keys(runtime_config, monk
     settings = get_backup_db_settings()
 
     assert settings.vidwiz_db_url == "postgres://vidwiz"
+
+
+def test_api_settings_reject_non_positive_health_cache_ttl(runtime_config) -> None:
+    runtime_config({"HEALTH_CACHE_TTL_SECONDS": 0})
+
+    with pytest.raises(ValueError, match="health_cache_ttl_seconds"):
+        get_api_settings()

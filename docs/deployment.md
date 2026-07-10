@@ -21,6 +21,9 @@ cp .env.example .env
 2. Fill values:
 
 - `app/config/config.py`: non-secret settings
+- Set `HEALTH_CACHE_TTL_SECONDS` to the number of seconds each API process
+  should cache the complete `/health` response. The default is `60`; the value
+  must be a positive integer.
 - Operational backup and restore-verification scripts require
   `WHATSAPP_ENABLED`. Set `WHATSAPP_HERMES_COMMAND_PATH` explicitly to the
   correct binary path on that host and configure `WHATSAPP_TARGET_PERSONAL`.
@@ -122,6 +125,14 @@ uv run cloudflare-dns list --zone-name adhirajpandey.tech --proxied
 uv run google-tasks-auth --headless
 uv run shikari-visualize --list
 ```
+
+The health response should return HTTP `200` with an overall `healthy` or
+`degraded` status and coarse states for `location_database`,
+`geofence_mapping`, `email`, and `whatsapp`. Repeated requests within
+`HEALTH_CACHE_TTL_SECONDS` return the same in-memory result without re-running
+the underlying checks. A degraded response indicates that at least one
+required or enabled integration is unavailable; inspect `saarthi-api` logs for
+details.
 
 For Notion MCP verification, confirm these tool calls succeed from the client:
 

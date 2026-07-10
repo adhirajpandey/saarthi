@@ -69,14 +69,20 @@ Startup flow (`app/main.py`):
 2. Load geofence mapping from JSON.
 3. Initialize shared logging.
 4. Initialize SQLite schema for location storage.
-5. Attach settings and mapping to app state.
+5. Initialize the in-memory health response cache.
+6. Attach settings, mapping, and cache to app state.
 
 Layer responsibilities:
 
 - Routers: HTTP contract + dependency wiring
 - Dependencies: auth and settings access
-- Services: persistence, transition detection, notification dispatch
-- Health endpoint is liveness-only and returns `{"status": "healthy"}`.
+- Services: persistence, transition detection, notification dispatch, and
+  runtime availability checks
+- The public health endpoint reports coarse state for SQLite, geofence mapping,
+  email, and WhatsApp. Results are cached per API process for the configured
+  TTL so repeated requests do not repeatedly probe dependencies.
+- Health probes never send notifications. Public responses contain only
+  `healthy`/`degraded` and `available`/`unavailable`/`disabled` states.
 
 Error shape:
 
@@ -281,6 +287,7 @@ GDrive backup, and Shikari runtimes.
 
 - `LOCATION_DB_PATH`: SQLite location history
 - `GEOFENCE_MAPPING_PATH`: geofence definitions
+- `HEALTH_CACHE_TTL_SECONDS`: per-process health response cache TTL
 - `GEOFENCE_SUBJECT_TEMPLATE`: geofence email subject format
 - `GEOFENCE_EMAIL_TEMPLATE`: geofence email body format using `{area}` and `{event}`
 - `GEOFENCE_WHATSAPP_ENTERED_TEMPLATE`: geofence WhatsApp body for `entered` events

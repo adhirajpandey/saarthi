@@ -2,12 +2,25 @@
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 
+HealthStatus = Literal["healthy", "degraded"]
+HealthCheckState = Literal["available", "unavailable", "disabled"]
+
+
+class HealthChecks(BaseModel):
+    location_database: HealthCheckState
+    geofence_mapping: HealthCheckState
+    email: HealthCheckState
+    whatsapp: HealthCheckState
+
+
 class HealthCheckResponse(BaseModel):
-    status: str
+    status: HealthStatus
+    checks: HealthChecks
 
 
 class GeofenceEvent(StrEnum):

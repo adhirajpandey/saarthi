@@ -8,6 +8,7 @@ APP_CONFIG = {
     "APP_NAME": "SAARTHI",
     "LOCATION_DB_PATH": "data/saarthi.db",
     "GEOFENCE_MAPPING_PATH": "data/geofence_mapping.json",
+    "HEALTH_CACHE_TTL_SECONDS": 60,
 }
 
 LOGGING_CONFIG = {

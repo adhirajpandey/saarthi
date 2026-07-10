@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import dotenv_values
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 # Ownership and runtime key groups
 ENV_OWNED_KEYS = frozenset(
@@ -63,6 +63,7 @@ API_CONFIG_KEYS = frozenset(
         "GEOFENCE_WHATSAPP_EXITED_TEMPLATE",
         "GEOFENCE_UPDATES_RECIPIENT",
         "GEOFENCE_SENDER_NAME",
+        "HEALTH_CACHE_TTL_SECONDS",
     }
 )
 
@@ -316,6 +317,7 @@ class ApiSettings(RuntimeSettings):
     location_db_path: str
     geofence_mapping_path: str
     admin_token: str
+    health_cache_ttl_seconds: int = Field(gt=0)
     geofence_subject_template: str
     geofence_email_template: str
     geofence_whatsapp_entered_template: str

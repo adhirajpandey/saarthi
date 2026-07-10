@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from app.api.routers import geofence, health, me
 from app.errors import AppError
 from app.services.geofence_engine import load_geofence_mapping
+from app.services.health import HealthResponseCache
 from app.services.location import initialize_location_db
 from shared.logging import setup_logging
 from shared.settings import get_api_settings
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
     initialize_location_db(settings.location_db_path)
     app.state.settings = settings
     app.state.geofence_mapping = geofence_mapping
+    app.state.health_response_cache = HealthResponseCache(settings.health_cache_ttl_seconds)
     app.title = settings.app_name
     logger.info("Application startup complete.")
     yield

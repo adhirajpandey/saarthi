@@ -59,12 +59,15 @@ JSON success response
 ### `GET /health`
 
 Short description:
-Returns service liveness status.
+Returns cached API runtime and integration availability.
 
 ASCII flow:
 
 ```text
-Client -> /health -> health router -> response
+Client
+  -> /health
+  -> return cached state when TTL is valid
+  -> otherwise check runtime dependencies and cache the result
 ```
 
 Expected input:
@@ -76,14 +79,31 @@ Expected output:
 
 ```json
 {
-  "status": "healthy"
+  "status": "healthy",
+  "checks": {
+    "location_database": "available",
+    "geofence_mapping": "available",
+    "email": "available",
+    "whatsapp": "available"
+  }
 }
 ```
 
 Remarks:
 
-- `/health` is intentionally liveness-only.
-- Host integration diagnostics are tracked as separate deferred work.
+- `status` is `healthy` when every required or enabled check is available;
+  otherwise it is `degraded`.
+- Each check is `available`, `unavailable`, or `disabled`. Disabled optional
+  notification channels do not degrade the overall status.
+- Email and WhatsApp checks use bounded TCP connectivity probes. They do not
+  send notifications or authenticate with the remote service.
+- Responses always use HTTP `200`, including degraded states.
+- Results are cached in memory per API process for
+  `HEALTH_CACHE_TTL_SECONDS` (60 seconds by default). Healthy and degraded
+  responses use the same TTL, and concurrent refresh requests share one probe
+  run.
+- The public response intentionally excludes paths, hostnames, credentials,
+  and failure details. Detailed failures are written only to application logs.
 
 ### `POST /geofence/events`
 
