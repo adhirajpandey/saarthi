@@ -155,6 +155,24 @@ def test_import_loads_pressure_and_orientation_shapes(test_workspace: Path) -> N
     assert pd.isna(ride_data["Orientation"].iloc[1]["w"])
 
 
+def test_import_stores_missing_device_metadata_as_json_null(test_workspace: Path) -> None:
+    session_dir = _write_session(test_workspace / "sessions", "2026-02-02-20:10:00")
+    (session_dir / "meta" / "device.csv").write_text(
+        '"property","value"\n'
+        '"deviceModel","Pixel 6a"\n'
+        '"deviceBaseOS",NaN\n'
+        '"humidity Name",NaN\n',
+        encoding="utf-8",
+    )
+    db_path = test_workspace / "rides.sqlite3"
+
+    import_session(db_path, session_dir)
+    _, meta = load_ride(db_path, session_dir.name)
+
+    assert meta["device"]["deviceBaseOS"] is None
+    assert meta["sensors"]["humidity"]["Name"] is None
+
+
 def test_verify_and_backup_create_a_restorable_database(test_workspace: Path) -> None:
     source_dir = _write_session(test_workspace / "sessions", "2026-02-02-20:10:00")
     db_path = test_workspace / "rides.sqlite3"

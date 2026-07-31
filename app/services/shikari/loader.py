@@ -306,12 +306,19 @@ def load_meta(
 
     if device_df is not None and not device_df.empty:
         # Vectorised: split into device-level vs sensor-level rows
-        props = device_df[["property", "value"]].astype(str)
+        props = device_df[["property", "value"]].copy()
+        props["property"] = props["property"].astype(str)
         has_space = props["property"].str.contains(" ", regex=False)
+
+        def metadata_value(value: object) -> str | None:
+            return None if pd.isna(value) else str(value)
 
         # Device-level properties (no space in key)
         dev_rows = props.loc[~has_space]
-        meta["device"] = dict(zip(dev_rows["property"], dev_rows["value"]))
+        meta["device"] = {
+            str(row.property): metadata_value(row.value)
+            for row in dev_rows.itertuples(index=False)
+        }
 
         # Sensor-level properties ("sensorKey Attr")
         sen_rows = props.loc[has_space].copy()
@@ -320,9 +327,12 @@ def load_meta(
             sensor_key=splits.str[0],
             attr=splits.str[1],
         )
-        sensor_props: dict[str, dict[str, str]] = {}
+        sensor_props: dict[str, dict[str, str | None]] = {}
         for sensor_key, grp in sen_rows.groupby("sensor_key"):
-            sensor_props[sensor_key] = dict(zip(grp["attr"], grp["value"]))
+            sensor_props[sensor_key] = {
+                str(row.attr): metadata_value(row.value)
+                for row in grp.itertuples(index=False)
+            }
         meta["sensors"] = sensor_props
 
     # --- time.csv ------------------------------------------------------------

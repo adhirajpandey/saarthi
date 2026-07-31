@@ -95,7 +95,12 @@ def _ride_key(meta: dict, manifest_sha256: str) -> str:
     start = _trusted_start(meta.get("events", []), time_inferred=bool(meta["time_inferred"]))
     if start is None:
         return f"manifest:{manifest_sha256}"
-    device_json = json.dumps(meta.get("device", {}), sort_keys=True, separators=(",", ":"))
+    device_json = json.dumps(
+        meta.get("device", {}),
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
     device_fingerprint = hashlib.sha256(device_json.encode()).hexdigest()[:20]
     return f"start:{_system_time_us(start['system_time'])}:{device_fingerprint}"
 
@@ -131,6 +136,7 @@ def _metadata_json(meta: dict) -> str:
         },
         sort_keys=True,
         separators=(",", ":"),
+        allow_nan=False,
     )
 
 
