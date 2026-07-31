@@ -103,6 +103,7 @@ RESTORE_DB_TEST_CONFIG_KEYS = frozenset(
 
 SHIKARI_CONFIG_KEYS = frozenset(
     {
+        "SHIKARI_DB_PATH",
         "SHIKARI_SESSIONS_PATH",
         "SHIKARI_OUTPUTS_PATH",
         "SHIKARI_DEFAULT_THEME",
@@ -474,6 +475,7 @@ class BackupGdriveSettings(ScriptNotificationSettings):
 class ShikariSettings(RuntimeSettings):
     """Settings required by the Shikari visualization script."""
 
+    shikari_db_path: str
     shikari_sessions_path: str
     shikari_outputs_path: str
     shikari_default_theme: str

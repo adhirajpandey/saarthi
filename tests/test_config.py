@@ -486,6 +486,7 @@ def test_fails_when_config_object_is_missing() -> None:
 def test_shikari_settings_loads_repo_values(runtime_config) -> None:
     runtime_config(
         {
+            "SHIKARI_DB_PATH": "data/shikari/rides.sqlite3",
             "SHIKARI_SESSIONS_PATH": "data/shikari/sessions",
             "SHIKARI_OUTPUTS_PATH": "data/shikari/outputs",
             "SHIKARI_DEFAULT_THEME": "dark",
@@ -495,6 +496,7 @@ def test_shikari_settings_loads_repo_values(runtime_config) -> None:
 
     settings = get_shikari_settings()
 
+    assert settings.shikari_db_path == "data/shikari/rides.sqlite3"
     assert settings.shikari_sessions_path == "data/shikari/sessions"
     assert settings.shikari_outputs_path == "data/shikari/outputs"
     assert settings.shikari_default_theme == "dark"
