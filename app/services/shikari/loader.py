@@ -350,10 +350,10 @@ def load_meta(
         # Fallback: infer duration from sensor CSV time columns and map wall-clock
         # to the session directory name timestamp (to second precision).
         meta["duration_s"] = _infer_duration_from_sensors(session_data)
+        meta["time_inferred"] = True
         synthetic_start = _session_name_start_event(session_dir.name)
         if synthetic_start is not None:
             meta["events"] = [synthetic_start]
-            meta["time_inferred"] = True
 
     return meta
 
