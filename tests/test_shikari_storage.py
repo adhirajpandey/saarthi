@@ -117,6 +117,28 @@ def test_longer_export_extends_an_existing_logical_ride(test_workspace: Path) ->
     assert meta["duration_s"] == 2.0
 
 
+def test_conflicting_reexport_rolls_back_without_changing_the_ride(
+    test_workspace: Path,
+) -> None:
+    sessions_dir = test_workspace / "sessions"
+    first = _write_session(sessions_dir, "first")
+    conflicting = _write_session(sessions_dir, "conflicting")
+    accelerometer_path = conflicting / "Accelerometer.csv"
+    accelerometer_path.write_text(
+        accelerometer_path.read_text(encoding="utf-8").replace("0.0,1,2,3", "0.0,99,2,3"),
+        encoding="utf-8",
+    )
+    db_path = test_workspace / "rides.sqlite3"
+    import_session(db_path, first)
+
+    with pytest.raises(ValueError, match="Conflicting motion_samples sample"):
+        import_session(db_path, conflicting)
+
+    with sqlite3.connect(db_path) as connection:
+        assert connection.execute("SELECT count(*) FROM ride_imports").fetchone()[0] == 1
+        assert connection.execute("SELECT count(*) FROM motion_samples").fetchone()[0] == 3
+
+
 def test_inferred_time_session_with_non_timestamp_name_imports(test_workspace: Path) -> None:
     session_dir = _write_session(
         test_workspace / "sessions",

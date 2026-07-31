@@ -1,5 +1,7 @@
 """SQLite persistence and read models for Shikari ride data."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 import json
 from pathlib import Path
@@ -157,11 +159,22 @@ def connect_database(db_path: str | Path) -> sqlite3.Connection:
     return connection
 
 
+@contextmanager
+def database_connection(db_path: str | Path) -> Iterator[sqlite3.Connection]:
+    """Open a transactional connection and always close it after use."""
+    connection = connect_database(db_path)
+    try:
+        with connection:
+            yield connection
+    finally:
+        connection.close()
+
+
 def initialize_database(db_path: str | Path) -> None:
     """Create schema version 1 without changing an existing compatible database."""
     resolved_path = Path(db_path)
     resolved_path.parent.mkdir(parents=True, exist_ok=True)
-    with connect_database(resolved_path) as connection:
+    with database_connection(resolved_path) as connection:
         current_version = int(connection.execute("PRAGMA user_version").fetchone()[0])
         if current_version > SCHEMA_VERSION:
             raise RuntimeError(
@@ -183,7 +196,7 @@ def _require_database(db_path: str | Path) -> Path:
 def list_rides(db_path: str | Path) -> list[RideSummary]:
     """Return logical rides in chronological order, with unknown starts last."""
     resolved_path = _require_database(db_path)
-    with connect_database(resolved_path) as connection:
+    with database_connection(resolved_path) as connection:
         rows = connection.execute(
             """
             SELECT id, canonical_label, started_at_utc_us, duration_ns, time_inferred
@@ -242,7 +255,7 @@ def load_ride(
 ) -> tuple[dict[str, pd.DataFrame], dict]:
     """Load one database ride in the same normalized shape used by existing plots."""
     resolved_path = _require_database(db_path)
-    with connect_database(resolved_path) as connection:
+    with database_connection(resolved_path) as connection:
         ride = _resolve_ride(connection, ride_ref)
         ride_id = int(ride["id"])
         metadata = json.loads(str(ride["metadata_json"]))
@@ -381,7 +394,7 @@ def load_ride(
 def verify_database(db_path: str | Path) -> VerificationReport:
     """Run integrity checks and return core archive counts."""
     resolved_path = _require_database(db_path)
-    with connect_database(resolved_path) as connection:
+    with database_connection(resolved_path) as connection:
         integrity_result = str(connection.execute("PRAGMA integrity_check").fetchone()[0])
         foreign_key_errors = tuple(
             tuple(row) for row in connection.execute("PRAGMA foreign_key_check").fetchall()
@@ -418,6 +431,6 @@ def backup_database(db_path: str | Path, destination: str | Path) -> Verificatio
     if destination_path.exists():
         raise FileExistsError(f"Backup destination already exists: {destination_path}")
     destination_path.parent.mkdir(parents=True, exist_ok=True)
-    with connect_database(source_path) as source, connect_database(destination_path) as target:
+    with database_connection(source_path) as source, database_connection(destination_path) as target:
         source.backup(target)
     return verify_database(destination_path)

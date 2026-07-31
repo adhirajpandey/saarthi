@@ -29,7 +29,7 @@ from app.services.shikari.loader import (
     load_meta,
     load_session,
 )
-from app.services.shikari.storage import connect_database, initialize_database
+from app.services.shikari.storage import database_connection, initialize_database
 
 
 PARSER_VERSION = 1
@@ -311,7 +311,7 @@ def import_session(db_path: str | Path, session_dir: str | Path) -> ImportResult
     initialize_database(db_path)
     now_us = time.time_ns() // 1_000
 
-    with connect_database(db_path) as connection:
+    with database_connection(db_path) as connection:
         previous_source = connection.execute(
             """
             SELECT ride_id, sample_count
@@ -373,7 +373,7 @@ def import_session(db_path: str | Path, session_dir: str | Path) -> ImportResult
     duration_ns = _elapsed_ns(meta["duration_s"])
     started_at, ended_at = _ride_times(meta)
 
-    with connect_database(db_path) as connection, connection:
+    with database_connection(db_path) as connection:
         ride = connection.execute(
             "SELECT * FROM rides WHERE ride_key = ?", (ride_key,)
         ).fetchone()
