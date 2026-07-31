@@ -6,10 +6,12 @@ from types import SimpleNamespace
 from app.services.shikari.runner import (
     VisualizationResult,
     list_candidate_sessions,
+    render_database_outputs,
     resolve_data_dir,
     resolve_session_dir,
 )
 from scripts.shikari_visualize import main as shikari_main
+from app.services.shikari.importer import import_session
 
 
 def _make_session(base_dir: Path, name: str, *, with_device: bool = True) -> Path:
@@ -73,7 +75,7 @@ def test_shikari_cli_list_sessions(monkeypatch, capsys, test_workspace: Path) ->
     monkeypatch.setattr(shikari_main, "setup_logging", lambda *_: None)
     monkeypatch.setattr(
         "sys.argv",
-        ["shikari-visualize", "--list"],
+        ["shikari-visualize", "--list", "--data-dir", str(data_dir)],
     )
 
     exit_code = shikari_main.main()
@@ -113,7 +115,15 @@ def test_shikari_cli_invokes_renderer(monkeypatch, capsys, test_workspace: Path)
     monkeypatch.setattr(shikari_main, "render_session_outputs", _fake_render_session_outputs)
     monkeypatch.setattr(
         "sys.argv",
-        ["shikari-visualize", "2026-02-24-11:12:51", "--output", "png", "html"],
+        [
+            "shikari-visualize",
+            "2026-02-24-11:12:51",
+            "--data-dir",
+            str(data_dir),
+            "--output",
+            "png",
+            "html",
+        ],
     )
 
     exit_code = shikari_main.main()
@@ -137,10 +147,57 @@ def test_shikari_cli_fails_when_data_dir_missing(monkeypatch, capsys, test_works
 
     monkeypatch.setattr(shikari_main, "get_shikari_settings", lambda: settings)
     monkeypatch.setattr(shikari_main, "setup_logging", lambda *_: None)
-    monkeypatch.setattr("sys.argv", ["shikari-visualize"])
+    monkeypatch.setattr(
+        "sys.argv",
+        ["shikari-visualize", "--data-dir", str(test_workspace / "missing")],
+    )
 
     exit_code = shikari_main.main()
     out = capsys.readouterr().out
 
     assert exit_code == 1
     assert "Data directory not found" in out
+
+
+def test_shikari_cli_lists_database_rides(monkeypatch, capsys, test_workspace: Path) -> None:
+    data_dir = test_workspace / "sessions"
+    session_dir = _make_session(data_dir, "2026-02-24-11:12:51")
+    db_path = test_workspace / "rides.sqlite3"
+    import_session(db_path, session_dir)
+    settings = SimpleNamespace(
+        shikari_db_path=str(db_path),
+        shikari_default_output_format="png",
+        shikari_default_theme="dark",
+        shikari_sessions_path=str(data_dir),
+        shikari_outputs_path=str(test_workspace / "outputs"),
+        logging_settings=lambda: None,
+    )
+    monkeypatch.setattr(shikari_main, "get_shikari_settings", lambda: settings)
+    monkeypatch.setattr(shikari_main, "setup_logging", lambda *_: None)
+    monkeypatch.setattr("sys.argv", ["shikari-visualize", "--list"])
+
+    assert shikari_main.main() == 0
+    out = capsys.readouterr().out
+    assert "Found 1 ride(s)" in out
+    assert "2026-02-24-11:12:51" in out
+
+
+def test_render_database_outputs_uses_existing_plot_pipeline(test_workspace: Path) -> None:
+    data_dir = test_workspace / "sessions"
+    session_dir = _make_session(data_dir, "2026-02-24-11:12:51")
+    db_path = test_workspace / "rides.sqlite3"
+    import_session(db_path, session_dir)
+
+    result = render_database_outputs(
+        db_path=db_path,
+        ride_ref=session_dir.name,
+        output_dir=test_workspace / "outputs",
+        output_formats=["html"],
+        theme="dark",
+    )
+
+    assert result.session_name == session_dir.name
+    assert result.device == "Pixel"
+    assert result.sensor_names == ["Location"]
+    assert result.output_paths[0].is_file()
+    assert result.output_paths[0].suffix == ".html"

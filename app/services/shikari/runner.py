@@ -7,6 +7,7 @@ from typing import Any
 
 from app.services.shikari.loader import list_sessions, load_meta, load_session
 from app.services.shikari.plots import plot_session_dashboard
+from app.services.shikari.storage import list_rides, load_ride
 from shared.settings import ShikariSettings
 
 REQUIRED_SESSION_FILES = ("meta/device.csv",)
@@ -66,6 +67,23 @@ def resolve_output_dir(settings: ShikariSettings) -> Path:
     return Path(settings.shikari_outputs_path)
 
 
+def resolve_db_path(settings: ShikariSettings, db_override: Path | None) -> Path:
+    """Resolve the canonical ride database path from settings or a CLI override."""
+    return db_override if db_override is not None else Path(settings.shikari_db_path)
+
+
+def resolve_ride_ref(db_path: Path, ride_ref: str | None) -> str:
+    """Resolve an explicit ride alias or select the latest trusted ride."""
+    rides = list_rides(db_path)
+    if not rides:
+        raise ValueError(f"No rides found in {db_path}")
+    if ride_ref is not None:
+        _, meta = load_ride(db_path, ride_ref)
+        return str(meta["session_name"])
+    trusted_rides = [ride for ride in rides if ride.started_at_utc_us is not None]
+    return (trusted_rides or rides)[-1].label
+
+
 def _write_html(fig: Any, path: Path, tab_title: str) -> None:
     body = fig.to_html(
         include_plotlyjs=PLOTLY_HTML_INCLUDE_JS,
@@ -105,9 +123,46 @@ def render_session_outputs(
     """Load a session and generate all requested dashboard outputs."""
     session_data = load_session(session_dir)
     meta = load_meta(session_dir, session_data=session_data)
+    return _render_loaded_outputs(
+        session_data=session_data,
+        meta=meta,
+        output_dir=output_dir,
+        output_formats=output_formats,
+        theme=theme,
+    )
+
+
+def render_database_outputs(
+    *,
+    db_path: Path,
+    ride_ref: str | int,
+    output_dir: Path,
+    output_formats: list[str],
+    theme: str,
+) -> VisualizationResult:
+    """Load a canonical database ride and generate existing dashboard outputs."""
+    session_data, meta = load_ride(db_path, ride_ref)
+    return _render_loaded_outputs(
+        session_data=session_data,
+        meta=meta,
+        output_dir=output_dir,
+        output_formats=output_formats,
+        theme=theme,
+    )
+
+
+def _render_loaded_outputs(
+    *,
+    session_data: dict,
+    meta: dict,
+    output_dir: Path,
+    output_formats: list[str],
+    theme: str,
+) -> VisualizationResult:
+    """Render already-normalized Shikari data through the existing Plotly pipeline."""
     fig = plot_session_dashboard(session_data, meta, theme=theme)
 
-    tab_title = session_dir.name
+    tab_title = str(meta.get("session_name", "ride"))
     output_stem = f"trip_{tab_title}_sensors"
     output_dir.mkdir(parents=True, exist_ok=True)
     output_paths: list[Path] = []
@@ -120,9 +175,9 @@ def render_session_outputs(
         output_paths.append(out_path.resolve())
 
     return VisualizationResult(
-        session_name=session_dir.name,
+        session_name=tab_title,
         device=meta.get("device", {}).get("deviceModel", "?"),
         duration_s=float(meta.get("duration_s", 0)),
-        sensor_names=[key for key in session_data if not key.startswith("meta/")],
+        sensor_names=sorted(key for key in session_data if not key.startswith("meta/")),
         output_paths=output_paths,
     )

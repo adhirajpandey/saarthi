@@ -8,11 +8,15 @@ from pathlib import Path
 from app.services.shikari.constants import OUTPUT_FORMATS, THEMES
 from app.services.shikari.runner import (
     list_candidate_sessions,
+    render_database_outputs,
     render_session_outputs,
     resolve_data_dir,
+    resolve_db_path,
     resolve_output_dir,
+    resolve_ride_ref,
     resolve_session_dir,
 )
+from app.services.shikari.storage import list_rides
 from shared.logging import setup_logging
 from shared.settings import get_shikari_settings
 
@@ -49,7 +53,13 @@ def _parse_args(default_format: str, default_theme: str) -> argparse.Namespace:
         "-d",
         type=Path,
         default=None,
-        help="Path containing ride session directories.",
+        help="Legacy mode: read CSV session directories instead of the ride database.",
+    )
+    parser.add_argument(
+        "--db",
+        type=Path,
+        default=None,
+        help="Override the configured canonical ride database path.",
     )
     parser.add_argument(
         "--output",
@@ -85,33 +95,54 @@ def main() -> int:
             default_format=settings.shikari_default_output_format,
             default_theme=settings.shikari_default_theme,
         )
-        data_dir = resolve_data_dir(settings, args.data_dir)
-        if not data_dir.is_dir():
-            print(f"Data directory not found: {data_dir}")
-            return 1
-
-        sessions = list_candidate_sessions(data_dir)
-        if not sessions:
-            print(f"No session directories found in {data_dir}")
-            return 1
-
-        if args.list_sessions:
-            print(f"Found {len(sessions)} session(s) in {data_dir}:\n")
-            for session in sessions:
-                print(f"  {session.name}")
-            return 0
-
-        session_dir = resolve_session_dir(data_dir, args.session)
         output_dir = resolve_output_dir(settings)
         requested_formats = list(dict.fromkeys(args.output))
-
-        print(f"Loading session: {session_dir.name}")
-        result = render_session_outputs(
-            session_dir=session_dir,
-            output_dir=output_dir,
-            output_formats=requested_formats,
-            theme=args.theme,
-        )
+        if args.data_dir is not None:
+            data_dir = resolve_data_dir(settings, args.data_dir)
+            if not data_dir.is_dir():
+                print(f"Data directory not found: {data_dir}")
+                return 1
+            sessions = list_candidate_sessions(data_dir)
+            if not sessions:
+                print(f"No session directories found in {data_dir}")
+                return 1
+            if args.list_sessions:
+                print(f"Found {len(sessions)} session(s) in {data_dir}:\n")
+                for session in sessions:
+                    print(f"  {session.name}")
+                return 0
+            session_dir = resolve_session_dir(data_dir, args.session)
+            print(f"Loading session: {session_dir.name}")
+            result = render_session_outputs(
+                session_dir=session_dir,
+                output_dir=output_dir,
+                output_formats=requested_formats,
+                theme=args.theme,
+            )
+        else:
+            db_path = resolve_db_path(settings, args.db)
+            if not db_path.is_file():
+                print(f"Ride database not found: {db_path}")
+                return 1
+            rides = list_rides(db_path)
+            if not rides:
+                print(f"No rides found in {db_path}")
+                return 1
+            if args.list_sessions:
+                print(f"Found {len(rides)} ride(s) in {db_path}:\n")
+                for ride in rides:
+                    inferred = " (inferred time)" if ride.time_inferred else ""
+                    print(f"  {ride.label}{inferred}")
+                return 0
+            ride_ref = resolve_ride_ref(db_path, args.session)
+            print(f"Loading ride: {ride_ref}")
+            result = render_database_outputs(
+                db_path=db_path,
+                ride_ref=ride_ref,
+                output_dir=output_dir,
+                output_formats=requested_formats,
+                theme=args.theme,
+            )
         print(f"  Device : {result.device}")
         print(f"  Duration: {result.duration_s:.1f} s")
         print(f"  Sensors : {', '.join(result.sensor_names)}")
