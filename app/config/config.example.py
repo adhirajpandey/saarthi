@@ -72,7 +72,7 @@ GDRIVE_CONFIG = {
 }
 
 SHIKARI_CONFIG = {
-    "SHIKARI_DB_PATH": "data/shikari/rides.sqlite3",
+    "SHIKARI_DB_PATH": "data/shikari/rides.db",
     "SHIKARI_SESSIONS_PATH": "data/shikari/sessions",
     "SHIKARI_OUTPUTS_PATH": "data/shikari/outputs",
     "SHIKARI_DEFAULT_THEME": "dark",
