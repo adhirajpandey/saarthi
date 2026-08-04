@@ -299,14 +299,12 @@ class RuntimeSettings(BaseModel):
 
 # Runtime settings models
 class ScriptNotificationSettings(RuntimeSettings):
-    """Runtime settings for scripts that require WhatsApp notifications."""
+    """Runtime settings for scripts with optional WhatsApp notifications."""
 
     @model_validator(mode="after")
     def _validate_script_whatsapp_config(self) -> "ScriptNotificationSettings":
-        if not self.whatsapp_enabled:
-            raise ValueError("WHATSAPP_ENABLED is required for script notifications")
         self._validate_whatsapp_transport()
-        if not self.whatsapp_target_personal:
+        if self.whatsapp_enabled and not self.whatsapp_target_personal:
             raise ValueError("WHATSAPP_TARGET_PERSONAL is required when WHATSAPP_ENABLED is true")
         return self
 

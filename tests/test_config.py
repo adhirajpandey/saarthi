@@ -372,14 +372,19 @@ def test_backup_gdrive_settings_ignore_restore_only_config_keys(runtime_config) 
     assert settings.gdrive_source == trimmed["GDRIVE_SOURCE"]
 
 
-def test_backup_gdrive_settings_require_whatsapp(runtime_config) -> None:
-    runtime_config({"WHATSAPP_ENABLED": False})
+def test_backup_gdrive_settings_allow_whatsapp_to_be_disabled(runtime_config) -> None:
+    runtime_config(
+        {
+            "WHATSAPP_ENABLED": False,
+            "WHATSAPP_SSH_HOST": None,
+            "WHATSAPP_HERMES_COMMAND_PATH": None,
+            "WHATSAPP_TARGET_PERSONAL": None,
+        }
+    )
 
-    with pytest.raises(
-        ValueError,
-        match="WHATSAPP_ENABLED is required for script notifications",
-    ):
-        get_backup_gdrive_settings()
+    settings = get_backup_gdrive_settings()
+
+    assert settings.whatsapp_enabled is False
 
 
 def test_script_notification_settings_expose_whatsapp_config(runtime_config) -> None:

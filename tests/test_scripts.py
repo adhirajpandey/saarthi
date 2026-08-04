@@ -15,7 +15,10 @@ from scripts.backup_dbs import main as backup_dbs_main
 from scripts.backup_gdrive import main as backup_gdrive_main
 from scripts.restore_dbs_test import main as restore_dbs_test_main
 from scripts.backup_dbs.main import _dispatch_notifications, build_db_map
-from scripts.backup_gdrive.main import _build_whatsapp_summary
+from scripts.backup_gdrive.main import (
+    _build_whatsapp_summary,
+    _dispatch_notifications as dispatch_gdrive_notifications,
+)
 from scripts.restore_dbs_test.main import (
     _dispatch_notifications as dispatch_restore_notifications,
 )
@@ -394,6 +397,50 @@ def test_restore_dispatch_notifications_sends_whatsapp_summary(monkeypatch) -> N
     )
 
     assert calls["wa"] == 1
+
+
+def test_dispatch_notifications_skip_whatsapp_when_disabled(monkeypatch) -> None:
+    calls = {"db": 0, "gdrive": 0, "restore": 0}
+
+    monkeypatch.setattr(
+        "scripts.backup_dbs.main.send_whatsapp_message",
+        lambda **_: calls.__setitem__("db", calls["db"] + 1),
+    )
+    monkeypatch.setattr(
+        "scripts.backup_gdrive.main.send_whatsapp_message",
+        lambda **_: calls.__setitem__("gdrive", calls["gdrive"] + 1),
+    )
+    monkeypatch.setattr(
+        "scripts.restore_dbs_test.main.send_whatsapp_message",
+        lambda **_: calls.__setitem__("restore", calls["restore"] + 1),
+    )
+
+    disabled = {
+        "whatsapp_enabled": False,
+        "whatsapp_ssh_host": None,
+        "whatsapp_hermes_command_path": None,
+        "whatsapp_target_personal": None,
+    }
+    _dispatch_notifications(
+        settings=_backup_db_settings(**disabled),
+        title="DB Backup Success",
+        output_lines=["Backup complete for vidwiz"],
+        success=True,
+    )
+    dispatch_gdrive_notifications(
+        settings=_backup_gdrive_settings(**disabled),
+        title="GDrive Backup Success",
+        output_lines=["Backup completed successfully"],
+        success=True,
+    )
+    dispatch_restore_notifications(
+        settings=_restore_db_test_settings(**disabled),
+        title="DB Restore Verification Success",
+        output_lines=["Restore verification passed for vidwiz"],
+        success=True,
+    )
+
+    assert calls == {"db": 0, "gdrive": 0, "restore": 0}
 
 
 def test_dispatch_notifications_logs_whatsapp_failure(monkeypatch, caplog) -> None:

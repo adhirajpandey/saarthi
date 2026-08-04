@@ -48,7 +48,7 @@ cp .env.example .env
   so the runtime setting matches the fixed container target.
 - `SAARTHI_SSH_KEY_PATH` is required when `WHATSAPP_ENABLED` is true. When
   WhatsApp is disabled and the path is unset, Docker Compose mounts `/dev/null`
-  instead so API and MCP startup do not depend on an SSH key.
+  instead so API, MCP, backup, and restore startup do not depend on an SSH key.
 - Share the Notion integration tied to `NOTION_API_KEY` with all configured
   Notion databases, with read access for the saved links database and
   read/write access for the work items and Greenhouse experiments databases.

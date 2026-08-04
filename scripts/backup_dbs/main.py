@@ -111,6 +111,9 @@ def _dispatch_notifications(
     output_lines: list[str],
     success: bool,
 ) -> None:
+    if not settings.whatsapp_enabled:
+        logger.info("WhatsApp notifications are disabled; skipping backup notification")
+        return
     try:
         summary = _build_whatsapp_summary(title, output_lines, success)
         send_whatsapp_message(

@@ -31,12 +31,10 @@ Remarks:
 
 ### Shared Notification Pattern
 
-Backup and restore-verification scripts send status notifications through WhatsApp.
-Their settings require:
-
-- `WHATSAPP_ENABLED` set to `True`
-- the shared WhatsApp SSH transport values
-- `WHATSAPP_TARGET_PERSONAL` as the recipient
+Backup and restore-verification scripts optionally send status notifications
+through WhatsApp. When `WHATSAPP_ENABLED` is `True`, their settings require the
+shared WhatsApp SSH transport values and `WHATSAPP_TARGET_PERSONAL` as the
+recipient. When it is `False`, the jobs continue without sending a summary.
 
 Each script attempts notification dispatch but does not crash purely because WhatsApp dispatch fails.
 All three workflows reuse the shared notification transport.
