@@ -3,7 +3,7 @@
 import importlib.util
 import asyncio
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -89,7 +89,7 @@ def test_send_personal_whatsapp_message_reports_transport_failure(
     assert result == {"success": False, "message": "Failed to send WhatsApp message"}
 
 
-def test_mcp_auth_accepts_configured_token(monkeypatch, runtime_config) -> None:
+def test_mcp_auth_check_accepts_configured_github_user(runtime_config) -> None:
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
@@ -98,17 +98,18 @@ def test_mcp_auth_accepts_configured_token(monkeypatch, runtime_config) -> None:
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
-    monkeypatch.setenv("MCP_TOKEN", "valid-token")
     server = _load_mcp_server()
     settings = server.get_mcp_settings()
 
-    token = asyncio.run(server.build_mcp_auth(settings).verify_token("valid-token"))
+    check = server.require_github_user(settings.mcp_github_allowed_user_id)
+    context = SimpleNamespace(
+        token=SimpleNamespace(claims={"sub": str(settings.mcp_github_allowed_user_id)})
+    )
 
-    assert token is not None
-    assert token.client_id == "saarthi"
+    assert check(context) is True
 
 
-def test_mcp_auth_rejects_invalid_token(monkeypatch, runtime_config) -> None:
+def test_mcp_auth_check_rejects_other_github_user(runtime_config) -> None:
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
@@ -117,13 +118,46 @@ def test_mcp_auth_rejects_invalid_token(monkeypatch, runtime_config) -> None:
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
-    monkeypatch.setenv("MCP_TOKEN", "valid-token")
     server = _load_mcp_server()
     settings = server.get_mcp_settings()
 
-    token = asyncio.run(server.build_mcp_auth(settings).verify_token("invalid-token"))
+    check = server.require_github_user(settings.mcp_github_allowed_user_id)
+    context = SimpleNamespace(token=SimpleNamespace(claims={"sub": "12345"}))
 
-    assert token is None
+    assert check(context) is False
+
+
+def test_mcp_auth_check_rejects_missing_identity(runtime_config) -> None:
+    server = _load_mcp_server()
+    settings = server.get_mcp_settings()
+    check = server.require_github_user(settings.mcp_github_allowed_user_id)
+
+    assert check(SimpleNamespace(token=None)) is False
+    assert check(SimpleNamespace(token=SimpleNamespace(claims={}))) is False
+
+
+def test_mcp_auth_uses_github_provider_and_mounts_oauth_routes(runtime_config) -> None:
+    server = _load_mcp_server()
+    settings = server.get_mcp_settings()
+
+    auth = server.build_mcp_auth(settings)
+    route_paths = {route.path for route in server.mcp.http_app(path="/mcp").routes}
+
+    assert auth.__class__.__name__ == "GitHubProvider"
+    assert any(
+        middleware.__class__.__name__ == "AuthMiddleware"
+        for middleware in server.mcp.middleware
+    )
+    assert {
+        "/.well-known/oauth-authorization-server",
+        "/.well-known/oauth-protected-resource/mcp",
+        "/register",
+        "/authorize",
+        "/token",
+        "/auth/callback",
+        "/consent",
+        "/mcp",
+    } <= route_paths
 
 
 def test_mcp_server_omits_whatsapp_tool_when_disabled(runtime_config) -> None:
@@ -137,7 +171,11 @@ def test_mcp_server_omits_whatsapp_tool_when_disabled(runtime_config) -> None:
     )
 
     server = _load_mcp_server()
-    tool_names = {tool.name for tool in asyncio.run(server.mcp.list_tools())}
+    tool_names = {
+        component.name
+        for key, component in server.mcp._local_provider._components.items()
+        if key.startswith("tool:")
+    }
 
     assert "send_whatsapp_message" not in tool_names
     assert "search_transactions" in tool_names
@@ -154,7 +192,11 @@ def test_mcp_server_registers_whatsapp_tool_when_enabled(runtime_config) -> None
     )
 
     server = _load_mcp_server()
-    tool_names = {tool.name for tool in asyncio.run(server.mcp.list_tools())}
+    tool_names = {
+        component.name
+        for key, component in server.mcp._local_provider._components.items()
+        if key.startswith("tool:")
+    }
 
     assert "send_whatsapp_message" in tool_names
 

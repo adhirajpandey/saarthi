@@ -4,8 +4,9 @@ from pathlib import Path
 import sys
 
 from fastmcp import FastMCP
-from fastmcp.server.auth import MultiAuth
-from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
+from fastmcp.server.auth import AuthCheck, AuthContext
+from fastmcp.server.auth.providers.github import GitHubProvider
+from fastmcp.server.middleware import AuthMiddleware
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -34,21 +35,37 @@ from app.services.notion import (  # noqa: E402
 )
 
 
-def build_mcp_auth(settings: McpSettings) -> MultiAuth:
-    """Build bearer-token auth for the MCP server."""
-    verifier = StaticTokenVerifier(
-        tokens={
-            settings.mcp_token: {
-                "client_id": "saarthi",
-                "scopes": ["saarthi:mcp"],
-            }
-        }
+def require_github_user(user_id: int) -> AuthCheck:
+    """Allow only the configured GitHub account."""
+
+    def check(context: AuthContext) -> bool:
+        if context.token is None:
+            return False
+
+        return str(context.token.claims.get("sub")) == str(user_id)
+
+    return check
+
+
+def build_mcp_auth(settings: McpSettings) -> GitHubProvider:
+    """Build GitHub OAuth proxy authentication for the MCP server."""
+    return GitHubProvider(
+        client_id=settings.mcp_github_client_id,
+        client_secret=settings.mcp_github_client_secret,
+        base_url=settings.mcp_public_base_url.rstrip("/"),
+        required_scopes=["read:user"],
+        jwt_signing_key=settings.mcp_oauth_jwt_signing_key,
     )
-    return MultiAuth(verifiers=[verifier])
 
 
 mcp_settings = get_mcp_settings()
-mcp = FastMCP("saarthi-mcp", auth=build_mcp_auth(mcp_settings))
+mcp = FastMCP(
+    "saarthi-mcp",
+    auth=build_mcp_auth(mcp_settings),
+    middleware=[
+        AuthMiddleware(auth=require_github_user(mcp_settings.mcp_github_allowed_user_id))
+    ],
+)
 
 
 def send_personal_whatsapp_message(message: str) -> dict[str, bool | str]:

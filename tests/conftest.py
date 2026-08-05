@@ -79,7 +79,11 @@ def runtime_config(
 
     env_vars = {
         "ADMIN_TOKEN": "test-admin-token",
-        "MCP_TOKEN": "test-mcp-token",
+        "MCP_PUBLIC_BASE_URL": "https://saarthi.example.com",
+        "MCP_GITHUB_CLIENT_ID": "test-github-client-id",
+        "MCP_GITHUB_CLIENT_SECRET": "test-github-client-secret",
+        "MCP_GITHUB_ALLOWED_USER_ID": "87516052",
+        "MCP_OAUTH_JWT_SIGNING_KEY": "test-oauth-signing-key",
         "CLOUDFLARE_API_TOKEN": "test-cloudflare-token",
         "GOOGLE_TASKS_CLIENT_ID": "test-google-client-id",
         "GOOGLE_TASKS_CLIENT_SECRET": "test-google-client-secret",
