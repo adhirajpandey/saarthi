@@ -110,7 +110,7 @@ def test_mcp_settings_allow_disabled_whatsapp_without_transport(runtime_config) 
     assert settings.whatsapp_enabled is False
 
 
-def test_mcp_settings_requires_mcp_token(monkeypatch, runtime_config) -> None:
+def test_mcp_settings_requires_github_oauth_configuration(monkeypatch, runtime_config) -> None:
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
@@ -119,10 +119,17 @@ def test_mcp_settings_requires_mcp_token(monkeypatch, runtime_config) -> None:
             "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
         }
     )
-    monkeypatch.delenv("MCP_TOKEN", raising=False)
+    monkeypatch.delenv("MCP_GITHUB_CLIENT_ID", raising=False)
 
-    with pytest.raises(ValueError, match="mcp_token"):
+    with pytest.raises(ValueError, match="mcp_github_client_id"):
         get_mcp_settings()
+
+
+def test_mcp_settings_parses_github_allowed_user_id(runtime_config) -> None:
+    settings = get_mcp_settings()
+
+    assert settings.mcp_github_allowed_user_id == 87516052
+    assert settings.mcp_public_base_url == "https://saarthi.example.com"
 
 
 def test_mcp_settings_requires_trackcrow_user_uuid(monkeypatch, runtime_config) -> None:
@@ -346,7 +353,7 @@ def test_mcp_settings_ignore_api_only_config_keys(runtime_config) -> None:
 
     settings = get_mcp_settings()
 
-    assert settings.mcp_token == "test-mcp-token"
+    assert settings.mcp_github_allowed_user_id == 87516052
 
 
 def test_backup_gdrive_settings_ignore_restore_only_config_keys(runtime_config) -> None:

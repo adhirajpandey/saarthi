@@ -13,7 +13,11 @@ from pydantic import BaseModel, Field, model_validator
 ENV_OWNED_KEYS = frozenset(
     {
         "ADMIN_TOKEN",
-        "MCP_TOKEN",
+        "MCP_PUBLIC_BASE_URL",
+        "MCP_GITHUB_CLIENT_ID",
+        "MCP_GITHUB_CLIENT_SECRET",
+        "MCP_GITHUB_ALLOWED_USER_ID",
+        "MCP_OAUTH_JWT_SIGNING_KEY",
         "CLOUDFLARE_API_TOKEN",
         "GOOGLE_TASKS_CLIENT_ID",
         "GOOGLE_TASKS_CLIENT_SECRET",
@@ -368,7 +372,11 @@ class ApiSettings(RuntimeSettings):
 class McpSettings(RuntimeSettings):
     """Settings required by the MCP runtime."""
 
-    mcp_token: str
+    mcp_public_base_url: str
+    mcp_github_client_id: str
+    mcp_github_client_secret: str
+    mcp_github_allowed_user_id: int = Field(gt=0)
+    mcp_oauth_jwt_signing_key: str
     trackcrow_db_url: str
     trackcrow_mcp_user_uuid: str
 
