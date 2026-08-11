@@ -51,7 +51,7 @@ BACKUP_DB_CONFIG = {
 }
 
 RESTORE_DB_TEST_CONFIG = {
-    "RESTORE_PG_IMAGE": "postgres:15",
+    "RESTORE_PG_IMAGE": "postgres:17",
     "RESTORE_TIMEOUT_SECONDS": 60,
     "RESTORE_TEMP_DIR": "data/restore-db-tests",
     "VIDWIZ_RESTORE_TEST_QUERY": "SELECT * FROM videos WHERE video_id = 'RU7M2RwW42U'",

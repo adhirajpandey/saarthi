@@ -97,6 +97,8 @@ Expected output:
 Remarks:
 
 - If one DB fails, script continues processing remaining targets, then returns failure overall.
+- `pg_dump` failures report only the process exit code. Database connection
+  URLs and subprocess arguments are excluded from logs and notifications.
 - Top-level failures also attempt notification dispatch when settings are available.
 
 ### `backup-gdrive`
@@ -232,6 +234,15 @@ Remarks:
 - A successful run logs `Restore verification passed` for every configured
   database, logs `All restore verification checks passed`, and exits with code
   `0`. Any missing backup, restore error, or query mismatch exits with code `1`.
+- Restore SQL runs with `ON_ERROR_STOP`, so any statement error fails that
+  target instead of allowing a later verification query to mask a partial
+  restore. Keep `RESTORE_PG_IMAGE` compatible with the `pg_dump` client used
+  to create the backup.
+- The restore password is passed to the Docker client through its environment;
+  the secret value is not included in the `docker run` argument list.
+- Readiness waits until the image entrypoint hands PID 1 to the final
+  PostgreSQL server, avoiding the temporary server used during image
+  initialization.
 - `RESTORE_TEMP_DIR` is a parent workspace, not the directory deleted directly.
 - Each run creates its own disposable child directory under `RESTORE_TEMP_DIR` and teardown removes only that run directory.
 - Disposable containers are named `restore-test-vidwiz`,

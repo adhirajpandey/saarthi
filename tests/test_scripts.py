@@ -14,7 +14,7 @@ from scripts.google_tasks_auth import main as google_tasks_auth_main
 from scripts.backup_dbs import main as backup_dbs_main
 from scripts.backup_gdrive import main as backup_gdrive_main
 from scripts.restore_dbs_test import main as restore_dbs_test_main
-from scripts.backup_dbs.main import _dispatch_notifications, build_db_map
+from scripts.backup_dbs.main import _dispatch_notifications, build_db_map, run_pg_dump
 from scripts.backup_gdrive.main import (
     _build_whatsapp_summary,
     _dispatch_notifications as dispatch_gdrive_notifications,
@@ -30,6 +30,7 @@ from scripts.restore_dbs_test.main import (
     create_restore_run_dir,
     latest_key,
     restore_db,
+    wait_ready,
 )
 from shared.logging.setup import setup_logging
 from shared.settings import (
@@ -297,10 +298,34 @@ def test_create_restore_run_dir_creates_unique_child_under_temp_root(
     assert re.fullmatch(r"\d{10}-[0-9a-f]{8}", run_dir.name)
 
 
+def test_wait_ready_waits_for_final_postgres_process(monkeypatch) -> None:
+    observed: list[list[str]] = []
+    pid_one_names = iter(["bash\n", "postgres\n"])
+
+    def fake_run(command: list[str], **_kwargs):
+        observed.append(command)
+        if command[-2:] == ["cat", "/proc/1/comm"]:
+            return subprocess.CompletedProcess(
+                args=command,
+                returncode=0,
+                stdout=next(pid_one_names),
+            )
+        return subprocess.CompletedProcess(args=command, returncode=0)
+
+    monkeypatch.setattr("scripts.restore_dbs_test.main.subprocess.run", fake_run)
+    monkeypatch.setattr("scripts.restore_dbs_test.main.time.sleep", lambda _seconds: None)
+
+    wait_ready("restore-test-vidwiz", timeout=30)
+
+    pid_checks = [command for command in observed if command[-2:] == ["cat", "/proc/1/comm"]]
+    assert len(pid_checks) == 2
+    assert observed[-1][-3:] == ["pg_isready", "-U", "postgres"]
+
+
 def test_restore_db_uses_absolute_readonly_bind_mount_for_relative_temp_dir(
     monkeypatch, test_workspace: Path
 ) -> None:
-    settings = _restore_db_test_settings()
+    settings = _restore_db_test_settings(restore_pg_password="restore-super-secret")
     dump_path = (
         test_workspace
         / "data"
@@ -310,11 +335,14 @@ def test_restore_db_uses_absolute_readonly_bind_mount_for_relative_temp_dir(
         / "vidwiz-custom-1710000020.sql"
     )
     observed: list[list[str]] = []
+    docker_run_env: dict[str, str] = {}
 
     monkeypatch.setattr("scripts.restore_dbs_test.main.wait_ready", lambda *_: None)
 
     def fake_run(cmd, **kwargs):
         observed.append(cmd)
+        if cmd[:3] == ["docker", "run", "-d"]:
+            docker_run_env.update(kwargs["env"])
         return subprocess.CompletedProcess(args=cmd, returncode=0)
 
     monkeypatch.setattr("scripts.restore_dbs_test.main.subprocess.run", fake_run)
@@ -324,10 +352,15 @@ def test_restore_db_uses_absolute_readonly_bind_mount_for_relative_temp_dir(
     assert container == "restore-test-vidwiz"
     docker_run_cmd = observed[1]
     mount_arg = docker_run_cmd[docker_run_cmd.index("--mount") + 1]
+    restore_cmd = observed[3]
 
     assert "--mount" in docker_run_cmd
     assert docker_run_cmd[docker_run_cmd.index("--name") + 1] == "restore-test-vidwiz"
     assert mount_arg == f"type=bind,src={dump_path.parent.resolve()},dst=/backups,readonly"
+    assert "POSTGRES_PASSWORD" in docker_run_cmd
+    assert all(settings.restore_pg_password not in arg for arg in docker_run_cmd)
+    assert docker_run_env["POSTGRES_PASSWORD"] == settings.restore_pg_password
+    assert restore_cmd[restore_cmd.index("-v") + 1] == "ON_ERROR_STOP=1"
 
 
 def test_setup_logging_defaults_without_validation_error(monkeypatch) -> None:
@@ -538,6 +571,28 @@ def test_backup_dbs_main_exit_code_and_notification_title(monkeypatch) -> None:
     assert exit_code == 0
     assert observed["success"] is True
     assert observed["title"] == "DB Backup Success"
+
+
+def test_run_pg_dump_redacts_database_url_from_subprocess_failure(
+    monkeypatch, tmp_path: Path
+) -> None:
+    database_url = "postgresql://user:top-secret@database.example/app"
+
+    def fail(command: list[str], *, check: bool) -> None:
+        raise subprocess.CalledProcessError(returncode=2, cmd=command)
+
+    monkeypatch.setattr("scripts.backup_dbs.main.subprocess.run", fail)
+
+    try:
+        run_pg_dump(tmp_path / "backup.sql", database_url)
+    except Exception as exc:
+        message = str(exc)
+    else:
+        raise AssertionError("run_pg_dump should fail when pg_dump exits non-zero")
+
+    assert message == "pg_dump failed with exit code 2"
+    assert database_url not in message
+    assert "top-secret" not in message
 
 
 def test_backup_dbs_main_uses_console_only_logging(monkeypatch) -> None:

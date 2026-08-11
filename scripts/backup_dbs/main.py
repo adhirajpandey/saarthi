@@ -56,7 +56,10 @@ def run_pg_dump(out_file: Path, db_url: str) -> None:
         f"--file={out_file}",
     ]
     logger.info("Running pg_dump for %s", out_file)
-    subprocess.run(cmd, check=True)
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(f"pg_dump failed with exit code {exc.returncode}") from None
 
 
 def sanity_check(dump_file: Path) -> None:

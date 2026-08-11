@@ -1,6 +1,7 @@
 """Database restore verification CLI."""
 
 import logging
+import os
 import re
 import secrets
 import shutil
@@ -84,22 +85,29 @@ def create_restore_run_dir(temp_root: Path) -> Path:
 
 
 def wait_ready(container: str, timeout: int) -> None:
-    """Poll pg_isready until it succeeds or timeout occurs."""
+    """Wait for the image entrypoint to hand PID 1 to a ready PostgreSQL server."""
     logger.info("Waiting for PostgreSQL container %s to become ready", container)
     start = time.time()
     while True:
-        try:
-            subprocess.run(
+        pid_one = subprocess.run(
+            ["docker", "exec", container, "cat", "/proc/1/comm"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if pid_one.returncode == 0 and pid_one.stdout.strip() == "postgres":
+            ready = subprocess.run(
                 ["docker", "exec", container, "pg_isready", "-U", "postgres"],
-                check=True,
+                check=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            return
-        except subprocess.CalledProcessError:
-            if time.time() - start > timeout:
-                raise RuntimeError("PostgreSQL did not become ready in time")
-            time.sleep(2)
+            if ready.returncode == 0:
+                return
+
+        if time.time() - start > timeout:
+            raise RuntimeError("PostgreSQL did not become ready in time")
+        time.sleep(2)
 
 
 def restore_db(
@@ -117,6 +125,8 @@ def restore_db(
     )
 
     logger.info("Starting PostgreSQL container %s", container)
+    docker_env = os.environ.copy()
+    docker_env["POSTGRES_PASSWORD"] = settings.restore_pg_password
     subprocess.run(
         [
             "docker",
@@ -125,7 +135,7 @@ def restore_db(
             "--name",
             container,
             "-e",
-            f"POSTGRES_PASSWORD={settings.restore_pg_password}",
+            "POSTGRES_PASSWORD",
             "-e",
             "POSTGRES_USER=postgres",
             "-e",
@@ -135,6 +145,7 @@ def restore_db(
             settings.restore_pg_image,
         ],
         check=True,
+        env=docker_env,
     )
 
     try:
@@ -167,6 +178,8 @@ def restore_db(
                 "postgres",
                 "-d",
                 db_name,
+                "-v",
+                "ON_ERROR_STOP=1",
                 "-f",
                 f"/backups/{dump_path.name}",
             ],
