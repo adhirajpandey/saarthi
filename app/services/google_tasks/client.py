@@ -146,6 +146,7 @@ def _write_token_file(token_path: Path, token_json: str) -> None:
     ) as tmp_file:
         tmp_file.write(token_json)
         tmp_path = Path(tmp_file.name)
+    tmp_path.chmod(0o644)
     os.replace(tmp_path, token_path)
 
 

@@ -298,6 +298,8 @@ def test_run_oauth_bootstrap_writes_token_file_atomically(
 
     assert result == token_path
     assert json.loads(token_path.read_text(encoding="utf-8"))["refresh_token"] == "refresh-token"
+    assert token_path.stat().st_mode & 0o777 == 0o644
+    assert list(test_workspace.glob("google-token.json.*.tmp")) == []
 
 
 def test_run_oauth_bootstrap_preserves_existing_token_file_on_failure(
