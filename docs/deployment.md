@@ -44,6 +44,8 @@ cp .env.example .env
   `SAARTHI_GOOGLE_TASKS_TOKEN_PATH`, `SAARTHI_RCLONE_CONFIG_PATH`,
   `SAARTHI_RCLONE_SERVICE_ACCOUNT_PATH`). Container-side targets are fixed in
   `docker-compose.yml` under `/app/data`, `/app/logs`, and `/app/secrets/...`.
+  Habitat production sets `SAARTHI_DATA_PATH=/srv/appdata/saarthi`. Keep this
+  mutable state outside the replaceable Saarthi source checkout.
   Set `GOOGLE_TASKS_TOKEN_PATH` to `/app/secrets/google/google-tasks-token.json`
   so the runtime setting matches the fixed container target.
 - `SAARTHI_SSH_KEY_PATH` is required when `WHATSAPP_ENABLED` is true. When
@@ -91,11 +93,17 @@ For services running on the Docker host itself, use `host.docker.internal`
 in `.env` connection URLs rather than `localhost`; inside a container,
 `localhost` points at the container.
 
-5. Ensure Shikari data paths exist:
+5. Ensure the production Shikari data paths exist:
 
 ```bash
-mkdir -p data/shikari/sessions data/shikari/outputs
+sudo mkdir -p /srv/appdata/saarthi/shikari/sessions
+sudo mkdir -p /srv/appdata/saarthi/shikari/outputs
+sudo chown -R "$(id -un):$(id -gn)" /srv/appdata/saarthi
 ```
+
+These host directories appear inside the containers as
+`/app/data/shikari/sessions` and `/app/data/shikari/outputs`. Local development
+may still use the git-ignored repository `data/` directory.
 
 6. Authorize Google Tasks for MCP reads:
 
@@ -108,7 +116,9 @@ headless host, open the printed Google login URL on another machine, complete
 sign-in, copy the final `http://127.0.0.1:1/...` redirect URL from the browser
 address bar, and paste it back into the terminal prompt.
 
-Set `SAARTHI_GOOGLE_TASKS_TOKEN_PATH` to the host token file and set
+For repository-local Compose, set `SAARTHI_GOOGLE_TASKS_TOKEN_PATH` to the host
+token file. The Habitat Shed deployment instead mounts the writable
+`/srv/appdata/saarthi/credentials/google/` directory. In both cases, set
 `GOOGLE_TASKS_TOKEN_PATH=/app/secrets/google/google-tasks-token.json`.
 
 ## Verify

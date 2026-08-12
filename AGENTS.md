@@ -7,7 +7,9 @@ Saarthi is a Python 3.12 project with two execution surfaces:
 - `shared/`: cross-cutting settings, logging, and notification clients.
 - `tests/`: pytest suite for API, services, scripts, and config behavior.
 - `docs/`: architecture, API, and script docs.
-- `data/` and `logs/`: runtime artifacts and logs (not source modules).
+- `data/` and `logs/`: git-ignored local-development artifacts and logs (not
+  source modules). Production data is bind-mounted from host-managed storage;
+  on Habitat that host path is `/srv/appdata/saarthi`.
 
 ## Build, Test, and Development Commands
 - `uv sync --group dev`: install runtime + dev dependencies.

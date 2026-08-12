@@ -58,7 +58,8 @@ All surfaces reuse shared modules for settings, logging, and notification transp
 - `scripts/`: operational command entry points
 - `shared/`: cross-cutting runtime modules
 - `tests/`: behavior and contract test suite
-- `data/`: runtime data artifacts
+- `data/`: logical runtime data path; `/app/data` in containers is backed by a
+  host bind mount rather than the source checkout in production
 - `logs/`: runtime logs
 
 ## API Runtime
@@ -284,6 +285,11 @@ GDrive backup, and Shikari runtimes.
 - WhatsApp via SSH remote command
 
 ## Runtime Paths and State
+
+Saarthi code does not own production state. Habitat stores the complete
+runtime-data tree at `/srv/appdata/saarthi` and bind-mounts it at `/app/data`.
+The relative `data/...` values below are application/container paths; they do
+not place production data inside the Git checkout.
 
 - `LOCATION_DB_PATH`: SQLite location history
 - `GEOFENCE_MAPPING_PATH`: geofence definitions

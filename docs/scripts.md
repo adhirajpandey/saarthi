@@ -464,9 +464,14 @@ Remarks:
 
 ### Historical Migration Notes
 
-- Sessions were consolidated into `data/shikari/sessions`.
+- Sessions were consolidated into the logical `data/shikari/sessions` path.
+  In Habitat containers this resolves under `/app/data`, backed by the host
+  directory `/srv/appdata/saarthi`.
 - Legacy source used during the one-time migration: `/home/adhiraj/testing/shikari/sessions`.
-- Generated artifacts are intentionally written to `data/shikari/outputs` (git-ignored via `data/`).
+- Generated artifacts use `data/shikari/outputs` inside the application. Local
+  runs use the git-ignored `data/` directory unless an external path is
+  configured; Habitat containers write to the `/srv/appdata/saarthi` bind
+  mount.
 
 ## Run Commands
 
