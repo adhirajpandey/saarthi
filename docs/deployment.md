@@ -32,7 +32,10 @@ cp .env.example .env
   `GEOFENCE_WHATSAPP_ENTERED_TEMPLATE` and
   `GEOFENCE_WHATSAPP_EXITED_TEMPLATE`. These replace the older single-template
   approach and allow natural phrasing per event.
-- `.env`: secrets (`ADMIN_TOKEN`, `MCP_TOKEN`, `CLOUDFLARE_API_TOKEN`,
+- `.env`: authentication, secrets, and connection values (`ADMIN_TOKEN`,
+  `MCP_PUBLIC_BASE_URL`, `MCP_GITHUB_CLIENT_ID`,
+  `MCP_GITHUB_CLIENT_SECRET`, `MCP_GITHUB_ALLOWED_USER_ID`,
+  `MCP_OAUTH_JWT_SIGNING_KEY`, `CLOUDFLARE_API_TOKEN`,
   `GOOGLE_TASKS_CLIENT_ID`, `GOOGLE_TASKS_CLIENT_SECRET`,
   `GOOGLE_TASKS_TOKEN_PATH`, `NOTION_API_KEY`,
   `NOTION_LINKS_DATABASE_URL`, `NOTION_WORK_ITEMS_DATABASE_URL`,
@@ -51,6 +54,12 @@ cp .env.example .env
 - `SAARTHI_SSH_KEY_PATH` is required when `WHATSAPP_ENABLED` is true. When
   WhatsApp is disabled and the path is unset, Docker Compose mounts `/dev/null`
   instead so API, MCP, backup, and restore startup do not depend on an SSH key.
+- Create a GitHub OAuth App for MCP access. Set its authorization callback URL
+  to `${MCP_PUBLIC_BASE_URL}/auth/callback` exactly, and use its client ID and
+  client secret for `MCP_GITHUB_CLIENT_ID` and `MCP_GITHUB_CLIENT_SECRET`.
+  `MCP_PUBLIC_BASE_URL` must be the public HTTPS origin without `/mcp`.
+- Set `MCP_GITHUB_ALLOWED_USER_ID` to the numeric GitHub user ID permitted to
+  call Saarthi tools. Generate a stable secret for `MCP_OAUTH_JWT_SIGNING_KEY`.
 - Share the Notion integration tied to `NOTION_API_KEY` with all configured
   Notion databases, with read access for the saved links database and
   read/write access for the work items and Greenhouse experiments databases.
@@ -69,8 +78,11 @@ docker compose up --build -d
 `docker-compose.yml` uses one file for API, MCP, and the profiled ops service.
 The default `up` starts only `saarthi-api` and `saarthi-mcp`.
 
-`saarthi-mcp` serves the MCP endpoint on `http://localhost:8001/mcp` and requires
-`Authorization: Bearer <MCP_TOKEN>`. Detailed MCP setup is documented in `mcp.md`.
+`saarthi-mcp` serves its repository-local host endpoint on
+`http://localhost:8001/mcp`. Production clients connect to
+`${MCP_PUBLIC_BASE_URL}/mcp` and authenticate through GitHub OAuth. The server
+requests the `read:user` scope and permits only `MCP_GITHUB_ALLOWED_USER_ID`.
+Detailed MCP setup is documented in `mcp.md`.
 When `WHATSAPP_ENABLED` is false, MCP starts normally without the
 `send_whatsapp_message` tool; its other configured tools remain available.
 
@@ -125,9 +137,11 @@ token file. The Habitat Shed deployment instead mounts the writable
 
 ```bash
 curl -s http://localhost:8000/health
+curl -s https://saarthi.adhirajpandey.tech/.well-known/oauth-authorization-server
 docker compose logs saarthi-api
 docker compose logs saarthi-mcp
 codex mcp get saarthi
+codex mcp login saarthi
 docker compose run --rm --no-deps saarthi-cron uv run backup-dbs
 docker compose run --rm --no-deps saarthi-cron uv run backup-gdrive
 uv run cloudflare-zones list
@@ -143,6 +157,11 @@ The health response should return HTTP `200` with an overall `healthy` or
 the underlying checks. A degraded response indicates that at least one
 required or enabled integration is unavailable; inspect `saarthi-api` logs for
 details.
+
+The OAuth metadata response should advertise authorization and token endpoints
+under `MCP_PUBLIC_BASE_URL`. `codex mcp login saarthi` should open the GitHub
+authorization flow. MCP requests succeed only when the authenticated GitHub
+user matches `MCP_GITHUB_ALLOWED_USER_ID`.
 
 For Notion MCP verification, confirm these tool calls succeed from the client:
 

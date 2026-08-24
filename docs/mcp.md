@@ -2,7 +2,7 @@
 
 ## General
 
-Saarthi exposes authenticated local tool access through a separate FastMCP
+Saarthi exposes authenticated HTTP tool access through a separate FastMCP
 runtime. This is not part of the FastAPI app and is not exposed through the
 HTTP API docs.
 
@@ -14,7 +14,13 @@ Docker service:
 
 - `saarthi-mcp`
 
-Default endpoint:
+Production client endpoint:
+
+```text
+https://saarthi.adhirajpandey.tech/mcp
+```
+
+Repository-local host endpoint:
 
 ```text
 http://localhost:8001/mcp
@@ -22,23 +28,38 @@ http://localhost:8001/mcp
 
 ## Auth
 
-MCP requests require:
+Saarthi uses FastMCP's GitHub OAuth proxy. Clients discover the OAuth endpoints,
+open GitHub authorization in a browser, and receive a Saarthi access token after
+the flow completes. The server requests the `read:user` scope and rejects users
+whose numeric GitHub ID does not match `MCP_GITHUB_ALLOWED_USER_ID`.
 
-- Header: `Authorization: Bearer <MCP_TOKEN>`
+The GitHub OAuth App must use this exact authorization callback URL:
 
-Codex should connect to the configured `saarthi` MCP server and supply the
-bearer token from `MCP_TOKEN`.
+```text
+${MCP_PUBLIC_BASE_URL}/auth/callback
+```
 
-Expected Codex MCP config:
+`MCP_PUBLIC_BASE_URL` is the public HTTPS origin without `/mcp`. For the current
+production deployment, the callback is:
+
+```text
+https://saarthi.adhirajpandey.tech/auth/callback
+```
+
+Configure and authenticate Codex with:
+
+```bash
+codex mcp add saarthi --url https://saarthi.adhirajpandey.tech/mcp
+codex mcp login saarthi
+codex mcp get saarthi
+```
+
+The equivalent Codex MCP config contains only the streamable HTTP URL:
 
 ```toml
 [mcp_servers.saarthi]
-url = "http://127.0.0.1:8001/mcp"
-bearer_token_env_var = "MCP_TOKEN"
+url = "https://saarthi.adhirajpandey.tech/mcp"
 ```
-
-The Saarthi MCP container and the Codex process must see the same `MCP_TOKEN`
-value.
 
 ## Tools
 
@@ -1079,9 +1100,13 @@ Remarks:
 
 ## Configuration
 
-Secrets / auth (`.env`):
+Environment (`.env`):
 
-- `MCP_TOKEN`
+- `MCP_PUBLIC_BASE_URL`
+- `MCP_GITHUB_CLIENT_ID`
+- `MCP_GITHUB_CLIENT_SECRET`
+- `MCP_GITHUB_ALLOWED_USER_ID`
+- `MCP_OAUTH_JWT_SIGNING_KEY`
 - `CLOUDFLARE_API_TOKEN`
 - `GOOGLE_TASKS_CLIENT_ID`
 - `GOOGLE_TASKS_CLIENT_SECRET`
@@ -1103,6 +1128,14 @@ Configuration (`app/config/config.py`):
 
 Remarks:
 
+- `MCP_PUBLIC_BASE_URL` must be the public HTTPS origin used to reach OAuth
+  endpoints. Do not include `/mcp`.
+- `MCP_GITHUB_CLIENT_ID` and `MCP_GITHUB_CLIENT_SECRET` come from the GitHub
+  OAuth App whose callback is `${MCP_PUBLIC_BASE_URL}/auth/callback`.
+- `MCP_GITHUB_ALLOWED_USER_ID` is a positive numeric GitHub user ID. The auth
+  middleware rejects authenticated users whose GitHub `sub` claim differs.
+- `MCP_OAUTH_JWT_SIGNING_KEY` is a stable secret used to sign FastMCP-issued
+  access tokens.
 - MCP starts when `WHATSAPP_ENABLED` is false and omits
   `send_whatsapp_message` from its advertised tool surface.
 - When `WHATSAPP_ENABLED` is true, `WHATSAPP_SSH_HOST`,
@@ -1135,9 +1168,15 @@ Remarks:
 
 ```bash
 docker compose logs saarthi-mcp
+curl -s https://saarthi.adhirajpandey.tech/.well-known/oauth-authorization-server
 codex mcp get saarthi
+codex mcp login saarthi
 uv run google-tasks-auth --headless
 ```
+
+OAuth metadata should advertise endpoints under `MCP_PUBLIC_BASE_URL`.
+`codex mcp login saarthi` should complete GitHub authorization for the allowed
+user before MCP tools are called.
 
 Useful Notion verification calls after deploy:
 

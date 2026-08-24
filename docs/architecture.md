@@ -5,7 +5,7 @@
 Saarthi has three execution surfaces:
 
 - FastAPI runtime for HTTP-triggered workflows
-- FastMCP runtime for authenticated local tool access
+- FastMCP runtime for authenticated HTTP tool access
 - CLI script runtime for operational automation
 
 All surfaces reuse shared modules for settings, logging, and notification transports.
@@ -94,9 +94,10 @@ Error shape:
 Startup flow (`mcp-server/server.py`):
 
 1. Load and validate MCP settings.
-2. Configure FastMCP bearer-token auth from `MCP_TOKEN`.
-3. Register MCP tools, including `send_whatsapp_message` only when WhatsApp is enabled.
-4. Serve streamable HTTP on `/mcp`.
+2. Configure the FastMCP GitHub OAuth proxy.
+3. Restrict access to `MCP_GITHUB_ALLOWED_USER_ID` through auth middleware.
+4. Register MCP tools, including `send_whatsapp_message` only when WhatsApp is enabled.
+5. Serve streamable HTTP on `/mcp`.
 
 Current tool surface:
 
@@ -143,8 +144,10 @@ Detailed MCP contracts are documented in `mcp.md`.
 Deployment defaults:
 
 - Docker service: `saarthi-mcp`
-- URL: `http://localhost:8001/mcp`
-- Auth: `Authorization: Bearer <MCP_TOKEN>`
+- Repository-local host URL: `http://localhost:8001/mcp`
+- Production client URL: `https://saarthi.adhirajpandey.tech/mcp`
+- Auth: GitHub OAuth with the `read:user` scope, restricted to the configured
+  GitHub user ID
 
 ### Notion MCP tools
 
@@ -298,7 +301,12 @@ not place production data inside the Git checkout.
 - `GEOFENCE_EMAIL_TEMPLATE`: geofence email body format using `{area}` and `{event}`
 - `GEOFENCE_WHATSAPP_ENTERED_TEMPLATE`: geofence WhatsApp body for `entered` events
 - `GEOFENCE_WHATSAPP_EXITED_TEMPLATE`: geofence WhatsApp body for `exited` events
-- `MCP_TOKEN`: bearer token required by the MCP server
+- `MCP_PUBLIC_BASE_URL`: public HTTPS origin used for OAuth metadata,
+  callbacks, and token audiences
+- `MCP_GITHUB_CLIENT_ID`: GitHub OAuth App client ID
+- `MCP_GITHUB_CLIENT_SECRET`: GitHub OAuth App client secret
+- `MCP_GITHUB_ALLOWED_USER_ID`: numeric GitHub user ID allowed to use MCP tools
+- `MCP_OAUTH_JWT_SIGNING_KEY`: key used to sign FastMCP-issued OAuth tokens
 - `CLOUDFLARE_API_TOKEN`: API token used by Cloudflare scripts and MCP tools
 - `GOOGLE_TASKS_CLIENT_ID`: OAuth client ID for Google Tasks personal auth
 - `GOOGLE_TASKS_CLIENT_SECRET`: OAuth client secret for Google Tasks personal
