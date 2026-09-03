@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import runpy
+import socket
 import tempfile
 import sys
 import types
@@ -39,6 +40,17 @@ def side_effect_guard(monkeypatch):
             )
 
     monkeypatch.setattr("subprocess.run", _blocked_subprocess_run)
+    def _blocked_whatsapp_socket(*_args, **_kwargs):
+        raise AssertionError("Real WhatsApp socket access is blocked in tests")
+
+    monkeypatch.setattr(
+        "shared.notifications.whatsapp.socket",
+        types.SimpleNamespace(
+            AF_UNIX=socket.AF_UNIX,
+            SOCK_STREAM=socket.SOCK_STREAM,
+            socket=_blocked_whatsapp_socket,
+        ),
+    )
     monkeypatch.setattr("shared.notifications.email.smtplib.SMTP_SSL", _BlockedSmtpServer)
 
 

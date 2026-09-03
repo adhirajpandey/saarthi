@@ -9,6 +9,7 @@ from shared.settings import SmtpSettings
 class DummySettings:
     email_enabled = True
     whatsapp_enabled = False
+    geofence_whatsapp_enabled = True
     geofence_subject_template = "Area update: {area}"
     geofence_email_template = "Area={area}; Event={event}"
     geofence_whatsapp_entered_template = "WA entered {area}"
@@ -164,3 +165,19 @@ def test_send_geofence_notification_all_fail(monkeypatch) -> None:
 
     assert result.success is False
     assert "Failed to send geofence notifications" in result.message
+
+
+def test_family_disabled_does_not_send_when_personal_whatsapp_is_enabled(monkeypatch) -> None:
+    settings = DummySettings()
+    settings.whatsapp_enabled = True
+    settings.geofence_whatsapp_enabled = False
+    monkeypatch.setattr("app.services.geofence.send_email", lambda **_: True)
+
+    def forbidden_send(**kwargs):
+        raise AssertionError("Family WhatsApp must remain disabled")
+
+    monkeypatch.setattr("app.services.geofence.send_whatsapp_message", forbidden_send)
+    for event in ("entered", "exited"):
+        result = asyncio.run(send_geofence_notification(settings, "Home", event))
+        assert result.success is True
+        assert "whatsapp=None" in result.message

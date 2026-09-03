@@ -58,7 +58,7 @@ async def send_geofence_notification(
                 logger.exception("Unexpected error while sending geofence email: %s", exc)
                 channel_results["email"] = False
 
-    if settings.whatsapp_enabled:
+    if settings.whatsapp_enabled and settings.geofence_whatsapp_enabled:
         try:
             whatsapp_body = _select_whatsapp_template(settings, event).format(area=area)
         except (KeyError, ValueError) as exc:

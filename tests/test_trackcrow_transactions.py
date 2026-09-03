@@ -11,17 +11,16 @@ from app.services.trackcrow_transactions import (
 )
 from shared.settings import get_mcp_settings
 
-_HERMES_BIN = "/home/pookie/.local/bin/hermes"
-_HERMES_DM_TARGET = "whatsapp:166601898885178@lid"
+_WACLI_SOCKET = "/tmp/wacli-test.sock"
+_PERSONAL_TARGET = "15550001111@s.whatsapp.net"
 
 
 def _build_settings(runtime_config):
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     return get_mcp_settings()

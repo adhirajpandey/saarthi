@@ -42,7 +42,7 @@ All surfaces reuse shared modules for settings, logging, and notification transp
                 |                         |                            |
       +---------v----------+     +--------v---------+        +---------v----------------+
       | SQLite + Geofence  |     | WhatsApp tool    |        | pg_dump / rclone /       |
-      | transition engine  |     | via SSH sender   |        | cloud uploads            |
+      | transition engine  |     | via wacli socket |        | cloud uploads            |
       +--------------------+     +------------------+        +--------------------------+
 
                           +------------------------------+
@@ -102,7 +102,7 @@ Startup flow (`mcp-server/server.py`):
 Current tool surface:
 
 - `send_whatsapp_message(message)`: when WhatsApp is enabled, sends a message
-  to `WHATSAPP_TARGET_PERSONAL` using the shared SSH WhatsApp transport.
+  to `WHATSAPP_TARGET_PERSONAL` using the shared wacli socket transport.
 - `search_transactions(...)`: reads Trackcrow transactions for the configured
   MCP user.
 - `list_cloudflare_zones(...)`: lists zones visible to the configured
@@ -285,7 +285,29 @@ GDrive backup, and Shikari runtimes.
 ### Notification Transports (`shared/notifications/*`)
 
 - SMTP email
-- WhatsApp via SSH remote command
+- WhatsApp via the existing wacli sync process's Unix socket
+
+API, MCP, and operational scripts reuse the same boolean sender. Each send
+opens a connection to `WHATSAPP_SOCKET_PATH` and exchanges one JSON request
+and response using wacli's internal version-1 protocol. The adapter matches
+Habitat's pinned source commit `97e14efdf91a7c9de1b68845321eb6355943b5f5`.
+Protocol compatibility needs verification before a wacli upgrade.
+
+The default timeout is 60 seconds, with five seconds reserved for the
+response. Wacli runs with `--send-spacing 1s` so queued sends honor their
+deadlines. Success requires explicit `ok: true` and `sent: true`. A storage
+warning after acceptance remains successful. The adapter does not retry
+rejections, connection failures, or ambiguous timeouts, and excludes message
+bodies, recipients, and raw provider errors from logs.
+
+Saarthi mounts the wacli store directory read-only. This lets new connections
+reach the replacement socket after wacli restarts. Wacli owns the paired
+session and writes outbound history. Its state stays outside Saarthi's
+application-data backup.
+
+Geofence sends require both `WHATSAPP_ENABLED` and
+`GEOFENCE_WHATSAPP_ENABLED`. MCP and scripts use `WHATSAPP_ENABLED` and the
+personal recipient independently of the family channel.
 
 ## Runtime Paths and State
 
@@ -299,6 +321,8 @@ not place production data inside the Git checkout.
 - `HEALTH_CACHE_TTL_SECONDS`: per-process health response cache TTL
 - `GEOFENCE_SUBJECT_TEMPLATE`: geofence email subject format
 - `GEOFENCE_EMAIL_TEMPLATE`: geofence email body format using `{area}` and `{event}`
+- `WHATSAPP_SOCKET_PATH`: local wacli send socket, normally `/srv/appdata/wacli/store/.send.sock`
+- `GEOFENCE_WHATSAPP_ENABLED`: family WhatsApp toggle, effective only when `WHATSAPP_ENABLED` is true
 - `GEOFENCE_WHATSAPP_ENTERED_TEMPLATE`: geofence WhatsApp body for `entered` events
 - `GEOFENCE_WHATSAPP_EXITED_TEMPLATE`: geofence WhatsApp body for `exited` events
 - `MCP_PUBLIC_BASE_URL`: public HTTPS origin used for OAuth metadata,

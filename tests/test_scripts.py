@@ -41,8 +41,8 @@ from shared.settings import (
 
 _EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parents[1] / "app" / "config" / "config.example.py"
 _BASE_CONFIG = runpy.run_path(str(_EXAMPLE_CONFIG_PATH))["CONFIG"]
-_HERMES_BIN = "/home/pookie/.local/bin/hermes"
-_HERMES_DM_TARGET = "whatsapp:166601898885178@lid"
+_WACLI_SOCKET = "/tmp/wacli-test.sock"
+_PERSONAL_TARGET = "15550001111@s.whatsapp.net"
 
 
 def _runtime_kwargs(**overrides):
@@ -54,8 +54,7 @@ def _runtime_kwargs(**overrides):
         "log_file": cfg["LOG_FILE"],
         "email_enabled": cfg["EMAIL_ENABLED"],
         "whatsapp_enabled": cfg["WHATSAPP_ENABLED"],
-        "whatsapp_ssh_host": cfg["WHATSAPP_SSH_HOST"],
-        "whatsapp_hermes_command_path": cfg["WHATSAPP_HERMES_COMMAND_PATH"],
+        "whatsapp_socket_path": cfg["WHATSAPP_SOCKET_PATH"],
         "whatsapp_target_family": cfg["WHATSAPP_TARGET_FAMILY"],
         "whatsapp_target_personal": cfg["WHATSAPP_TARGET_PERSONAL"],
         "whatsapp_timeout_seconds": cfg["WHATSAPP_TIMEOUT_SECONDS"],
@@ -67,9 +66,8 @@ def _runtime_kwargs(**overrides):
 def _backup_db_settings(**overrides) -> BackupDbSettings:
     defaults = {
         "whatsapp_enabled": True,
-        "whatsapp_ssh_host": "pookie",
-        "whatsapp_hermes_command_path": _HERMES_BIN,
-        "whatsapp_target_personal": _HERMES_DM_TARGET,
+        "whatsapp_socket_path": _WACLI_SOCKET,
+        "whatsapp_target_personal": _PERSONAL_TARGET,
         "backup_bucket": "my-bucket",
         "vidwiz_s3_prefix": "db/vidwiz",
         "trackcrow_s3_prefix": "db/trackcrow",
@@ -92,9 +90,8 @@ def _backup_db_settings(**overrides) -> BackupDbSettings:
 def _backup_gdrive_settings(**overrides) -> BackupGdriveSettings:
     defaults = {
         "whatsapp_enabled": True,
-        "whatsapp_ssh_host": "pookie",
-        "whatsapp_hermes_command_path": _HERMES_BIN,
-        "whatsapp_target_personal": _HERMES_DM_TARGET,
+        "whatsapp_socket_path": _WACLI_SOCKET,
+        "whatsapp_target_personal": _PERSONAL_TARGET,
     }
     defaults.update(overrides)
     return BackupGdriveSettings(
@@ -108,9 +105,8 @@ def _backup_gdrive_settings(**overrides) -> BackupGdriveSettings:
 def _restore_db_test_settings(**overrides) -> RestoreDbTestSettings:
     defaults = {
         "whatsapp_enabled": True,
-        "whatsapp_ssh_host": "pookie",
-        "whatsapp_hermes_command_path": _HERMES_BIN,
-        "whatsapp_target_personal": _HERMES_DM_TARGET,
+        "whatsapp_socket_path": _WACLI_SOCKET,
+        "whatsapp_target_personal": _PERSONAL_TARGET,
         "backup_bucket": "my-bucket",
         "vidwiz_s3_prefix": "db/vidwiz",
         "trackcrow_s3_prefix": "db/trackcrow",
@@ -450,8 +446,7 @@ def test_dispatch_notifications_skip_whatsapp_when_disabled(monkeypatch) -> None
 
     disabled = {
         "whatsapp_enabled": False,
-        "whatsapp_ssh_host": None,
-        "whatsapp_hermes_command_path": None,
+        "whatsapp_socket_path": None,
         "whatsapp_target_personal": None,
     }
     _dispatch_notifications(

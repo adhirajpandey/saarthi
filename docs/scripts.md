@@ -33,11 +33,20 @@ Remarks:
 
 Backup and restore-verification scripts optionally send status notifications
 through WhatsApp. When `WHATSAPP_ENABLED` is `True`, their settings require the
-shared WhatsApp SSH transport values and `WHATSAPP_TARGET_PERSONAL` as the
-recipient. When it is `False`, the jobs continue without sending a summary.
+`WHATSAPP_SOCKET_PATH`, `WHATSAPP_TARGET_PERSONAL`, and a
+`WHATSAPP_TIMEOUT_SECONDS` value greater than five. The default timeout is
+60 seconds. When disabled, the jobs continue without sending a summary.
 
-Each script attempts notification dispatch but does not crash purely because WhatsApp dispatch fails.
-All three workflows reuse the shared notification transport.
+All three workflows send through the existing wacli sync process's Unix
+socket. `GEOFENCE_WHATSAPP_ENABLED` does not control script notifications.
+Notification failure does not change the backup or restore exit code.
+Acceptance by WhatsApp counts as success even if wacli cannot store local
+history. The sender does not automatically retry an unconfirmed send.
+
+The cron container mounts the wacli store read-only. Host-side
+`restore-dbs-test` uses the host socket directly and needs a user with access
+to that socket. Host configuration is described in
+[Deployment](deployment.md#manual-database-restore-verification).
 
 ## Scripts
 

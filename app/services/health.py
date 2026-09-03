@@ -12,6 +12,7 @@ from typing import Literal
 from app.api.schemas import HealthCheckResponse, HealthChecks
 from app.services.geofence_engine import GeofenceArea
 from shared.settings import ApiSettings
+from shared.notifications.whatsapp import whatsapp_available
 
 logger = logging.getLogger(__name__)
 _PROBE_TIMEOUT_SECONDS = 3
@@ -112,9 +113,7 @@ def collect_health_state(
     whatsapp_reachable = False
     if settings.whatsapp_enabled:
         def check_whatsapp() -> bool:
-            whatsapp_settings = settings.whatsapp_settings_for_geofence()
-            ssh_host = whatsapp_settings.ssh_host.rsplit("@", 1)[-1]
-            return _check_tcp_reachable(ssh_host, 22)
+            return whatsapp_available(settings.whatsapp_socket_path, _PROBE_TIMEOUT_SECONDS)
 
         whatsapp_reachable = _safe_probe("WhatsApp", check_whatsapp)
     whatsapp = _channel_state(settings.whatsapp_enabled, whatsapp_reachable)

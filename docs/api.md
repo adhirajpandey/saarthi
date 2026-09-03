@@ -95,8 +95,13 @@ Remarks:
   otherwise it is `degraded`.
 - Each check is `available`, `unavailable`, or `disabled`. Disabled optional
   notification channels do not degrade the overall status.
-- Email and WhatsApp checks use bounded TCP connectivity probes. They do not
-  send notifications or authenticate with the remote service.
+- Email uses a bounded TCP connectivity probe. WhatsApp opens its configured
+  Unix socket with a three-second timeout and closes it without sending a
+  request. Neither probe sends a notification.
+- WhatsApp availability describes local socket reachability. It does not
+  prove that the linked account is authenticated, connected to WhatsApp, or
+  able to deliver a message. The probe follows `WHATSAPP_ENABLED`, even when
+  family notifications are disabled with `GEOFENCE_WHATSAPP_ENABLED=False`.
 - Responses always use HTTP `200`, including degraded states.
 - Results are cached in memory per API process for
   `HEALTH_CACHE_TTL_SECONDS` (60 seconds by default). Healthy and degraded
@@ -163,6 +168,10 @@ Remarks:
 
 - Notification service treats dispatch as success when at least one enabled channel succeeds.
 - Email templates continue to format from `{area}` and `{event}`.
+- WhatsApp geofence dispatch requires both `WHATSAPP_ENABLED` and
+  `GEOFENCE_WHATSAPP_ENABLED`. Its recipient is `WHATSAPP_TARGET_FAMILY`.
+  Disabling the family channel leaves personal MCP and script notifications
+  controlled by `WHATSAPP_ENABLED`.
 - WhatsApp geofence messages use event-specific config templates:
   `GEOFENCE_WHATSAPP_ENTERED_TEMPLATE` for `entered` and
   `GEOFENCE_WHATSAPP_EXITED_TEMPLATE` for `exited`.

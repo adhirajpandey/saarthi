@@ -24,14 +24,14 @@ NOTIFICATION_FLAGS = {
 }
 
 WHATSAPP_CONFIG = {
-    "WHATSAPP_SSH_HOST": None,
-    "WHATSAPP_HERMES_COMMAND_PATH": None,
+    "WHATSAPP_SOCKET_PATH": "/srv/appdata/wacli/store/.send.sock",
     "WHATSAPP_TARGET_FAMILY": None,
     "WHATSAPP_TARGET_PERSONAL": None,
-    "WHATSAPP_TIMEOUT_SECONDS": 20,
+    "WHATSAPP_TIMEOUT_SECONDS": 60,
 }
 
 GEOFENCE_CONFIG = {
+    "GEOFENCE_WHATSAPP_ENABLED": True,
     "GEOFENCE_SUBJECT_TEMPLATE": "Parivaar Location Update: {area}",
     "GEOFENCE_EMAIL_TEMPLATE": "Namaste,\n\nAdhiraj ne {area} area me {event} kiya hai.\n\nDhanyavaad,\nSaarthi",
     "GEOFENCE_WHATSAPP_ENTERED_TEMPLATE": "Location update: Adhiraj {area} me aa gaye hain.",

@@ -19,9 +19,43 @@ from shared.settings import (
     get_shikari_settings,
 )
 
-_HERMES_BIN = "/home/pookie/.local/bin/hermes"
-_HERMES_DM_TARGET = "whatsapp:166601898885178@lid"
-_HERMES_GROUP_TARGET = "whatsapp:120363369409471870@g.us"
+_WACLI_SOCKET = "/tmp/wacli-test.sock"
+_PERSONAL_TARGET = "15550001111@s.whatsapp.net"
+_FAMILY_TARGET = "120363000000000000@g.us"
+
+
+def test_personal_whatsapp_does_not_require_family_target(runtime_config):
+    runtime_config({
+        "WHATSAPP_ENABLED": True,
+        "GEOFENCE_WHATSAPP_ENABLED": False,
+        "WHATSAPP_TARGET_FAMILY": None,
+        "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
+    })
+    assert get_api_settings().geofence_whatsapp_enabled is False
+    assert get_mcp_settings().whatsapp_settings_for_mcp().target == _PERSONAL_TARGET
+
+
+def test_disabled_family_whatsapp_is_not_an_available_geofence_channel(runtime_config):
+    runtime_config({
+        "EMAIL_ENABLED": False,
+        "WHATSAPP_ENABLED": True,
+        "GEOFENCE_WHATSAPP_ENABLED": False,
+    })
+    with pytest.raises(ValueError, match="At least one geofence notification channel"):
+        get_api_settings()
+
+
+@pytest.mark.parametrize("timeout", [0, 5])
+def test_whatsapp_timeout_reserves_response_time(runtime_config, timeout):
+    runtime_config({"WHATSAPP_ENABLED": True, "WHATSAPP_TIMEOUT_SECONDS": timeout})
+    with pytest.raises(ValueError, match="WHATSAPP_TIMEOUT_SECONDS"):
+        get_api_settings()
+
+
+def test_whatsapp_rejects_hermes_target_prefix(runtime_config):
+    runtime_config({"WHATSAPP_ENABLED": True, "WHATSAPP_TARGET_FAMILY": "whatsapp:120363000000000000@g.us"})
+    with pytest.raises(ValueError, match="legacy whatsapp: prefix"):
+        get_api_settings()
 
 
 def test_settings_getter_returns_fresh_values(monkeypatch) -> None:
@@ -50,8 +84,7 @@ def test_fails_when_whatsapp_enabled_without_required_values(runtime_config) -> 
         {
             "EMAIL_ENABLED": False,
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": None,
-            "WHATSAPP_HERMES_COMMAND_PATH": None,
+            "WHATSAPP_SOCKET_PATH": None,
             "WHATSAPP_TARGET_FAMILY": None,
         }
     )
@@ -65,9 +98,8 @@ def test_whatsapp_only_config_does_not_require_smtp(monkeypatch, runtime_config)
         {
             "EMAIL_ENABLED": False,
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_FAMILY": _HERMES_GROUP_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_FAMILY": _FAMILY_TARGET,
         }
     )
 
@@ -85,8 +117,7 @@ def test_mcp_settings_requires_personal_whatsapp_target(runtime_config) -> None:
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
             "WHATSAPP_TARGET_PERSONAL": None,
         }
     )
@@ -99,8 +130,7 @@ def test_mcp_settings_allow_disabled_whatsapp_without_transport(runtime_config) 
     runtime_config(
         {
             "WHATSAPP_ENABLED": False,
-            "WHATSAPP_SSH_HOST": None,
-            "WHATSAPP_HERMES_COMMAND_PATH": None,
+            "WHATSAPP_SOCKET_PATH": None,
             "WHATSAPP_TARGET_PERSONAL": None,
         }
     )
@@ -114,9 +144,8 @@ def test_mcp_settings_requires_github_oauth_configuration(monkeypatch, runtime_c
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     monkeypatch.delenv("MCP_GITHUB_CLIENT_ID", raising=False)
@@ -136,9 +165,8 @@ def test_mcp_settings_requires_trackcrow_user_uuid(monkeypatch, runtime_config) 
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     monkeypatch.delenv("TRACKCROW_MCP_USER_UUID", raising=False)
@@ -151,9 +179,8 @@ def test_mcp_settings_requires_trackcrow_db_url(monkeypatch, runtime_config) -> 
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     monkeypatch.delenv("TRACKCROW_DB_URL", raising=False)
@@ -259,9 +286,8 @@ def test_global_env_audit_rejects_api_config_key_for_mcp_runtime(monkeypatch, ru
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     monkeypatch.setenv("APP_NAME", "wrong-source")
@@ -283,9 +309,8 @@ def test_global_env_audit_rejects_restore_config_key_for_mcp_runtime(
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     monkeypatch.setenv("RESTORE_PG_IMAGE", "postgres:16")
@@ -325,9 +350,8 @@ def test_mcp_settings_ignore_api_only_config_keys(runtime_config) -> None:
     cfg = runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     trimmed = {
@@ -360,9 +384,8 @@ def test_backup_gdrive_settings_ignore_restore_only_config_keys(runtime_config) 
     cfg = runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     trimmed = {
@@ -383,8 +406,7 @@ def test_backup_gdrive_settings_allow_whatsapp_to_be_disabled(runtime_config) ->
     runtime_config(
         {
             "WHATSAPP_ENABLED": False,
-            "WHATSAPP_SSH_HOST": None,
-            "WHATSAPP_HERMES_COMMAND_PATH": None,
+            "WHATSAPP_SOCKET_PATH": None,
             "WHATSAPP_TARGET_PERSONAL": None,
         }
     )
@@ -398,9 +420,8 @@ def test_script_notification_settings_expose_whatsapp_config(runtime_config) -> 
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
 
@@ -413,8 +434,7 @@ def test_script_notification_settings_expose_whatsapp_config(runtime_config) -> 
         "log_file",
         "email_enabled",
         "whatsapp_enabled",
-        "whatsapp_ssh_host",
-        "whatsapp_hermes_command_path",
+        "whatsapp_socket_path",
         "whatsapp_target_family",
         "whatsapp_target_personal",
         "whatsapp_timeout_seconds",
@@ -425,9 +445,8 @@ def test_restore_db_test_settings_require_restore_only_config_keys(runtime_confi
     cfg = runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     missing_restore = {k: v for k, v in cfg.items() if k != "RESTORE_PG_IMAGE"}
@@ -446,9 +465,8 @@ def test_backup_gdrive_settings_require_gdrive_config_keys(runtime_config) -> No
     cfg = runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     missing_gdrive = {k: v for k, v in cfg.items() if k != "GDRIVE_SOURCE"}
@@ -519,9 +537,8 @@ def test_restore_db_test_settings_loads_repo_and_env_values(runtime_config, monk
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
             "RESTORE_PG_IMAGE": "postgres:16",
             "RESTORE_TIMEOUT_SECONDS": 90,
             "RESTORE_TEMP_DIR": "data/restore-tests",
@@ -549,9 +566,8 @@ def test_restore_db_settings_ignore_api_only_config_keys(runtime_config, monkeyp
     cfg = runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
             "RESTORE_PG_IMAGE": "postgres:16",
             "RESTORE_TIMEOUT_SECONDS": 90,
             "RESTORE_TEMP_DIR": "data/restore-tests",
@@ -596,9 +612,8 @@ def test_backup_db_settings_still_requires_live_db_urls(runtime_config, monkeypa
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     monkeypatch.setenv("AWS_ACCESS_KEY", "ak")
@@ -615,9 +630,8 @@ def test_backup_db_settings_ignore_restore_only_config_keys(runtime_config, monk
     cfg = runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "ssh.example.com",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     trimmed = {

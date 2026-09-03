@@ -66,7 +66,7 @@ url = "https://saarthi.adhirajpandey.tech/mcp"
 ### `send_whatsapp_message`
 
 Short description:
-Sends a WhatsApp message through the shared SSH WhatsApp sender.
+Sends a WhatsApp message through the shared wacli Unix-socket sender.
 
 Expected input:
 
@@ -83,7 +83,7 @@ Success:
 ```json
 {
   "success": true,
-  "message": "WhatsApp message sent"
+  "message": "Message accepted by WhatsApp"
 }
 ```
 
@@ -92,7 +92,7 @@ Failure:
 ```json
 {
   "success": false,
-  "message": "Failed to send WhatsApp message"
+  "message": "WhatsApp send was not confirmed"
 }
 ```
 
@@ -100,7 +100,12 @@ Remarks:
 
 - The tool is registered only when `WHATSAPP_ENABLED` is true.
 - Empty or whitespace-only messages are rejected.
-- The recipient is fixed to `WHATSAPP_TARGET_PERSONAL`.
+- The recipient is fixed to `WHATSAPP_TARGET_PERSONAL`. The tool accepts no
+  recipient argument and is independent of `GEOFENCE_WHATSAPP_ENABLED`.
+- Success confirms acceptance by WhatsApp. It does not confirm delivery or
+  reading. A local history storage warning still counts as success.
+- Failure includes ambiguous timeouts. The sender does not retry. Check the
+  recipient's chat before manually repeating an unconfirmed send.
 - The MCP server defines the tool boundary; actual sending is performed by
   `shared.notifications.whatsapp`.
 
@@ -1121,8 +1126,7 @@ Environment (`.env`):
 Configuration (`app/config/config.py`):
 
 - `WHATSAPP_ENABLED`
-- `WHATSAPP_SSH_HOST`
-- `WHATSAPP_HERMES_COMMAND_PATH`
+- `WHATSAPP_SOCKET_PATH`
 - `WHATSAPP_TARGET_PERSONAL`
 - `WHATSAPP_TIMEOUT_SECONDS`
 
@@ -1138,10 +1142,11 @@ Remarks:
   access tokens.
 - MCP starts when `WHATSAPP_ENABLED` is false and omits
   `send_whatsapp_message` from its advertised tool surface.
-- When `WHATSAPP_ENABLED` is true, `WHATSAPP_SSH_HOST`,
-  `WHATSAPP_HERMES_COMMAND_PATH`, and `WHATSAPP_TARGET_PERSONAL` are required;
-  invalid enabled configuration fails during startup. MCP messages are sent to
-  the personal target, not the geofence family target.
+- When `WHATSAPP_ENABLED` is true, `WHATSAPP_SOCKET_PATH` and
+  `WHATSAPP_TARGET_PERSONAL` are required. `WHATSAPP_TIMEOUT_SECONDS` must be
+  greater than five and defaults to 60. Invalid enabled configuration fails
+  during startup. Targets use WhatsApp JIDs without the legacy `whatsapp:`
+  prefix.
 - `CLOUDFLARE_API_TOKEN` is required for the Cloudflare MCP tools.
 - `GOOGLE_TASKS_CLIENT_ID` and `GOOGLE_TASKS_CLIENT_SECRET` must reference a
   Google OAuth Desktop app client with the Google Tasks API enabled.
@@ -1158,11 +1163,13 @@ Remarks:
 - The Notion integration must be shared with all configured Notion databases.
 - `TRACKCROW_MCP_USER_UUID` fixes the Trackcrow user scope for transaction
   searches.
-- When WhatsApp is enabled, the SSH private key is mounted into the
-  `saarthi-mcp` container from `SAARTHI_SSH_KEY_PATH`. Without that path,
-  Compose uses `/dev/null` so WhatsApp-disabled MCP deployments do not require
-  an SSH key. The Google Tasks token file remains mounted from its host path
-  into the fixed internal secret layout under `/app/secrets`.
+- `saarthi-mcp` mounts the wacli store read-only at `/srv/appdata/wacli/store`.
+  `SAARTHI_WACLI_STORE_PATH` selects the host source. The container socket
+  setting is `/srv/appdata/wacli/store/.send.sock`.
+- The default host source is `./data/wacli` in repository-local Compose and
+  `/srv/appdata/wacli/store` in Shed. Disabled local deployments need no
+  running wacli service. The mount also makes the store files readable inside
+  the container, although the sender uses only the socket.
 
 ## Verify
 

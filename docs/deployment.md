@@ -24,14 +24,22 @@ cp .env.example .env
 - Set `HEALTH_CACHE_TTL_SECONDS` to the number of seconds each API process
   should cache the complete `/health` response. The default is `60`; the value
   must be a positive integer.
-- Operational backup and restore-verification scripts require
-  `WHATSAPP_ENABLED`. Set `WHATSAPP_HERMES_COMMAND_PATH` explicitly to the
-  correct binary path on that host and configure `WHATSAPP_TARGET_PERSONAL`.
-  The example config leaves these values unset on purpose.
-- For geofence WhatsApp notifications, set both
+- To enable personal WhatsApp notifications, set `WHATSAPP_ENABLED=True`,
+  configure `WHATSAPP_TARGET_PERSONAL`, and set `WHATSAPP_SOCKET_PATH` to
+  `/srv/appdata/wacli/store/.send.sock`. Keep `WHATSAPP_TIMEOUT_SECONDS=60`.
+  Enabled settings require a timeout greater than five seconds.
+- Use canonical recipient JIDs, such as `15550001111@s.whatsapp.net` for a
+  personal number or an exact group JID ending in `@g.us`. Remove the legacy
+  `whatsapp:` prefix.
+- To enable family geofence alerts, set `GEOFENCE_WHATSAPP_ENABLED=True` and
+  set `WHATSAPP_TARGET_FAMILY` to the intended group's canonical JID.
+  Keep `WHATSAPP_ENABLED=True`.
+- To keep family WhatsApp disabled, set `GEOFENCE_WHATSAPP_ENABLED=False` and
+  leave `WHATSAPP_TARGET_FAMILY=None`. Personal notifications remain enabled.
+  Family dispatch requires both WhatsApp flags, a family recipient, and the
   `GEOFENCE_WHATSAPP_ENTERED_TEMPLATE` and
-  `GEOFENCE_WHATSAPP_EXITED_TEMPLATE`. These replace the older single-template
-  approach and allow natural phrasing per event.
+  `GEOFENCE_WHATSAPP_EXITED_TEMPLATE` settings. Keep email enabled when the
+  family WhatsApp channel is disabled.
 - `.env`: authentication, secrets, and connection values (`ADMIN_TOKEN`,
   `MCP_PUBLIC_BASE_URL`, `MCP_GITHUB_CLIENT_ID`,
   `MCP_GITHUB_CLIENT_SECRET`, `MCP_GITHUB_ALLOWED_USER_ID`,
@@ -51,9 +59,12 @@ cp .env.example .env
   mutable state outside the replaceable Saarthi source checkout.
   Set `GOOGLE_TASKS_TOKEN_PATH` to `/app/secrets/google/google-tasks-token.json`
   so the runtime setting matches the fixed container target.
-- `SAARTHI_SSH_KEY_PATH` is required when `WHATSAPP_ENABLED` is true. When
-  WhatsApp is disabled and the path is unset, Docker Compose mounts `/dev/null`
-  instead so API, MCP, backup, and restore startup do not depend on an SSH key.
+- For enabled WhatsApp in repository-local Compose, set
+  `SAARTHI_WACLI_STORE_PATH=/srv/appdata/wacli/store` in `.env`. API, MCP, and
+  cron mount that directory read-only at `/srv/appdata/wacli/store`.
+  Repository-local Compose defaults to `./data/wacli`, which can remain empty
+  when WhatsApp is disabled. Shed defaults to the existing production store.
+  The directory mount lets clients reconnect after wacli recreates its socket.
 - Create a GitHub OAuth App for MCP access. Set its authorization callback URL
   to `${MCP_PUBLIC_BASE_URL}/auth/callback` exactly, and use its client ID and
   client secret for `MCP_GITHUB_CLIENT_ID` and `MCP_GITHUB_CLIENT_SECRET`.
@@ -133,6 +144,52 @@ token file. The Habitat Shed deployment instead mounts the writable
 `/srv/appdata/saarthi/credentials/google/` directory. In both cases, set
 `GOOGLE_TASKS_TOKEN_PATH=/app/secrets/google/google-tasks-token.json`.
 
+## Connect Habitat's wacli service
+
+Use the existing paired secondary account in Shed's
+`black-box/services/wacli` deployment. Follow the
+[wacli runbook](https://github.com/adhirajpandey/shed/blob/main/black-box/services/wacli/README.md)
+for pairing and session recovery.
+
+Keep wacli pinned to commit `97e14efdf91a7c9de1b68845321eb6355943b5f5`.
+Saarthi uses its internal version-1 socket protocol. Retain `--send-spacing 1s`
+in the sync command so queued requests respect their send deadlines.
+
+Apply wacli configuration from its deployment directory:
+
+```bash
+cd /home/adhiraj/projects/shed/black-box/services/wacli
+docker compose up -d
+```
+
+Rebuild both Saarthi images when changing the sender or its dependencies:
+
+```bash
+cd /home/adhiraj/projects/shed/black-box/projects/saarthi
+docker compose --profile cron build saarthi-api saarthi-cron
+docker compose up -d --no-build saarthi-api saarthi-mcp
+```
+
+After changing notification flags or recipients, restart API and MCP. Cron
+loads the current configuration on its next one-shot invocation.
+
+```bash
+docker compose restart saarthi-api saarthi-mcp
+curl -s http://localhost:6710/health
+```
+
+Use a separately authorized personal message to verify sending. Keep family
+WhatsApp disabled during verification. Check the personal chat before
+repeating an unconfirmed send because a timeout can occur after acceptance.
+
+To disable WhatsApp, set `WHATSAPP_ENABLED=False` in Shed's Saarthi
+`config.py`, then restart API and MCP with the command above. The MCP send
+tool disappears, and subsequent script runs skip WhatsApp notifications.
+Retain email for geofence notifications.
+
+After host loss, recover Saarthi with WhatsApp disabled until wacli is paired
+and sync is running. The wacli store is outside the existing backups.
+
 ## Verify
 
 ```bash
@@ -156,7 +213,8 @@ The health response should return HTTP `200` with an overall `healthy` or
 `HEALTH_CACHE_TTL_SECONDS` return the same in-memory result without re-running
 the underlying checks. A degraded response indicates that at least one
 required or enabled integration is unavailable; inspect `saarthi-api` logs for
-details.
+details. The WhatsApp probe checks local socket reachability only. It does not
+verify authentication, the upstream connection, or recipient delivery.
 
 The OAuth metadata response should advertise authorization and token endpoints
 under `MCP_PUBLIC_BASE_URL`. `codex mcp login saarthi` should open the GitHub
@@ -219,6 +277,16 @@ This is intentionally a host-only, manually initiated operation. Do not add it
 to host cron and do not run it through `saarthi-cron`. The script uses the
 host's Docker CLI to start and remove disposable PostgreSQL containers; the ops
 container intentionally has no Docker socket mount.
+
+On black-box, the git-ignored `app/config/config.py` links to
+`/home/adhiraj/projects/shed/black-box/projects/saarthi/config.py`, and `.env`
+links to that deployment's `.env`. Preserve these links so manual restore
+checks use the same notification settings as the containers. On another host,
+create local config files and supply that host's connection values.
+
+Run as `adhiraj` on black-box to access the owner-only wacli socket directly.
+`WHATSAPP_SOCKET_PATH` has the same absolute value on the host and in the
+containers. Preserve the store's private permissions.
 
 Before running, confirm that the repository dependencies and runtime
 configuration are current, the host user can run Docker, the configured

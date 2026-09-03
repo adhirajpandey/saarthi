@@ -80,8 +80,8 @@ def send_personal_whatsapp_message(message: str) -> dict[str, bool | str]:
         whatsapp_settings=settings.whatsapp_settings_for_mcp(),
     )
     if sent:
-        return {"success": True, "message": "WhatsApp message sent"}
-    return {"success": False, "message": "Failed to send WhatsApp message"}
+        return {"success": True, "message": "Message accepted by WhatsApp"}
+    return {"success": False, "message": "WhatsApp send was not confirmed"}
 
 
 def send_whatsapp_message_tool(message: str) -> dict[str, bool | str]:

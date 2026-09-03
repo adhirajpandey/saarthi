@@ -5,11 +5,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# WhatsApp notifications execute a remote script over SSH.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssh-client \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install uv for dependency + command management
 RUN pip install --no-cache-dir uv
 
@@ -34,9 +29,7 @@ RUN mkdir -p \
         /app/data \
         /app/logs \
         /app/secrets/google \
-        /app/secrets/rclone \
-        /app/secrets/ssh \
-        /root/.ssh
+        /app/secrets/rclone
 
 FROM base AS runtime
 

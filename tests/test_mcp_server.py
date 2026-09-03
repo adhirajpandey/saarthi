@@ -7,8 +7,8 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 
-_HERMES_BIN = "/home/pookie/.local/bin/hermes"
-_HERMES_DM_TARGET = "whatsapp:166601898885178@lid"
+_WACLI_SOCKET = "/tmp/wacli-test.sock"
+_PERSONAL_TARGET = "15550001111@s.whatsapp.net"
 
 
 def _load_mcp_server() -> ModuleType:
@@ -26,9 +26,8 @@ def test_send_personal_whatsapp_message_uses_personal_target(monkeypatch, runtim
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -43,18 +42,17 @@ def test_send_personal_whatsapp_message_uses_personal_target(monkeypatch, runtim
 
     result = server.send_personal_whatsapp_message(" hello ")
 
-    assert result == {"success": True, "message": "WhatsApp message sent"}
+    assert result == {"success": True, "message": "Message accepted by WhatsApp"}
     assert captured["message"] == " hello "
-    assert captured["whatsapp_settings"].target == _HERMES_DM_TARGET
+    assert captured["whatsapp_settings"].target == _PERSONAL_TARGET
 
 
 def test_send_personal_whatsapp_message_rejects_empty_message(monkeypatch, runtime_config) -> None:
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -75,9 +73,8 @@ def test_send_personal_whatsapp_message_reports_transport_failure(
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -86,16 +83,15 @@ def test_send_personal_whatsapp_message_reports_transport_failure(
 
     result = server.send_personal_whatsapp_message("hello")
 
-    assert result == {"success": False, "message": "Failed to send WhatsApp message"}
+    assert result == {"success": False, "message": "WhatsApp send was not confirmed"}
 
 
 def test_mcp_auth_check_accepts_configured_github_user(runtime_config) -> None:
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -113,9 +109,8 @@ def test_mcp_auth_check_rejects_other_github_user(runtime_config) -> None:
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -160,12 +155,69 @@ def test_mcp_auth_uses_github_provider_and_mounts_oauth_routes(runtime_config) -
     } <= route_paths
 
 
+def test_oauth_code_exchange_persists_mapping_for_a_fresh_provider(
+    monkeypatch, runtime_config, tmp_path
+) -> None:
+    import time
+
+    import fastmcp
+    from fastmcp.server.auth import AccessToken
+    from fastmcp.server.auth.oauth_proxy.models import ClientCode
+    from mcp.shared.auth import OAuthClientInformationFull
+
+    # Exercise token exchange and encrypted persistence, not only tools/list.
+    monkeypatch.setattr(fastmcp.settings, "home", tmp_path / "mcp")
+    runtime_config()
+    server = _load_mcp_server()
+    settings = server.get_mcp_settings()
+    auth = server.mcp.auth
+    auth.set_mcp_path("/mcp")
+
+    async def verify_upstream(token):
+        assert token == "test-upstream-token"
+        return AccessToken(
+            token=token, client_id="test-client", scopes=["read:user"],
+            claims={"sub": str(settings.mcp_github_allowed_user_id)},
+        )
+
+    async def exercise():
+        client = OAuthClientInformationFull(
+            client_id="test-client", redirect_uris=["http://localhost/callback"],
+            token_endpoint_auth_method="none",
+        )
+        await auth.register_client(client)
+        await auth._code_store.put(
+            key="test-code",
+            value=ClientCode(
+                code="test-code", client_id="test-client",
+                redirect_uri="http://localhost/callback", code_challenge="test-challenge",
+                code_challenge_method="S256", scopes=["read:user"],
+                idp_tokens={"access_token": "test-upstream-token", "expires_in": 120},
+                expires_at=time.time() + 120, created_at=time.time(),
+            ), ttl=120,
+        )
+        code = await auth.load_authorization_code(client, "test-code")
+        assert code is not None
+        token = await auth.exchange_authorization_code(client, code)
+        assert token.access_token != "test-upstream-token"
+        assert await auth.load_authorization_code(client, "test-code") is None
+
+        fresh = server.build_mcp_auth(settings)
+        fresh.set_mcp_path("/mcp")
+        monkeypatch.setattr(fresh._token_validator, "verify_token", verify_upstream)
+        assert await fresh.get_client("test-client") is not None
+        validated = await fresh.verify_token(token.access_token)
+        assert validated is not None
+        assert validated.claims["sub"] == str(settings.mcp_github_allowed_user_id)
+
+    asyncio.run(exercise())
+
+
 def test_mcp_server_omits_whatsapp_tool_when_disabled(runtime_config) -> None:
     runtime_config(
         {
             "WHATSAPP_ENABLED": False,
-            "WHATSAPP_SSH_HOST": None,
-            "WHATSAPP_HERMES_COMMAND_PATH": None,
+            "WHATSAPP_SOCKET_PATH": None,
             "WHATSAPP_TARGET_PERSONAL": None,
         }
     )
@@ -185,9 +237,8 @@ def test_mcp_server_registers_whatsapp_tool_when_enabled(runtime_config) -> None
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
 
@@ -201,13 +252,64 @@ def test_mcp_server_registers_whatsapp_tool_when_enabled(runtime_config) -> None
     assert "send_whatsapp_message" in tool_names
 
 
+@pytest.mark.parametrize(
+    ("enabled", "allowed_user"), [(True, True), (False, True), (True, False)]
+)
+def test_http_tool_discovery_respects_identity_and_whatsapp_flag(
+    monkeypatch, runtime_config, enabled, allowed_user
+) -> None:
+    from fastmcp.server.auth import AccessToken
+    from starlette.testclient import TestClient
+
+    runtime_config({"WHATSAPP_ENABLED": enabled, "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET})
+    server = _load_mcp_server()
+    settings = server.get_mcp_settings()
+
+    async def verify_test_token(token):
+        if token != "test-discovery-token":
+            return None
+        return AccessToken(
+            token=token,
+            client_id="test-client",
+            scopes=["read:user"],
+            claims={"sub": str(settings.mcp_github_allowed_user_id) if allowed_user else "other-user"},
+        )
+
+    # Exercise the real HTTP and authorization middleware without GitHub or sends.
+    monkeypatch.setattr(server.mcp.auth, "verify_token", verify_test_token)
+    app = server.mcp.http_app(path="/mcp", json_response=True)
+    with TestClient(app) as client:
+        headers = {"Accept": "application/json, text/event-stream"}
+        initialize = {
+            "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2025-03-26", "capabilities": {},
+                       "clientInfo": {"name": "discovery-test", "version": "1"}},
+        }
+        assert client.post("/mcp", headers=headers, json=initialize).status_code == 401
+        headers["Authorization"] = "Bearer test-discovery-token"
+        response = client.post("/mcp", headers=headers, json=initialize)
+        assert response.status_code == 200
+        headers["Mcp-Session-Id"] = response.headers["mcp-session-id"]
+        client.post("/mcp", headers=headers, json={
+            "jsonrpc": "2.0", "method": "notifications/initialized",
+        })
+        response = client.post("/mcp", headers=headers, json={
+            "jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {},
+        })
+        assert response.status_code == 200
+        tools = {tool["name"]: tool for tool in response.json()["result"]["tools"]}
+        assert ("send_whatsapp_message" in tools) == (enabled and allowed_user)
+        assert ("search_transactions" in tools) == allowed_user
+        if enabled and allowed_user:
+            assert tools["send_whatsapp_message"]["inputSchema"]["required"] == ["message"]
+
+
 def test_search_personal_transactions_delegates_to_service(monkeypatch, runtime_config) -> None:
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -230,9 +332,8 @@ def test_list_personal_cloudflare_zones_delegates_to_service(monkeypatch, runtim
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -257,9 +358,8 @@ def test_search_personal_cloudflare_dns_records_delegates_to_service(
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -284,9 +384,8 @@ def test_get_personal_cloudflare_dns_record_delegates_to_service(
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -312,9 +411,8 @@ def test_list_personal_google_tasklists_delegates_to_service(monkeypatch, runtim
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -336,9 +434,8 @@ def test_list_personal_google_tasks_delegates_to_service(monkeypatch, runtime_co
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -361,9 +458,8 @@ def test_get_personal_google_task_delegates_to_service(monkeypatch, runtime_conf
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -388,9 +484,8 @@ def test_get_personal_notion_database_schema_delegates_to_service(
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -414,9 +509,8 @@ def test_query_personal_notion_database_delegates_to_service(
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -446,9 +540,8 @@ def test_notion_links_aliases_use_links_database_key(monkeypatch, runtime_config
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -479,9 +572,8 @@ def test_notion_work_items_aliases_use_work_items_database_key(
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -513,9 +605,8 @@ def test_notion_greenhouse_experiment_aliases_use_greenhouse_database_key(
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -544,9 +635,8 @@ def test_list_work_item_projects_delegates_to_service(monkeypatch, runtime_confi
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -577,9 +667,8 @@ def test_create_personal_work_item_delegates_to_service(monkeypatch, runtime_con
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -610,9 +699,8 @@ def test_update_personal_work_item_delegates_to_service(monkeypatch, runtime_con
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -642,9 +730,8 @@ def test_create_greenhouse_experiment_delegates_to_service(
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()
@@ -677,9 +764,8 @@ def test_update_greenhouse_experiment_delegates_to_service(
     runtime_config(
         {
             "WHATSAPP_ENABLED": True,
-            "WHATSAPP_SSH_HOST": "pookie",
-            "WHATSAPP_HERMES_COMMAND_PATH": _HERMES_BIN,
-            "WHATSAPP_TARGET_PERSONAL": _HERMES_DM_TARGET,
+            "WHATSAPP_SOCKET_PATH": _WACLI_SOCKET,
+            "WHATSAPP_TARGET_PERSONAL": _PERSONAL_TARGET,
         }
     )
     server = _load_mcp_server()

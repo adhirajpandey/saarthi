@@ -14,7 +14,7 @@ services:
     volumes:
       - ${SAARTHI_DATA_PATH:?set SAARTHI_DATA_PATH}:/app/data
       - ${SAARTHI_LOGS_PATH:?set SAARTHI_LOGS_PATH}:/app/logs
-      - ${SAARTHI_SSH_KEY_PATH:-/dev/null}:/root/.ssh/id_ed25519:ro
+      - ${SAARTHI_WACLI_STORE_PATH:-./data/wacli}:/srv/appdata/wacli/store:ro
 
   saarthi-mcp:
     container_name: saarthi-mcp
@@ -32,7 +32,7 @@ services:
     volumes:
       - ${SAARTHI_LOGS_PATH:?set SAARTHI_LOGS_PATH}:/app/logs
       - ${SAARTHI_GOOGLE_TASKS_TOKEN_PATH:?set SAARTHI_GOOGLE_TASKS_TOKEN_PATH}:/app/secrets/google/google-tasks-token.json:ro
-      - ${SAARTHI_SSH_KEY_PATH:-/dev/null}:/root/.ssh/id_ed25519:ro
+      - ${SAARTHI_WACLI_STORE_PATH:-./data/wacli}:/srv/appdata/wacli/store:ro
 
   saarthi-cron:
     container_name: saarthi-cron
@@ -52,6 +52,6 @@ services:
     volumes:
       - ${SAARTHI_DATA_PATH:?set SAARTHI_DATA_PATH}:/app/data
       - ${SAARTHI_LOGS_PATH:?set SAARTHI_LOGS_PATH}:/app/logs
-      - ${SAARTHI_SSH_KEY_PATH:-/dev/null}:/root/.ssh/id_ed25519:ro
+      - ${SAARTHI_WACLI_STORE_PATH:-./data/wacli}:/srv/appdata/wacli/store:ro
       - ${SAARTHI_RCLONE_CONFIG_PATH:?set SAARTHI_RCLONE_CONFIG_PATH}:/app/secrets/rclone/rclone.conf:ro
       - ${SAARTHI_RCLONE_SERVICE_ACCOUNT_PATH:?set SAARTHI_RCLONE_SERVICE_ACCOUNT_PATH}:/app/secrets/rclone/gdrive-service-account.json:ro

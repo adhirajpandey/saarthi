@@ -25,9 +25,9 @@ def test_collect_health_state_marks_failed_enabled_channel_as_degraded(
     settings = client.app.state.settings
     settings.email_enabled = True
     settings.whatsapp_enabled = True
-    settings.whatsapp_ssh_host = "user@ssh.example.com"
-    settings.whatsapp_hermes_command_path = "/usr/bin/hermes"
-    settings.whatsapp_target_family = "whatsapp:test-group"
+    settings.whatsapp_socket_path = "/tmp/wacli-test.sock"
+    monkeypatch.setattr("app.services.health.whatsapp_available", lambda *_: False)
+    settings.whatsapp_target_family = "120363000000000000@g.us"
     monkeypatch.setattr("app.services.health._check_location_database", lambda *_: True)
     monkeypatch.setattr("app.services.health._check_tcp_reachable", lambda *_: False)
 
@@ -51,6 +51,21 @@ def test_collect_health_state_ignores_disabled_channels(client, monkeypatch) -> 
     assert response.status == "healthy"
     assert response.checks.email == "disabled"
     assert response.checks.whatsapp == "disabled"
+
+
+def test_health_uses_socket_without_requiring_family_recipient(client, monkeypatch):
+    settings = client.app.state.settings
+    settings.email_enabled = False
+    settings.whatsapp_enabled = True
+    settings.geofence_whatsapp_enabled = False
+    settings.whatsapp_target_family = None
+    settings.whatsapp_socket_path = "/tmp/wacli-test.sock"
+    probes = []
+    monkeypatch.setattr("app.services.health._check_location_database", lambda *_: True)
+    monkeypatch.setattr("app.services.health.whatsapp_available", lambda *args: probes.append(args) or True)
+    response = collect_health_state(settings, client.app.state.geofence_mapping)
+    assert response.checks.whatsapp == "available"
+    assert probes == [("/tmp/wacli-test.sock", 3)]
 
 
 def test_collect_health_state_contains_unexpected_probe_error(client, monkeypatch) -> None:

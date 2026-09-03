@@ -48,8 +48,7 @@ COMMON_CONFIG_KEYS = frozenset(
         "LOG_FILE",
         "EMAIL_ENABLED",
         "WHATSAPP_ENABLED",
-        "WHATSAPP_SSH_HOST",
-        "WHATSAPP_HERMES_COMMAND_PATH",
+        "WHATSAPP_SOCKET_PATH",
         "WHATSAPP_TARGET_FAMILY",
         "WHATSAPP_TARGET_PERSONAL",
         "WHATSAPP_TIMEOUT_SECONDS",
@@ -62,6 +61,7 @@ API_CONFIG_KEYS = frozenset(
         "LOCATION_DB_PATH",
         "GEOFENCE_MAPPING_PATH",
         "GEOFENCE_SUBJECT_TEMPLATE",
+        "GEOFENCE_WHATSAPP_ENABLED",
         "GEOFENCE_EMAIL_TEMPLATE",
         "GEOFENCE_WHATSAPP_ENTERED_TEMPLATE",
         "GEOFENCE_WHATSAPP_EXITED_TEMPLATE",
@@ -246,10 +246,9 @@ class SmtpSettings(BaseModel):
 class WhatsAppSettings(BaseModel):
     """WhatsApp sender configuration."""
 
-    ssh_host: str
-    hermes_command_path: str
+    socket_path: str = Field(min_length=1)
     target: str
-    timeout_seconds: int
+    timeout_seconds: int = Field(gt=5)
 
 
 class RuntimeSettings(BaseModel):
@@ -261,8 +260,7 @@ class RuntimeSettings(BaseModel):
     log_file: str
     email_enabled: bool
     whatsapp_enabled: bool
-    whatsapp_ssh_host: str | None = None
-    whatsapp_hermes_command_path: str | None = None
+    whatsapp_socket_path: str | None = None
     whatsapp_target_family: str | None = None
     whatsapp_target_personal: str | None = None
     whatsapp_timeout_seconds: int
@@ -277,19 +275,19 @@ class RuntimeSettings(BaseModel):
 
     def _validate_whatsapp_transport(self) -> None:
         if self.whatsapp_enabled:
-            if not self.whatsapp_ssh_host:
-                raise ValueError("WHATSAPP_SSH_HOST is required when WHATSAPP_ENABLED is true")
-            if not self.whatsapp_hermes_command_path:
-                raise ValueError(
-                    "WHATSAPP_HERMES_COMMAND_PATH is required when WHATSAPP_ENABLED is true"
-                )
+            if not self.whatsapp_socket_path or not self.whatsapp_socket_path.strip():
+                raise ValueError("WHATSAPP_SOCKET_PATH is required when WHATSAPP_ENABLED is true")
+            if self.whatsapp_timeout_seconds <= 5:
+                raise ValueError("WHATSAPP_TIMEOUT_SECONDS must exceed 5 seconds")
+            for target in (self.whatsapp_target_family, self.whatsapp_target_personal):
+                if target and target.startswith("whatsapp:"):
+                    raise ValueError("WhatsApp targets must not contain the legacy whatsapp: prefix")
 
     def _build_whatsapp_settings(self, target: str | None) -> WhatsAppSettings:
-        if not self.whatsapp_ssh_host or not self.whatsapp_hermes_command_path or not target:
+        if not self.whatsapp_socket_path or not target:
             raise ValueError("WhatsApp settings are not configured")
         return WhatsAppSettings(
-            ssh_host=self.whatsapp_ssh_host,
-            hermes_command_path=self.whatsapp_hermes_command_path,
+            socket_path=self.whatsapp_socket_path,
             target=target,
             timeout_seconds=self.whatsapp_timeout_seconds,
         )
@@ -322,6 +320,7 @@ class ApiSettings(RuntimeSettings):
     admin_token: str
     health_cache_ttl_seconds: int = Field(gt=0)
     geofence_subject_template: str
+    geofence_whatsapp_enabled: bool
     geofence_email_template: str
     geofence_whatsapp_entered_template: str
     geofence_whatsapp_exited_template: str
@@ -334,7 +333,7 @@ class ApiSettings(RuntimeSettings):
 
     @model_validator(mode="after")
     def _validate_api_notification_channels(self) -> "ApiSettings":
-        if not (self.email_enabled or self.whatsapp_enabled):
+        if not (self.email_enabled or (self.whatsapp_enabled and self.geofence_whatsapp_enabled)):
             raise ValueError(
                 "At least one geofence notification channel must be enabled: "
                 "EMAIL_ENABLED or WHATSAPP_ENABLED"
@@ -349,7 +348,7 @@ class ApiSettings(RuntimeSettings):
             if self.smtp_port is None:
                 raise ValueError("SMTP_PORT is required when EMAIL_ENABLED is true")
         self._validate_whatsapp_transport()
-        if self.whatsapp_enabled and not self.whatsapp_target_family:
+        if self.whatsapp_enabled and self.geofence_whatsapp_enabled and not self.whatsapp_target_family:
             raise ValueError("WHATSAPP_TARGET_FAMILY is required when WHATSAPP_ENABLED is true")
         return self
 
