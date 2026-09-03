@@ -28,10 +28,25 @@ http://localhost:8001/mcp
 
 ## Auth
 
-Saarthi uses FastMCP's GitHub OAuth proxy. Clients discover the OAuth endpoints,
-open GitHub authorization in a browser, and receive a Saarthi access token after
-the flow completes. The server requests the `read:user` scope and rejects users
-whose numeric GitHub ID does not match `MCP_GITHUB_ALLOWED_USER_ID`.
+Saarthi accepts two authentication methods on the same MCP endpoint:
+
+- GitHub OAuth for interactive and external clients
+- The static bearer token in `MCP_STATIC_BEARER_TOKEN` for trusted clients
+
+Both methods expose the same tools. FastMCP's GitHub OAuth proxy continues to
+provide OAuth discovery and browser authorization. The server requests the
+`read:user` scope and rejects GitHub users whose numeric ID does not match
+`MCP_GITHUB_ALLOWED_USER_ID`.
+
+A trusted client can skip OAuth and send the configured static token directly:
+
+```http
+Authorization: Bearer <MCP_STATIC_BEARER_TOKEN>
+```
+
+The static token is opaque. Saarthi does not issue it, store client records for
+it, or attach a separate authorization policy to it. Replace the environment
+value and restart `saarthi-mcp` to rotate it.
 
 Compose sets `FASTMCP_HOME=/app/secrets/mcp` and mounts
 `${SAARTHI_DATA_PATH}/credentials/mcp` there. FastMCP stores encrypted OAuth
@@ -1130,6 +1145,7 @@ Environment (`.env`):
 - `MCP_GITHUB_CLIENT_SECRET`
 - `MCP_GITHUB_ALLOWED_USER_ID`
 - `MCP_OAUTH_JWT_SIGNING_KEY`
+- `MCP_STATIC_BEARER_TOKEN`
 - `CLOUDFLARE_API_TOKEN`
 - `GOOGLE_TASKS_CLIENT_ID`
 - `GOOGLE_TASKS_CLIENT_SECRET`
@@ -1158,6 +1174,9 @@ Remarks:
   middleware rejects authenticated users whose GitHub `sub` claim differs.
 - `MCP_OAUTH_JWT_SIGNING_KEY` is a stable secret used to sign FastMCP-issued
   access tokens.
+- `MCP_STATIC_BEARER_TOKEN` is a strong opaque secret for trusted clients that
+  authenticate with the standard `Authorization: Bearer <token>` header. It is
+  required at MCP startup and grants access to the same tools as GitHub OAuth.
 - MCP starts when `WHATSAPP_ENABLED` is false and omits
   `send_whatsapp_message` from its advertised tool surface.
 - When `WHATSAPP_ENABLED` is true, `WHATSAPP_SOCKET_PATH` and

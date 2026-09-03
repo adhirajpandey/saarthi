@@ -46,7 +46,8 @@ cp .env.example .env
 - `.env`: authentication, secrets, and connection values (`ADMIN_TOKEN`,
   `MCP_PUBLIC_BASE_URL`, `MCP_GITHUB_CLIENT_ID`,
   `MCP_GITHUB_CLIENT_SECRET`, `MCP_GITHUB_ALLOWED_USER_ID`,
-  `MCP_OAUTH_JWT_SIGNING_KEY`, `CLOUDFLARE_API_TOKEN`,
+  `MCP_OAUTH_JWT_SIGNING_KEY`, `MCP_STATIC_BEARER_TOKEN`,
+  `CLOUDFLARE_API_TOKEN`,
   `GOOGLE_TASKS_CLIENT_ID`, `GOOGLE_TASKS_CLIENT_SECRET`,
   `GOOGLE_TASKS_TOKEN_PATH`, `NOTION_API_KEY`,
   `NOTION_LINKS_DATABASE_URL`, `NOTION_WORK_ITEMS_DATABASE_URL`,
@@ -74,6 +75,15 @@ cp .env.example .env
   `MCP_PUBLIC_BASE_URL` must be the public HTTPS origin without `/mcp`.
 - Set `MCP_GITHUB_ALLOWED_USER_ID` to the numeric GitHub user ID permitted to
   call Saarthi tools. Generate a stable secret for `MCP_OAUTH_JWT_SIGNING_KEY`.
+- Generate a separate strong secret for `MCP_STATIC_BEARER_TOKEN`. Trusted MCP
+  clients send it as `Authorization: Bearer <token>` and receive access to the
+  same tools as the allowed GitHub user. To rotate it, replace the environment
+  value, update trusted clients, and restart `saarthi-mcp`.
+
+```bash
+openssl rand -hex 32
+```
+
 - Compose persists FastMCP OAuth state at
   `${SAARTHI_DATA_PATH}/credentials/mcp`, mounted at `/app/secrets/mcp` with
   `FASTMCP_HOME` pointing there. Create the host directory with mode `0700`.
@@ -106,8 +116,10 @@ The default `up` starts only `saarthi-api` and `saarthi-mcp`.
 
 `saarthi-mcp` serves its repository-local host endpoint on
 `http://localhost:8001/mcp`. Production clients connect to
-`${MCP_PUBLIC_BASE_URL}/mcp` and authenticate through GitHub OAuth. The server
-requests the `read:user` scope and permits only `MCP_GITHUB_ALLOWED_USER_ID`.
+`${MCP_PUBLIC_BASE_URL}/mcp` and authenticate through GitHub OAuth or the static
+bearer token. The OAuth path requests the `read:user` scope and permits only
+`MCP_GITHUB_ALLOWED_USER_ID`. Trusted clients send `MCP_STATIC_BEARER_TOKEN`
+through the standard `Authorization: Bearer <token>` header.
 Detailed MCP setup is documented in `mcp.md`.
 When `WHATSAPP_ENABLED` is false, MCP starts normally without the
 `send_whatsapp_message` tool; its other configured tools remain available.
@@ -234,7 +246,8 @@ verify authentication, the upstream connection, or recipient delivery.
 The OAuth metadata response should advertise authorization and token endpoints
 under `MCP_PUBLIC_BASE_URL`. `codex mcp login saarthi` should open the GitHub
 authorization flow. MCP requests succeed only when the authenticated GitHub
-user matches `MCP_GITHUB_ALLOWED_USER_ID`.
+user matches `MCP_GITHUB_ALLOWED_USER_ID` or the request carries the configured
+`MCP_STATIC_BEARER_TOKEN`.
 
 For Notion MCP verification, confirm these tool calls succeed from the client:
 

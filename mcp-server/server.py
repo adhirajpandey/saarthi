@@ -1,10 +1,17 @@
 """Minimal FastMCP server for Saarthi tools."""
 
 from pathlib import Path
+from secrets import compare_digest
 import sys
 
 from fastmcp import FastMCP
-from fastmcp.server.auth import AuthCheck, AuthContext
+from fastmcp.server.auth import (
+    AccessToken,
+    AuthCheck,
+    AuthContext,
+    MultiAuth,
+    TokenVerifier,
+)
 from fastmcp.server.auth.providers.github import GitHubProvider
 from fastmcp.server.middleware import AuthMiddleware
 
@@ -34,27 +41,64 @@ from app.services.notion import (  # noqa: E402
     update_work_item as update_notion_work_item,
 )
 
+STATIC_BEARER_AUTH_METHOD = "static_bearer"
+STATIC_BEARER_CLIENT_ID = "saarthi-static-bearer"
+STATIC_BEARER_SUBJECT = "urn:saarthi:static-bearer"
 
-def require_github_user(user_id: int) -> AuthCheck:
-    """Allow only the configured GitHub account."""
+
+class StaticBearerTokenVerifier(TokenVerifier):
+    """Verify Saarthi's configured opaque bearer token."""
+
+    def __init__(self, token: str) -> None:
+        super().__init__()
+        self._token = token
+
+    async def verify_token(self, token: str) -> AccessToken | None:
+        if not token or not compare_digest(token, self._token):
+            return None
+
+        return AccessToken(
+            token=token,
+            client_id=STATIC_BEARER_CLIENT_ID,
+            scopes=["read:user"],
+            claims={
+                "sub": STATIC_BEARER_SUBJECT,
+                "auth_method": STATIC_BEARER_AUTH_METHOD,
+            },
+        )
+
+
+def require_mcp_principal(github_user_id: int) -> AuthCheck:
+    """Allow the static bearer identity or the configured GitHub account."""
 
     def check(context: AuthContext) -> bool:
         if context.token is None:
             return False
 
-        return str(context.token.claims.get("sub")) == str(user_id)
+        claims = context.token.claims
+        if (
+            claims.get("auth_method") == STATIC_BEARER_AUTH_METHOD
+            and claims.get("sub") == STATIC_BEARER_SUBJECT
+        ):
+            return True
+
+        return str(claims.get("sub")) == str(github_user_id)
 
     return check
 
 
-def build_mcp_auth(settings: McpSettings) -> GitHubProvider:
-    """Build GitHub OAuth proxy authentication for the MCP server."""
-    return GitHubProvider(
+def build_mcp_auth(settings: McpSettings) -> MultiAuth:
+    """Build GitHub OAuth and static bearer authentication."""
+    github_auth = GitHubProvider(
         client_id=settings.mcp_github_client_id,
         client_secret=settings.mcp_github_client_secret,
         base_url=settings.mcp_public_base_url.rstrip("/"),
         required_scopes=["read:user"],
         jwt_signing_key=settings.mcp_oauth_jwt_signing_key,
+    )
+    return MultiAuth(
+        server=github_auth,
+        verifiers=StaticBearerTokenVerifier(settings.mcp_static_bearer_token),
     )
 
 
@@ -63,7 +107,7 @@ mcp = FastMCP(
     "saarthi-mcp",
     auth=build_mcp_auth(mcp_settings),
     middleware=[
-        AuthMiddleware(auth=require_github_user(mcp_settings.mcp_github_allowed_user_id))
+        AuthMiddleware(auth=require_mcp_principal(mcp_settings.mcp_github_allowed_user_id))
     ],
 )
 

@@ -18,6 +18,7 @@ ENV_OWNED_KEYS = frozenset(
         "MCP_GITHUB_CLIENT_SECRET",
         "MCP_GITHUB_ALLOWED_USER_ID",
         "MCP_OAUTH_JWT_SIGNING_KEY",
+        "MCP_STATIC_BEARER_TOKEN",
         "CLOUDFLARE_API_TOKEN",
         "GOOGLE_TASKS_CLIENT_ID",
         "GOOGLE_TASKS_CLIENT_SECRET",
@@ -376,6 +377,7 @@ class McpSettings(RuntimeSettings):
     mcp_github_client_secret: str
     mcp_github_allowed_user_id: int = Field(gt=0)
     mcp_oauth_jwt_signing_key: str
+    mcp_static_bearer_token: str
     trackcrow_db_url: str
     trackcrow_mcp_user_uuid: str
 

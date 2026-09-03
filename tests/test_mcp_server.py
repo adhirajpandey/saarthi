@@ -97,7 +97,7 @@ def test_mcp_auth_check_accepts_configured_github_user(runtime_config) -> None:
     server = _load_mcp_server()
     settings = server.get_mcp_settings()
 
-    check = server.require_github_user(settings.mcp_github_allowed_user_id)
+    check = server.require_mcp_principal(settings.mcp_github_allowed_user_id)
     context = SimpleNamespace(
         token=SimpleNamespace(claims={"sub": str(settings.mcp_github_allowed_user_id)})
     )
@@ -116,8 +116,37 @@ def test_mcp_auth_check_rejects_other_github_user(runtime_config) -> None:
     server = _load_mcp_server()
     settings = server.get_mcp_settings()
 
-    check = server.require_github_user(settings.mcp_github_allowed_user_id)
+    check = server.require_mcp_principal(settings.mcp_github_allowed_user_id)
     context = SimpleNamespace(token=SimpleNamespace(claims={"sub": "12345"}))
+
+    assert check(context) is False
+
+
+def test_mcp_auth_check_accepts_static_bearer_identity(runtime_config) -> None:
+    server = _load_mcp_server()
+    settings = server.get_mcp_settings()
+    check = server.require_mcp_principal(settings.mcp_github_allowed_user_id)
+    context = SimpleNamespace(
+        token=SimpleNamespace(
+            claims={
+                "sub": server.STATIC_BEARER_SUBJECT,
+                "auth_method": server.STATIC_BEARER_AUTH_METHOD,
+            }
+        )
+    )
+
+    assert check(context) is True
+
+
+def test_mcp_auth_check_rejects_spoofed_static_bearer_identity(runtime_config) -> None:
+    server = _load_mcp_server()
+    settings = server.get_mcp_settings()
+    check = server.require_mcp_principal(settings.mcp_github_allowed_user_id)
+    context = SimpleNamespace(
+        token=SimpleNamespace(
+            claims={"sub": "12345", "auth_method": server.STATIC_BEARER_AUTH_METHOD}
+        )
+    )
 
     assert check(context) is False
 
@@ -125,20 +154,23 @@ def test_mcp_auth_check_rejects_other_github_user(runtime_config) -> None:
 def test_mcp_auth_check_rejects_missing_identity(runtime_config) -> None:
     server = _load_mcp_server()
     settings = server.get_mcp_settings()
-    check = server.require_github_user(settings.mcp_github_allowed_user_id)
+    check = server.require_mcp_principal(settings.mcp_github_allowed_user_id)
 
     assert check(SimpleNamespace(token=None)) is False
     assert check(SimpleNamespace(token=SimpleNamespace(claims={}))) is False
 
 
-def test_mcp_auth_uses_github_provider_and_mounts_oauth_routes(runtime_config) -> None:
+def test_mcp_auth_combines_static_bearer_with_github_oauth(runtime_config) -> None:
     server = _load_mcp_server()
     settings = server.get_mcp_settings()
 
     auth = server.build_mcp_auth(settings)
     route_paths = {route.path for route in server.mcp.http_app(path="/mcp").routes}
 
-    assert auth.__class__.__name__ == "GitHubProvider"
+    assert auth.__class__.__name__ == "MultiAuth"
+    assert auth.server.__class__.__name__ == "GitHubProvider"
+    assert len(auth.verifiers) == 1
+    assert auth.verifiers[0].__class__.__name__ == "StaticBearerTokenVerifier"
     assert any(
         middleware.__class__.__name__ == "AuthMiddleware"
         for middleware in server.mcp.middleware
@@ -153,6 +185,24 @@ def test_mcp_auth_uses_github_provider_and_mounts_oauth_routes(runtime_config) -
         "/consent",
         "/mcp",
     } <= route_paths
+
+
+def test_static_bearer_verifier_accepts_only_configured_token(runtime_config) -> None:
+    server = _load_mcp_server()
+    settings = server.get_mcp_settings()
+    verifier = server.StaticBearerTokenVerifier(settings.mcp_static_bearer_token)
+
+    accepted = asyncio.run(verifier.verify_token("test-static-bearer-token"))
+    rejected = asyncio.run(verifier.verify_token("wrong-token"))
+
+    assert accepted is not None
+    assert accepted.client_id == server.STATIC_BEARER_CLIENT_ID
+    assert accepted.scopes == ["read:user"]
+    assert accepted.claims == {
+        "sub": server.STATIC_BEARER_SUBJECT,
+        "auth_method": server.STATIC_BEARER_AUTH_METHOD,
+    }
+    assert rejected is None
 
 
 def test_oauth_code_exchange_persists_mapping_for_a_fresh_provider(
@@ -172,6 +222,8 @@ def test_oauth_code_exchange_persists_mapping_for_a_fresh_provider(
     settings = server.get_mcp_settings()
     auth = server.mcp.auth
     auth.set_mcp_path("/mcp")
+    github_auth = auth.server
+    assert github_auth is not None
 
     async def verify_upstream(token):
         assert token == "test-upstream-token"
@@ -185,8 +237,8 @@ def test_oauth_code_exchange_persists_mapping_for_a_fresh_provider(
             client_id="test-client", redirect_uris=["http://localhost/callback"],
             token_endpoint_auth_method="none",
         )
-        await auth.register_client(client)
-        await auth._code_store.put(
+        await github_auth.register_client(client)
+        await github_auth._code_store.put(
             key="test-code",
             value=ClientCode(
                 code="test-code", client_id="test-client",
@@ -196,16 +248,22 @@ def test_oauth_code_exchange_persists_mapping_for_a_fresh_provider(
                 expires_at=time.time() + 120, created_at=time.time(),
             ), ttl=120,
         )
-        code = await auth.load_authorization_code(client, "test-code")
+        code = await github_auth.load_authorization_code(client, "test-code")
         assert code is not None
-        token = await auth.exchange_authorization_code(client, code)
+        token = await github_auth.exchange_authorization_code(client, code)
         assert token.access_token != "test-upstream-token"
-        assert await auth.load_authorization_code(client, "test-code") is None
+        assert await github_auth.load_authorization_code(client, "test-code") is None
 
         fresh = server.build_mcp_auth(settings)
         fresh.set_mcp_path("/mcp")
-        monkeypatch.setattr(fresh._token_validator, "verify_token", verify_upstream)
-        assert await fresh.get_client("test-client") is not None
+        fresh_github_auth = fresh.server
+        assert fresh_github_auth is not None
+        monkeypatch.setattr(
+            fresh_github_auth._token_validator,
+            "verify_token",
+            verify_upstream,
+        )
+        assert await fresh_github_auth.get_client("test-client") is not None
         validated = await fresh.verify_token(token.access_token)
         assert validated is not None
         assert validated.claims["sub"] == str(settings.mcp_github_allowed_user_id)
@@ -298,10 +356,66 @@ def test_http_tool_discovery_respects_identity_and_whatsapp_flag(
         })
         assert response.status_code == 200
         tools = {tool["name"]: tool for tool in response.json()["result"]["tools"]}
+        registered_tools = {
+            component.name
+            for key, component in server.mcp._local_provider._components.items()
+            if key.startswith("tool:")
+        }
+        assert set(tools) == (registered_tools if allowed_user else set())
         assert ("send_whatsapp_message" in tools) == (enabled and allowed_user)
         assert ("search_transactions" in tools) == allowed_user
         if enabled and allowed_user:
             assert tools["send_whatsapp_message"]["inputSchema"]["required"] == ["message"]
+
+
+def test_http_tool_discovery_accepts_static_bearer_token(runtime_config) -> None:
+    from starlette.testclient import TestClient
+
+    server = _load_mcp_server()
+    app = server.mcp.http_app(path="/mcp", json_response=True)
+    headers = {
+        "Accept": "application/json, text/event-stream",
+        "Authorization": "Bearer test-static-bearer-token",
+    }
+    initialize = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {"name": "static-token-test", "version": "1"},
+        },
+    }
+
+    with TestClient(app) as client:
+        invalid_headers = {**headers, "Authorization": "Bearer wrong-token"}
+        assert client.post(
+            "/mcp", headers=invalid_headers, json=initialize
+        ).status_code == 401
+
+        response = client.post("/mcp", headers=headers, json=initialize)
+        assert response.status_code == 200
+        headers["Mcp-Session-Id"] = response.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+        )
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+        )
+
+    assert response.status_code == 200
+    tools = {tool["name"] for tool in response.json()["result"]["tools"]}
+    registered_tools = {
+        component.name
+        for key, component in server.mcp._local_provider._components.items()
+        if key.startswith("tool:")
+    }
+    assert tools == registered_tools
 
 
 def test_search_personal_transactions_delegates_to_service(monkeypatch, runtime_config) -> None:

@@ -159,6 +159,15 @@ def test_mcp_settings_parses_github_allowed_user_id(runtime_config) -> None:
 
     assert settings.mcp_github_allowed_user_id == 87516052
     assert settings.mcp_public_base_url == "https://saarthi.example.com"
+    assert settings.mcp_static_bearer_token == "test-static-bearer-token"
+
+
+def test_mcp_settings_requires_static_bearer_token(monkeypatch, runtime_config) -> None:
+    runtime_config()
+    monkeypatch.delenv("MCP_STATIC_BEARER_TOKEN", raising=False)
+
+    with pytest.raises(ValueError, match="mcp_static_bearer_token"):
+        get_mcp_settings()
 
 
 def test_mcp_settings_requires_trackcrow_user_uuid(monkeypatch, runtime_config) -> None:

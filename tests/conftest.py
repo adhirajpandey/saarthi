@@ -96,6 +96,7 @@ def runtime_config(
         "MCP_GITHUB_CLIENT_SECRET": "test-github-client-secret",
         "MCP_GITHUB_ALLOWED_USER_ID": "87516052",
         "MCP_OAUTH_JWT_SIGNING_KEY": "test-oauth-signing-key",
+        "MCP_STATIC_BEARER_TOKEN": "test-static-bearer-token",
         "CLOUDFLARE_API_TOKEN": "test-cloudflare-token",
         "GOOGLE_TASKS_CLIENT_ID": "test-google-client-id",
         "GOOGLE_TASKS_CLIENT_SECRET": "test-google-client-secret",

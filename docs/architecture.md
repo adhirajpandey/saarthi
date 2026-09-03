@@ -94,8 +94,9 @@ Error shape:
 Startup flow (`mcp-server/server.py`):
 
 1. Load and validate MCP settings.
-2. Configure the FastMCP GitHub OAuth proxy.
-3. Restrict access to `MCP_GITHUB_ALLOWED_USER_ID` through auth middleware.
+2. Configure FastMCP to accept GitHub OAuth and the static bearer token.
+3. Allow the static bearer identity or the GitHub identity matching
+   `MCP_GITHUB_ALLOWED_USER_ID` through auth middleware.
 4. Register MCP tools, including `send_whatsapp_message` only when WhatsApp is enabled.
 5. Serve streamable HTTP on `/mcp`.
 
@@ -147,7 +148,7 @@ Deployment defaults:
 - Repository-local host URL: `http://localhost:8001/mcp`
 - Production client URL: `https://saarthi.adhirajpandey.tech/mcp`
 - Auth: GitHub OAuth with the `read:user` scope, restricted to the configured
-  GitHub user ID
+  GitHub user ID, or the configured static bearer token
 
 ### Notion MCP tools
 
@@ -331,6 +332,8 @@ not place production data inside the Git checkout.
 - `MCP_GITHUB_CLIENT_SECRET`: GitHub OAuth App client secret
 - `MCP_GITHUB_ALLOWED_USER_ID`: numeric GitHub user ID allowed to use MCP tools
 - `MCP_OAUTH_JWT_SIGNING_KEY`: key used to sign FastMCP-issued OAuth tokens
+- `MCP_STATIC_BEARER_TOKEN`: opaque bearer token accepted from trusted MCP
+  clients
 - `CLOUDFLARE_API_TOKEN`: API token used by Cloudflare scripts and MCP tools
 - `GOOGLE_TASKS_CLIENT_ID`: OAuth client ID for Google Tasks personal auth
 - `GOOGLE_TASKS_CLIENT_SECRET`: OAuth client secret for Google Tasks personal
