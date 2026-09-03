@@ -11,7 +11,10 @@ Raspberry Pi Linux host with:
 
 ## Quick Setup
 
-1. Create config files:
+1. For a new local checkout, create config files. On the existing Habitat
+   deployment, retain the Shed configuration links described under
+   [Manual database restore verification](#manual-database-restore-verification).
+   Do not copy templates over those links.
 
 ```bash
 cp app/config/config.example.py app/config/config.py
@@ -71,6 +74,18 @@ cp .env.example .env
   `MCP_PUBLIC_BASE_URL` must be the public HTTPS origin without `/mcp`.
 - Set `MCP_GITHUB_ALLOWED_USER_ID` to the numeric GitHub user ID permitted to
   call Saarthi tools. Generate a stable secret for `MCP_OAUTH_JWT_SIGNING_KEY`.
+- Compose persists FastMCP OAuth state at
+  `${SAARTHI_DATA_PATH}/credentials/mcp`, mounted at `/app/secrets/mcp` with
+  `FASTMCP_HOME` pointing there. Create the host directory with mode `0700`.
+  Preserve it across deployments along with the signing key. To migrate an
+  existing container, stop MCP and retain a private backup before copying its
+  `/root/.local/share/fastmcp/` contents into that directory. Collection
+  metadata files named `*-info.json` contain absolute `directory` paths.
+  Update those fields to the matching collection directories under
+  `/app/secrets/mcp` before starting MCP. Copying alone leaves stale paths and
+  causes `PathSecurityError` during token exchange. Verify encrypted store
+  reads and writes after migration. Already-lost sessions require a new
+  GitHub login; mounting an empty directory cannot recover them.
 - Share the Notion integration tied to `NOTION_API_KEY` with all configured
   Notion databases, with read access for the saved links database and
   read/write access for the work items and Greenhouse experiments databases.

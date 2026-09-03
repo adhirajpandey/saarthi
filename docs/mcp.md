@@ -33,6 +33,24 @@ open GitHub authorization in a browser, and receive a Saarthi access token after
 the flow completes. The server requests the `read:user` scope and rejects users
 whose numeric GitHub ID does not match `MCP_GITHUB_ALLOWED_USER_ID`.
 
+Compose sets `FASTMCP_HOME=/app/secrets/mcp` and mounts
+`${SAARTHI_DATA_PATH}/credentials/mcp` there. FastMCP stores encrypted OAuth
+registrations and token mappings in this directory. Keep the directory and
+`MCP_OAUTH_JWT_SIGNING_KEY` across container replacements.
+
+If clients cannot discover tools and server logs report `JTI mapping not
+found`, the server no longer has their OAuth session mapping. Reconnect the
+Saarthi integration through GitHub. For Codex, run `codex mcp login saarthi`
+and complete the browser flow, then reconnect the client to refresh its tool
+list. Registering a tool in Python does not prove authenticated discovery.
+
+If `/token` returns HTTP 500 with `PathSecurityError` after a storage move,
+check the absolute `directory` fields in the store's `*-info.json` collection
+metadata. They must match the current mounted path. Stop MCP before correcting
+stale metadata, preserve a private backup, and restart afterward. The failed
+exchange may already have consumed its authorization code, so begin a new
+login after the repair.
+
 The GitHub OAuth App must use this exact authorization callback URL:
 
 ```text
