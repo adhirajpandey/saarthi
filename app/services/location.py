@@ -36,6 +36,13 @@ CREATE INDEX IF NOT EXISTS idx_me_locations_recorded_at
 ON me_locations (recorded_at)
 """
 
+_CREATE_GEOFENCE_MESSAGE_STATE_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS geofence_message_state (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+)
+"""
+
 
 def initialize_location_db(db_path: str) -> None:
     """Create location storage file and schema if not present."""
@@ -45,6 +52,7 @@ def initialize_location_db(db_path: str) -> None:
     with sqlite3.connect(resolved_path) as conn:
         conn.execute(_CREATE_LOCATION_TABLE_SQL)
         conn.execute(_CREATE_LOCATION_RECORDED_AT_INDEX_SQL)
+        conn.execute(_CREATE_GEOFENCE_MESSAGE_STATE_TABLE_SQL)
         conn.commit()
 
 

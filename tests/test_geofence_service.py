@@ -2,7 +2,11 @@
 
 import asyncio
 
+import pytest
+
 from app.services.geofence import send_geofence_notification
+from app.services.geofence_messages import MESSAGES
+from app.services.location import initialize_location_db
 from shared.settings import SmtpSettings
 
 
@@ -27,6 +31,13 @@ class DummySettings:
 
     def whatsapp_settings_for_geofence(self):
         raise AssertionError("whatsapp_settings should not be called in this test")
+
+
+@pytest.fixture(autouse=True)
+def message_db(tmp_path, monkeypatch):
+    path = str(tmp_path / "location.db")
+    initialize_location_db(path)
+    monkeypatch.setattr(DummySettings, "location_db_path", path, raising=False)
 
 
 def test_send_geofence_notification_success(monkeypatch) -> None:
@@ -120,7 +131,10 @@ def test_send_geofence_notification_any_success_with_whatsapp(monkeypatch) -> No
 
     assert result.success is True
     assert "Office" in result.message
-    assert sent_messages == ["WA exited Office"]
+    assert sent_messages[0] in (
+        list(MESSAGES["office_early_exit"].values())
+        + list(MESSAGES["office_late_exit"].values())
+    )
 
 
 def test_send_geofence_notification_uses_entered_whatsapp_template(monkeypatch) -> None:
@@ -138,13 +152,13 @@ def test_send_geofence_notification_uses_entered_whatsapp_template(monkeypatch) 
     result = asyncio.run(
         send_geofence_notification(
             settings=settings,  # type: ignore[arg-type]
-            area="Office",
+            area="Home",
             event="entered",
         )
     )
 
     assert result.success is True
-    assert sent_messages == ["WA entered Office"]
+    assert sent_messages == ["WA entered Home"]
 
 
 def test_send_geofence_notification_all_fail(monkeypatch) -> None:

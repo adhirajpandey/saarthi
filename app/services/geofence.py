@@ -1,10 +1,12 @@
 """Geofence notification service."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 import logging
 
 from fastapi.concurrency import run_in_threadpool
 
+from app.services.geofence_messages import build_geofence_whatsapp_message
 from shared.notifications.email import send_email
 from shared.notifications.whatsapp import send_whatsapp_message
 from shared.settings import ApiSettings
@@ -19,20 +21,13 @@ class NotificationResult:
 logger = logging.getLogger(__name__)
 
 
-def _select_whatsapp_template(settings: ApiSettings, event: str) -> str:
-    if event == "entered":
-        return settings.geofence_whatsapp_entered_template
-    if event == "exited":
-        return settings.geofence_whatsapp_exited_template
-    raise ValueError(f"Unsupported geofence event for WhatsApp template: {event}")
-
-
 async def send_geofence_notification(
     settings: ApiSettings,
     area: str,
     event: str,
 ) -> NotificationResult:
     """Send geofence notifications and return structured outcome."""
+    now = datetime.now(UTC)
     channel_results: dict[str, bool] = {}
 
     if settings.email_enabled:
@@ -60,7 +55,9 @@ async def send_geofence_notification(
 
     if settings.whatsapp_enabled and settings.geofence_whatsapp_enabled:
         try:
-            whatsapp_body = _select_whatsapp_template(settings, event).format(area=area)
+            whatsapp_body = await run_in_threadpool(
+                build_geofence_whatsapp_message, settings, area, event, now=now,
+            )
         except (KeyError, ValueError) as exc:
             logger.error("Invalid geofence WhatsApp template configuration: %s", exc)
             channel_results["whatsapp"] = False
